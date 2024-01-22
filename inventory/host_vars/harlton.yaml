@@ -1,0 +1,9 @@
+# Hostname: Harlton
+# MAC Address: ????
+# IP Address: 10.4.0.17
+prompt:
+  colors:
+    primary: 28
+    secondary: 188
+    tertiary: 102
+  emoji: 🌳

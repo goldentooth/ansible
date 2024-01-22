@@ -1,0 +1,9 @@
+# Hostname: Beesbury
+# MAC Address: ????
+# IP Address: 10.4.0.11
+prompt:
+  colors:
+    primary: 11
+    secondary: 58
+    tertiary: 100
+  emoji: 🐝

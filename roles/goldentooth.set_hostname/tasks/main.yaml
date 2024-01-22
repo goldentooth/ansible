@@ -1,0 +1,5 @@
+---
+- name: 'Set the node hostname.'
+  ansible.builtin.hostname:
+    name: "{{ clean_hostname }}"
+  become: yes

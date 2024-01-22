@@ -1,0 +1,9 @@
+# Hostname: Cargyll
+# MAC Address: ????
+# IP Address: 10.4.0.12
+prompt:
+  colors:
+    primary: 124
+    secondary: 220
+    tertiary: 58
+  emoji: 🦢

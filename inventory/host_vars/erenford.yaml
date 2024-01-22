@@ -1,0 +1,9 @@
+# Hostname: Erenford
+# MAC Address: ????
+# IP Address: 10.4.0.14
+prompt:
+  colors:
+    primary: 210
+    secondary: 220
+    tertiary: 95
+  emoji: 🦩

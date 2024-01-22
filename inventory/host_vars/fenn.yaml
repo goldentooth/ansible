@@ -1,0 +1,9 @@
+# Hostname: Fenn
+# MAC Address: ????
+# IP Address: 10.4.0.15
+prompt:
+  colors:
+    primary: 140
+    secondary: 160
+    tertiary: 159
+  emoji: 🌺

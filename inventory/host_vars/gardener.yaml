@@ -1,0 +1,9 @@
+# Hostname: Gardener
+# MAC Address: ????
+# IP Address: 10.4.0.16
+prompt:
+  colors:
+    primary: 28
+    secondary: 102
+    tertiary: 108
+  emoji: 🧤

@@ -1,0 +1,16 @@
+all:
+  children:
+    k8s_controlplane:
+      hosts:
+        allyrion:
+        beesbury:
+        cargyll:
+    k8s_workernodes:
+      hosts:
+        dalt:
+        erenford:
+        fenn:
+        gardener:
+        harlton:
+        inchfield:
+        jast:

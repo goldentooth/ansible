@@ -1,0 +1,9 @@
+# Hostname: Allyrion
+# MAC Address: d8:3a:dd:8a:7d:aa
+# IP Address: 10.4.0.10
+prompt:
+  colors:
+    primary: 124
+    secondary: 220
+    tertiary: 52
+  emoji: ✋

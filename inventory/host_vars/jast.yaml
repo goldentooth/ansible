@@ -1,0 +1,9 @@
+# Hostname: Jast
+# MAC Address: ????
+# IP Address: 10.4.0.19
+prompt:
+  colors:
+    primary: 11
+    secondary: 58
+    tertiary: 145
+  emoji: 🦁

@@ -1,0 +1,9 @@
+# Hostname: Inchfield
+# MAC Address: ????
+# IP Address: 10.4.0.18
+prompt:
+  colors:
+    primary: 102
+    secondary: 59
+    tertiary: 102
+  emoji: 🏁

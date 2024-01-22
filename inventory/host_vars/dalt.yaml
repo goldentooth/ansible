@@ -1,0 +1,9 @@
+# Hostname: Dalt
+# MAC Address: ????
+# IP Address: 10.4.0.13
+prompt:
+  colors:
+    primary: 127
+    secondary: 184
+    tertiary: 22
+  emoji: 🍋

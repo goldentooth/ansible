@@ -1,0 +1,43 @@
+---
+- name: 'Setup Local Modifications to Bash Prompt'
+  block:
+
+    - name: 'Define common task parameters'
+      set_fact:
+        script_src: "{{ role_path }}/files/bash_prompt.sh"
+        template_src: "{{ role_path }}/templates/bash_prompt_local.sh.j2"
+        script_dest: '~/.bash_prompt'
+        template_dest: '~/.bash_prompt_local'
+        inject_line: '[ -f .bash_prompt ] && source .bash_prompt'
+
+    - name: 'Copy Bash prompt injection script for all users'
+      ansible.builtin.copy:
+        src: "{{ script_src }}"
+        dest: "{{ script_dest }}"
+        mode: '0755'
+      changed_when: no
+      become: "{{ item.become }}"
+      loop:
+        - { become: yes }
+        - { become: no }
+
+    - name: 'Copy Bash prompt template script for all users'
+      ansible.builtin.template:
+        src: "{{ template_src }}"
+        dest: "{{ template_dest }}"
+      changed_when: no
+      become: "{{ item.become }}"
+      loop:
+        - { become: yes }
+        - { become: no }
+
+    - name: 'Inject Bash prompt into user profiles'
+      ansible.builtin.lineinfile:
+        path: "{{ item.path }}"
+        line: "{{ inject_line }}"
+        state: 'present'
+      changed_when: no
+      become: "{{ item.become }}"
+      loop:
+        - { path: '~/.bashrc', become: yes }
+        - { path: '~/.bashrc', become: no }

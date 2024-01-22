@@ -1,0 +1,7 @@
+---
+- name: 'Set the MOTD.'
+  ansible.builtin.template:
+    src: "{{ role_path }}/files/{{ clean_hostname }}.txt"
+    dest: '/etc/motd'
+  changed_when: no
+  become: yes
