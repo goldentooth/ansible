@@ -1,0 +1,9 @@
+# #############################################################################
+# Variables for vendored roles.
+# #############################################################################
+
+# geerlingguy.containerd
+
+
+# geerlingguy.kubernetes
+kubernetes_role: 'control_plane'

@@ -1,11 +1,11 @@
 all:
   children:
-    k8s_controlplane:
+    control_plane:
       hosts:
         allyrion:
         beesbury:
         cargyll:
-    k8s_workernodes:
+    worker:
       hosts:
         dalt:
         erenford:

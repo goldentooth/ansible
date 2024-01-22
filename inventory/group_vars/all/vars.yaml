@@ -4,9 +4,6 @@ ansible_python_interpreter: 'python3'
 # Just the name of the project as a whole.  This will be used in a few places.
 project_name: 'goldentooth'
 
-# An SSH public key that I inject into newly created hosts for admin purposes.
-admin_ssh_public_key: "{{ vault.admin_ssh_public_key }}"
-
 # A clean, consistent version of the hostname.
 clean_hostname: "{{ inventory_hostname | splitext | first | lower }}"
 
@@ -27,3 +24,13 @@ my:
 # Data structure of the vault.
 # vault:
 #   easy_password: <string>
+
+# #############################################################################
+# Variables for vendored roles.
+# #############################################################################
+
+# geerlingguy.containerd
+
+
+# geerlingguy.kubernetes
+kubernetes_allow_pods_on_control_plane: true
