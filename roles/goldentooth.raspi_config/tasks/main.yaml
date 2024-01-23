@@ -1,0 +1,40 @@
+---
+- name: 'Update `raspi-config`.'
+  ansible.builtin.apt:
+    name: 'raspi-config'
+    update_cache: yes 
+    state: 'present'
+    cache_valid_time: 3600
+  become: yes
+
+- name: 'Fan behavior.'
+  ansible.builtin.shell: "raspi-config nonint do_fan 1 {{ pi_fan_gpio }} {{ pi_fan_temp }}"
+  become: yes
+
+- name: 'Set the timezone.'
+  ansible.builtin.shell: "raspi-config nonint do_change_timezone {{ pi_timezone }}"
+  become: yes
+
+- name: 'Set the keyboard.'
+  ansible.builtin.shell: "raspi-config nonint do_configure_keyboard {{ pi_keyboard }}"
+  become: yes
+
+- name: 'Set the WLAN country.'
+  ansible.builtin.shell: "raspi-config nonint do_wifi_country {{ pi_wlan_country }}"
+  become: yes
+
+- name: 'Expand the filesystem.'
+  ansible.builtin.shell: "raspi-config nonint do_expand_rootfs"
+  become: yes
+
+- name: 'Enable overclocking.'
+  ansible.builtin.lineinfile:
+    path: '/boot/config.txt'
+    regexp: '^#?arm_boost'
+    line: 'arm_boost=1'
+    state: 'present'
+  become: yes
+
+- name: 'Reboot.'
+  ansible.builtin.reboot:
+  become: yes
