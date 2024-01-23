@@ -20,6 +20,10 @@ my:
     github: 'github@darkdell.net'
   local:
     timezone: 'America/New_York'
+  domain:
+    private: 'hellholt.net'
+    public: 'bitterbridge.net'
+    personal: 'darkdell.net'
 
 # Data structure of the vault.
 # vault:
@@ -30,7 +34,39 @@ my:
 # #############################################################################
 
 # geerlingguy.containerd
-
+# #############################################################################
 
 # geerlingguy.kubernetes
+# #############################################################################
+
+# It's free real estate.
 kubernetes_allow_pods_on_control_plane: true
+
+# geerlingguy.security
+# #############################################################################
+
+# Allow only these users to log in via SSH.
+security_ssh_allowed_users:
+  - "{{ my.name.lower }}"
+
+# Allow the normal user account to run sudo without a password.
+security_sudoers_passwordless:
+  - "{{ my.name.lower }}"
+
+# Enable automatic security updates.
+security_autoupdate_enabled: yes
+
+# Reboot automatically after installing updates.
+security_autoupdate_reboot: yes
+
+# Reboot at a different time, based on the host.
+security_autoupdate_reboot_time: "0{{ host_index }}:00"
+
+# Send an email to this address when updates are installed.
+security_autoupdate_mail_to: "{{ clean_hostname }}@{{ my.domain.private }}"
+
+# Send an email to this address if there's an error.
+security_autoupdate_mail_on_error: yes
+
+# Don't worry about `fail2ban` for now.
+security_fail2ban_enabled: yes

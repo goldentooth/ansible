@@ -17,9 +17,11 @@
   become: yes
 
 - name: 'Setup containerd.'
-  ansible.builtin.include_role:
+  ansible.builtin.import_role:
     name: 'geerlingguy.containerd'
+  become: yes
 
 - name: 'Create cluster.'
-  ansible.builtin.include_role:
+  ansible.builtin.import_role:
     name: 'geerlingguy.kubernetes'
+  become: yes

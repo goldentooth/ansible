@@ -1,7 +1,0 @@
----
-- name: 'Set SSH authorized keys for root account.'
-  ansible.posix.authorized_key:
-    user: 'root'
-    state: 'present'
-    key: "{{ vault.ssh_public_key }}"
-  become: yes
