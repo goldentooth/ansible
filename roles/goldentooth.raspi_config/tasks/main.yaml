@@ -70,6 +70,23 @@
     state: 'present'
   become: yes
 
+- name: 'Disable the swapfile.'
+  ansible.builtin.shell: 'dphys-swapfile swapoff'
+  become: yes
+  changed_when: no
+
+- name: 'Uninstall the swapfile.'
+  ansible.builtin.shell: 'dphys-swapfile uninstall'
+  become: yes
+  changed_when: no
+
+- name: 'Disable the swapfile service.'
+  ansible.builtin.systemd:
+    name: 'dphys-swapfile'
+    state: 'stopped'
+    enabled: 'no'
+  become: yes
+
 # - name: 'Reboot.'
 #   ansible.builtin.reboot:
 #   become: yes
