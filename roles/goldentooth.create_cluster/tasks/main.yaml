@@ -1,11 +1,12 @@
 ---
 - name: Ensure br_netfilter is enabled.
-  modprobe:
+  ansible.builtin.modprobe:
     name: br_netfilter
     state: present
+  become: yes
 
 - name: Let iptables see bridged traffic.
-  sysctl:
+  ansible.builtin.sysctl:
     name: "{{ item }}"
     value: '1'
     state: present
@@ -13,6 +14,7 @@
     - net.bridge.bridge-nf-call-iptables
     - net.bridge.bridge-nf-call-ip6tables
     - net.ipv4.ip_forward
+  become: yes
 
 - name: 'Setup containerd.'
   ansible.builtin.include_role:

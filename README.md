@@ -13,3 +13,4 @@ This is normally used via a dedicated [Bash script](https://github.com/goldentoo
 - Other Pi stuff:
   - disable the swapfile; Kubernetes doesn't like this.
   - setup unattended upgrades
+

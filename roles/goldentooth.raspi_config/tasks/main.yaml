@@ -7,25 +7,60 @@
     cache_valid_time: 3600
   become: yes
 
-- name: 'Fan behavior.'
-  ansible.builtin.shell: "raspi-config nonint do_fan 1 {{ pi_fan_gpio }} {{ pi_fan_temp }}"
+- name: 'Get fan behavior.'
+  ansible.builtin.shell: "raspi-config nonint get_fan"
   become: yes
+  register: 'get_pi_fan_enabled'
+  changed_when: no
+
+- name: 'Get fan GPIO.'
+  ansible.builtin.shell: "raspi-config nonint get_fan_gpio"
+  become: yes
+  register: 'get_pi_fan_gpio'
+  changed_when: no
+
+- name: 'Get fan temperature.'
+  ansible.builtin.shell: "raspi-config nonint get_fan_temp"
+  become: yes
+  register: 'get_pi_fan_temp'
+  changed_when: no
+
+# - name: 'Disable fan behavior.'
+#   ansible.builtin.shell: "raspi-config nonint do_fan {{ pi_fan_enabled }}"
+#   become: yes
+#   when: 'pi_fan_enabled == 0 and get_pi_fan_enabled.stdout != pi_fan_enabled'
+# 
+# - name: 'Enable fan behavior.'
+#   ansible.builtin.shell: "raspi-config nonint do_fan {{ pi_fan_enabled }} {{ pi_fan_gpio }} {{ pi_fan_temp }}"
+#   become: yes
+#   when: 'pi_fan_enabled == 1 and (get_pi_fan_enabled.stdout != pi_fan_enabled or pi_fan_gpio != get_pi_fan_gpio.stdout or pi_fan_temp != get_pi_fan_temp.stdout)'
+
+# This is hardcoded at the moment because of a bug in `raspi-config`.
+# See https://github.com/RPi-Distro/raspi-config/pull/236
+- name: 'Enable fan behavior.'
+  ansible.builtin.shell: "raspi-config nonint do_fan 0 {{ pi_fan_gpio }} {{ pi_fan_temp }}"
+  become: yes
+  changed_when: no
 
 - name: 'Set the timezone.'
   ansible.builtin.shell: "raspi-config nonint do_change_timezone {{ pi_timezone }}"
   become: yes
+  changed_when: no
 
 - name: 'Set the keyboard.'
   ansible.builtin.shell: "raspi-config nonint do_configure_keyboard {{ pi_keyboard }}"
   become: yes
+  changed_when: no
 
 - name: 'Set the WLAN country.'
   ansible.builtin.shell: "raspi-config nonint do_wifi_country {{ pi_wlan_country }}"
   become: yes
+  changed_when: no
 
 - name: 'Expand the filesystem.'
   ansible.builtin.shell: "raspi-config nonint do_expand_rootfs"
   become: yes
+  changed_when: no
 
 - name: 'Enable overclocking.'
   ansible.builtin.lineinfile:
@@ -35,6 +70,7 @@
     state: 'present'
   become: yes
 
-- name: 'Reboot.'
-  ansible.builtin.reboot:
-  become: yes
+# - name: 'Reboot.'
+#   ansible.builtin.reboot:
+#   become: yes
+#   when: ''

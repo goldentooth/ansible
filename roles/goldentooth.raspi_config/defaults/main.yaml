@@ -10,6 +10,7 @@
 # 
 # `onTemp` defaults to 80 °C.
 # 
+pi_fan_enabled: 1
 pi_fan_gpio: 14
 pi_fan_temp: 60
 

@@ -1,0 +1,13 @@
+---
+
+- name: 'Execute all setup roles.'
+  ansible.builtin.include_role:
+    name: "{{ setup_role }}"
+  loop:
+    - 'goldentooth.raspi_config'
+    - 'goldentooth.set_bash_prompt'
+    - 'goldentooth.set_motd'
+    - 'goldentooth.set_hostname'
+    - 'goldentooth.setup_ssh'
+  loop_control:
+    loop_var: 'setup_role'
