@@ -23,3 +23,5 @@ them into IaC.
   - Helm installation
   - MetalLB installation
   - ArgoCD installation
+  - Encryption-at-rest configuration
+

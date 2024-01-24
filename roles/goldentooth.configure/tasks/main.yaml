@@ -7,41 +7,6 @@
     cache_valid_time: 3600
   become: yes
 
-- name: 'Get fan behavior.'
-  ansible.builtin.shell: "raspi-config nonint get_fan"
-  become: yes
-  register: 'get_pi_fan_enabled'
-  changed_when: no
-
-- name: 'Get fan GPIO.'
-  ansible.builtin.shell: "raspi-config nonint get_fan_gpio"
-  become: yes
-  register: 'get_pi_fan_gpio'
-  changed_when: no
-
-- name: 'Get fan temperature.'
-  ansible.builtin.shell: "raspi-config nonint get_fan_temp"
-  become: yes
-  register: 'get_pi_fan_temp'
-  changed_when: no
-
-# - name: 'Disable fan behavior.'
-#   ansible.builtin.shell: "raspi-config nonint do_fan {{ pi_fan_enabled }}"
-#   become: yes
-#   when: 'pi_fan_enabled == 0 and get_pi_fan_enabled.stdout != pi_fan_enabled'
-# 
-# - name: 'Enable fan behavior.'
-#   ansible.builtin.shell: "raspi-config nonint do_fan {{ pi_fan_enabled }} {{ pi_fan_gpio }} {{ pi_fan_temp }}"
-#   become: yes
-#   when: 'pi_fan_enabled == 1 and (get_pi_fan_enabled.stdout != pi_fan_enabled or pi_fan_gpio != get_pi_fan_gpio.stdout or pi_fan_temp != get_pi_fan_temp.stdout)'
-
-# This is hardcoded at the moment because of a bug in `raspi-config`.
-# See https://github.com/RPi-Distro/raspi-config/pull/236
-- name: 'Enable fan behavior.'
-  ansible.builtin.shell: "raspi-config nonint do_fan 0 {{ pi_fan_gpio }} {{ pi_fan_temp }}"
-  become: yes
-  changed_when: no
-
 - name: 'Set the timezone.'
   ansible.builtin.shell: "raspi-config nonint do_change_timezone {{ pi_timezone }}"
   become: yes
@@ -62,13 +27,31 @@
   become: yes
   changed_when: no
 
+- name: 'Enable fan control.'
+  ansible.builtin.lineinfile:
+    path: '/boot/config.txt'
+    regexp: '^#?dtoverlay=gpio-fan'
+    line: "dtoverlay=gpio-fan,gpiopin={{ pi_fan_gpio }},temp={{ pi_fan_temp }}"
+    state: 'present'
+  ansible.builtin.shell: "dtoverlay=gpio-fan,gpiopin=14,temp=60000"
+  become: yes
+
 - name: 'Enable overclocking.'
   ansible.builtin.lineinfile:
     path: '/boot/config.txt'
-    regexp: '^#?arm_boost'
-    line: 'arm_boost=1'
+    regexp: "^#?{{ line.prefix }}"
+    line: "{{ line.line }}"
     state: 'present'
   become: yes
+  loop:
+    - prefix: 'arm_boost'
+      line: 'arm_boost=1'
+    - prefix: 'arm_freq'
+      line: 'arm_freq={{ pi_overclock_freq }}'
+    - prefix: 'over_voltage'
+      line: 'over_voltage={{ pi_overclock_voltage }}'
+  loop_control:
+    loop_var: 'line'
 
 - name: 'Disable the swapfile.'
   ansible.builtin.shell: 'dphys-swapfile swapoff'

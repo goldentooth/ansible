@@ -10,7 +10,6 @@
 # 
 # `onTemp` defaults to 80 °C.
 # 
-pi_fan_enabled: 1
 pi_fan_gpio: 14
 pi_fan_temp: 60
 
@@ -33,3 +32,13 @@ pi_keyboard: 'us'
 #
 # Select a WLAN country, for example `US`.
 pi_wlan_country: 'US'
+
+# Overclock Frequency
+#
+# Set the overclocking frequency.
+pi_overclock_freq: '2000'
+
+# Overclock Voltage
+#
+# Set the overclocking voltage.
+pi_overclock_voltage: '6'
