@@ -5,9 +5,9 @@ all:
         allyrion:
         beesbury:
         cargyll:
+        dalt:
     worker:
       hosts:
-        dalt:
         erenford:
         fenn:
         gardener:

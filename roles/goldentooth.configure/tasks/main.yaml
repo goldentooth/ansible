@@ -33,7 +33,6 @@
     regexp: '^#?dtoverlay=gpio-fan'
     line: "dtoverlay=gpio-fan,gpiopin={{ pi_fan_gpio }},temp={{ pi_fan_temp }}"
     state: 'present'
-  ansible.builtin.shell: "dtoverlay=gpio-fan,gpiopin=14,temp=60000"
   become: yes
 
 - name: 'Enable overclocking.'
