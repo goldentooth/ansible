@@ -28,6 +28,7 @@ my:
 # Data structure of the vault.
 # vault:
 #   easy_password: <string>
+#   ssh_public_key: <string>
 
 # #############################################################################
 # Variables for vendored roles.
