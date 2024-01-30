@@ -55,10 +55,10 @@ security_sudoers_passwordless:
   - "{{ my.name.lower }}"
 
 # Enable automatic security updates.
-security_autoupdate_enabled: yes
+security_autoupdate_enabled: true
 
 # Reboot automatically after installing updates.
-security_autoupdate_reboot: yes
+security_autoupdate_reboot: true
 
 # Reboot at a different time, based on the host.
 security_autoupdate_reboot_time: "0{{ host_index }}:00"
@@ -67,7 +67,7 @@ security_autoupdate_reboot_time: "0{{ host_index }}:00"
 security_autoupdate_mail_to: "{{ clean_hostname }}@{{ my.domain.private }}"
 
 # Send an email to this address if there's an error.
-security_autoupdate_mail_on_error: yes
+security_autoupdate_mail_on_error: true
 
 # Don't worry about `fail2ban` for now.
-security_fail2ban_enabled: yes
+security_fail2ban_enabled: true

@@ -13,4 +13,4 @@
 - name: 'Setup security.'
   ansible.builtin.import_role:
     name: 'goldentooth.setup_security'
-  become: yes
+  become: true

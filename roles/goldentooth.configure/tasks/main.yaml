@@ -9,7 +9,7 @@
     regexp: '^XKBLAYOUT='
     line: 'XKBLAYOUT="{{ pi_keyboard }}"'
     state: 'present'
-  become: yes
+  become: true
   register: 'set_keyboard'
 
 - name: 'Enable fan control.'
@@ -18,7 +18,7 @@
     regexp: '^#?dtoverlay=gpio-fan'
     line: "dtoverlay=gpio-fan,gpiopin={{ pi_fan_gpio }},temp={{ pi_fan_temp }}"
     state: 'present'
-  become: yes
+  become: true
   register: 'enable_fan'
 
 - name: 'Enable overclocking.'
@@ -27,7 +27,7 @@
     regexp: "^#?{{ line.prefix }}"
     line: "{{ line.line }}"
     state: 'present'
-  become: yes
+  become: true
   loop:
     - prefix: 'arm_boost'
       line: 'arm_boost=1'
@@ -43,21 +43,21 @@
   when: 'ansible_swaptotal_mb > 0'
   block:
     - name: 'Disable the swapfile.'
-      ansible.builtin.shell: 'dphys-swapfile swapoff'
-      become: yes
-      changed_when: no
+      ansible.builtin.command: 'dphys-swapfile swapoff'
+      become: true
+      changed_when: false
 
     - name: 'Uninstall the swapfile.'
-      ansible.builtin.shell: 'dphys-swapfile uninstall'
-      become: yes
-      changed_when: no
+      ansible.builtin.command: 'dphys-swapfile uninstall'
+      become: true
+      changed_when: false
 
     - name: 'Disable the swapfile service.'
       ansible.builtin.systemd:
         name: 'dphys-swapfile'
         state: 'stopped'
-        enabled: 'no'
-      become: yes
+        enabled: false
+      become: true
 
     - name: 'Indicate that swap was disabled.'
       ansible.builtin.set_fact:
@@ -82,5 +82,5 @@
 
 - name: 'Reboot.'
   ansible.builtin.reboot:
-  become: yes
+  become: true
   when: 'reboot_required | default(false)'

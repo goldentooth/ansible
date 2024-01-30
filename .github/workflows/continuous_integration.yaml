@@ -16,6 +16,6 @@ jobs:
       - name: 'Create vault password.'
         run: echo "${{ secrets.VAULT_PASSWORD }}" > ~/.goldentooth_vault_password
       - name: 'Install requirements.'
-        run: ansible-galaxy install -r requirements.yaml
+        run: ansible-galaxy install -r requirements.yml
       - name: 'Run ansible-lint.'
         uses: ansible/ansible-lint@24ac1cdb1ae30a273a844ac869fadd8d7b544ef5 # v6.22.2

@@ -3,5 +3,8 @@
   ansible.builtin.template:
     src: "{{ role_path }}/files/{{ clean_hostname }}.txt"
     dest: '/etc/motd'
-  changed_when: no
-  become: yes
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+  changed_when: false
+  become: true

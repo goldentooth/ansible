@@ -12,6 +12,7 @@
       ansible.builtin.template:
         src: "{{ role_path }}/templates/bash_prompt_local.sh.j2"
         dest: '~/.bash_prompt_local'
+        mode: '0755'
 
     - name: 'Inject Bash prompt into user profiles'
       ansible.builtin.lineinfile:
