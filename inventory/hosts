@@ -3,7 +3,7 @@ all:
     control_plane:
       hosts:
         allyrion:
-        beesbury:
+        bettley:
         cargyll:
         dalt:
     worker:

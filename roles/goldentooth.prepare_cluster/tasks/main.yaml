@@ -3,7 +3,7 @@
   ansible.builtin.include_role:
     name: "{{ setup_role.role }}"
   loop:
-    - role: 'goldentooth.raspi_config'
+    - role: 'goldentooth.configure'
     - role: 'goldentooth.set_bash_prompt'
     - role: 'goldentooth.set_motd'
     - role: 'goldentooth.set_hostname'
