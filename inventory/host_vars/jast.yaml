@@ -1,6 +1,6 @@
-# Hostname: Jast
-# MAC Address: d8:3a:dd:89:f0:4b
-# IP Address: 10.4.0.19
+clean_hostname: jast
+mac_address: d8:3a:dd:89:f0:4b
+ipv4_address: 10.4.0.19
 prompt:
   colors:
     primary: 11
@@ -8,3 +8,5 @@ prompt:
     tertiary: 145
   emoji: 🦁
 host_index: 9
+# Kubespray
+ansible_host: "{{ ipv4_address }}"

@@ -1,0 +1,20 @@
+# Description: Setup the load balancer.
+
+- name: 'Setup the load balancer.'
+  hosts: 'load_balancer'
+  roles:
+    - { role: 'goldentooth.setup_load_balancer' }
+  handlers:
+    - name: 'Restart HAProxy.'
+      ansible.builtin.service:
+        name: 'haproxy'
+        state: 'restarted'
+        enabled: true
+      become: true
+
+    - name: 'Restart rsyslog.'
+      ansible.builtin.service:
+        name: 'rsyslog'
+        state: 'restarted'
+        enabled: true
+      become: true

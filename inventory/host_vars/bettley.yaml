@@ -1,6 +1,6 @@
-# Hostname: Bettley
-# MAC Address: d8:3a:dd:89:c1:0b
-# IP Address: 10.4.0.11
+clean_hostname: bettley
+mac_address: d8:3a:dd:89:c1:0b
+ipv4_address: 10.4.0.11
 prompt:
   colors:
     primary: 220
@@ -8,3 +8,5 @@ prompt:
     tertiary: 94
   emoji: 🐞
 host_index: 1
+# Kubespray
+ansible_host: "{{ ipv4_address }}"

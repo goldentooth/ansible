@@ -1,6 +1,6 @@
-# Hostname: Fenn
-# MAC Address: d8:3a:dd:89:ef:61
-# IP Address: 10.4.0.15
+clean_hostname: fenn
+mac_address: d8:3a:dd:89:ef:61
+ipv4_address: 10.4.0.15
 prompt:
   colors:
     primary: 140
@@ -8,3 +8,5 @@ prompt:
     tertiary: 159
   emoji: 🌺
 host_index: 5
+# Kubespray
+ansible_host: "{{ ipv4_address }}"

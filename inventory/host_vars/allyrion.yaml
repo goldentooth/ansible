@@ -1,6 +1,6 @@
-# Hostname: Allyrion
-# MAC Address: d8:3a:dd:8a:7d:aa
-# IP Address: 10.4.0.10
+clean_hostname: allyrion
+mac_address: d8:3a:dd:8a:7d:aa
+ipv4_address: 10.4.0.10
 prompt:
   colors:
     primary: 124
@@ -8,3 +8,5 @@ prompt:
     tertiary: 52
   emoji: ✋
 host_index: 0
+# Kubespray
+ansible_host: "{{ ipv4_address }}"

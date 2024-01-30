@@ -1,8 +1,9 @@
+# #############################################################################
+# Standard variables.
+# #############################################################################
+
 # This should always be 'python3'.
 ansible_python_interpreter: 'python3'
-
-# Just the name of the project as a whole.  This will be used in a few places.
-project_name: 'goldentooth'
 
 # A clean, consistent version of the hostname.
 clean_hostname: "{{ inventory_hostname | splitext | first | lower }}"
@@ -10,7 +11,10 @@ clean_hostname: "{{ inventory_hostname | splitext | first | lower }}"
 # Calculated IPv4 address for the current host.  Doesn't always work, usually does.
 ipv4_address: "{{ ansible_default_ipv4.address | default(ansible_all_ipv4_addresses[0]) }}"
 
+# #############################################################################
 # Data structure for my personal preferences.
+# #############################################################################
+
 my:
   name:
     proper: 'Nathan'
@@ -31,23 +35,53 @@ my:
 #   ssh_public_key: <string>
 
 # #############################################################################
+# Shared variables.
+# #############################################################################
+
+# Load balancer data:
+load_balancer:
+  hostname: "{{ hostvars[groups['load_balancer'][0]]['clean_hostname'] }}"
+  ipv4_address: "{{ hostvars[groups['load_balancer'][0]]['ipv4_address'] }}"
+
+# Control plane data:
+control_plane:
+  all:
+    hostnames: "{{ groups['control_plane'] | map('extract', hostvars, 'clean_hostname') | list }}"
+    ipv4_addresses: "{{ groups['control_plane'] | map('extract', hostvars, 'ipv4_address') | list }}"
+  first:
+    hostname: "{{ hostvars[groups['control_plane'][0]]['clean_hostname'] }}"
+    ipv4_address: "{{ hostvars[groups['control_plane'][0]]['ipv4_address'] }}"
+  rest:
+    hostnames: "{{ groups['control_plane'] | map('extract', hostvars, 'clean_hostname') | list }}"
+    ipv4_addresses: "{{ groups['control_plane'] | map('extract', hostvars, 'ipv4_address') | list }}"
+
+# Worker data:
+worker:
+  hostnames: "{{ groups['worker'] | map('extract', hostvars, 'clean_hostname') | list }}"
+  ipv4_addresses: "{{ groups['worker'] | map('extract', hostvars, 'ipv4_address') | list }}"
+
+# #############################################################################
 # Variables for vendored roles.
 # #############################################################################
 
 # geerlingguy.containerd
 # #############################################################################
 
-# geerlingguy.kubernetes
-# #############################################################################
-
-# It's free real estate.
-kubernetes_allow_pods_on_control_plane: true
+containerd_package: 'containerd.io'
+containerd_package_state: 'present'
+containerd_service_state: 'started'
+containerd_service_enabled: true
+containerd_config_cgroup_driver_systemd: true
 
 # geerlingguy.security
 # #############################################################################
 
+# Permit root login via SSH.
+security_ssh_permit_root_login: 'yes'
+
 # Allow only these users to log in via SSH.
 security_ssh_allowed_users:
+  - 'root'
   - "{{ my.name.lower }}"
 
 # Allow the normal user account to run sudo without a password.
@@ -55,10 +89,10 @@ security_sudoers_passwordless:
   - "{{ my.name.lower }}"
 
 # Enable automatic security updates.
-security_autoupdate_enabled: yes
+security_autoupdate_enabled: true
 
 # Reboot automatically after installing updates.
-security_autoupdate_reboot: yes
+security_autoupdate_reboot: true
 
 # Reboot at a different time, based on the host.
 security_autoupdate_reboot_time: "0{{ host_index }}:00"
@@ -67,7 +101,11 @@ security_autoupdate_reboot_time: "0{{ host_index }}:00"
 security_autoupdate_mail_to: "{{ clean_hostname }}@{{ my.domain.private }}"
 
 # Send an email to this address if there's an error.
-security_autoupdate_mail_on_error: yes
+security_autoupdate_mail_on_error: true
 
 # Don't worry about `fail2ban` for now.
-security_fail2ban_enabled: yes
+security_fail2ban_enabled: true
+
+# Kubespray
+# #############################################################################
+# See `kubespray/vars.yaml`.

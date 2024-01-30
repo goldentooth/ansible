@@ -1,0 +1,21 @@
+# Description: Configure the hosts in the cluster.
+
+- name: 'Configure the hosts in the cluster.'
+  hosts: 'all'
+  roles:
+    - { role: 'goldentooth.configure' }
+    - { role: 'goldentooth.set_hostname' }
+    - { role: 'goldentooth.set_motd' }
+    - { role: 'goldentooth.set_bash_prompt' }
+    - { role: 'goldentooth.setup_security' }
+  remote_user: "{{ my.name.lower }}"
+  handlers:
+    - name: 'Reboot.'
+      ansible.builtin.reboot:
+        reboot_timeout: 300
+      become: true
+
+- name: 'Configure the Bash prompt for the root user.'
+  hosts: 'all'
+  roles:
+    - { role: 'goldentooth.set_bash_prompt' }

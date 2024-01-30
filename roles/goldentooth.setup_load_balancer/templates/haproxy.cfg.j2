@@ -1,0 +1,84 @@
+# /etc/haproxy/haproxy.cfg
+
+# This is the HAProxy configuration file for the load balancer in my Kubernetes
+# cluster. It is used to load balance the API server traffic between the
+# control plane nodes.
+
+# Global parameters
+global
+  # Sets uid for haproxy process.
+  user haproxy
+  # Sets gid for haproxy process.
+  group haproxy
+  # Sets the maximum per-process number of concurrent connections.
+  maxconn 4096
+  # Configure logging.
+  log /dev/log local0
+  log /dev/log local1 notice
+
+# Default parameters
+defaults
+  # Use global log configuration.
+  log global
+  # Sets the maximum time to wait for a connection.
+  timeout connect 10s
+
+# Frontend configuration for the HAProxy stats page.
+frontend stats-frontend
+  # Listen on all IPv4 addresses on port 8404.
+  bind *:8404
+  # Use HTTP mode.
+  mode http
+  # Enable the stats page.
+  stats enable
+  # Set the URI to access the stats page.
+  stats uri /stats
+  # Set the refresh rate of the stats page.
+  stats refresh 10s
+  # Set the realm to access the stats page.
+  stats realm HAProxy\ Statistics
+  # Set the username and password to access the stats page.
+  stats auth {{ my.name.lower }}:{{ vault.easy_password }}
+  # Sets the maximum inactivity time on the client side.
+  timeout client 3600s
+  # Hide HAProxy version to improve security.
+  stats hide-version
+
+# Kubernetes API server frontend configuration.
+frontend k8s-api-server
+  # Listen on the IPv4 address of the load balancer on port 6443.
+  bind {{ ipv4_address }}:6443
+  # Use TCP mode, which means that the connection will be passed to the server
+  # without TLS termination, etc.
+  mode tcp
+  # Enable logging of the client's IP address and port.
+  option tcplog
+  # Sets the maximum inactivity time on the client side.
+  # I might reduce this at some point.
+  timeout client 86400s
+  # Use the Kubernetes API server backend.
+  default_backend k8s-api-server
+
+# Kubernetes API server backend configuration.
+backend k8s-api-server
+  # Use TCP mode, not HTTPS.
+  mode tcp
+  # Sets the load balancing algorithm.
+  # `roundrobin` means that each server is used in turns, according to their
+  # weights.
+  balance roundrobin
+  # Enable health checks.
+  option tcp-check
+  # Sets the maximum inactivity time on the server side.
+  # I might reduce this at some point.
+  timeout server 86400s
+  # For each control plane node, add a server line with the node's hostname and
+  # IP address.
+  # The `check` parameter enables health checks.
+  # The `fall` parameter sets the number of consecutive health check failures
+  # after which the server is considered to be down.
+  # The `rise` parameter sets the number of consecutive health check successes
+  # after which the server is considered to be up.
+{% for host in groups['control_plane'] %}
+  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:6443 check fall 3 rise 2
+{% endfor %}

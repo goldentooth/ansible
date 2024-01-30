@@ -1,6 +1,6 @@
-# Hostname: Gardener
-# MAC Address: d8:3a:dd:89:aa:7d
-# IP Address: 10.4.0.16
+clean_hostname: gardener
+mac_address: d8:3a:dd:89:aa:7d
+ipv4_address: 10.4.0.16
 prompt:
   colors:
     primary: 28
@@ -8,3 +8,5 @@ prompt:
     tertiary: 108
   emoji: 🧤
 host_index: 6
+# Kubespray
+ansible_host: "{{ ipv4_address }}"

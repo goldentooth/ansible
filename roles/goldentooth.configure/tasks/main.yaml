@@ -1,16 +1,17 @@
 ---
-- name: Set timezone to Asia/Tokyo
+- name: 'Set timezone.'
   community.general.timezone:
     name: "{{ pi_timezone }}"
+  notify: 'Reboot.'
 
-- name: 'Set the keyboard.'
+- name: 'Set the keyboard layout.'
   ansible.builtin.lineinfile:
     path: '/etc/default/keyboard'
     regexp: '^XKBLAYOUT='
     line: 'XKBLAYOUT="{{ pi_keyboard }}"'
     state: 'present'
-  become: yes
-  register: 'set_keyboard'
+  become: true
+  notify: 'Reboot.'
 
 - name: 'Enable fan control.'
   ansible.builtin.lineinfile:
@@ -18,8 +19,8 @@
     regexp: '^#?dtoverlay=gpio-fan'
     line: "dtoverlay=gpio-fan,gpiopin={{ pi_fan_gpio }},temp={{ pi_fan_temp }}"
     state: 'present'
-  become: yes
-  register: 'enable_fan'
+  become: true
+  notify: 'Reboot.'
 
 - name: 'Enable overclocking.'
   ansible.builtin.lineinfile:
@@ -27,7 +28,7 @@
     regexp: "^#?{{ line.prefix }}"
     line: "{{ line.line }}"
     state: 'present'
-  become: yes
+  become: true
   loop:
     - prefix: 'arm_boost'
       line: 'arm_boost=1'
@@ -37,50 +38,97 @@
       line: 'over_voltage={{ pi_overclock_voltage }}'
   loop_control:
     loop_var: 'line'
-  register: 'enable_overclock'
+  notify: 'Reboot.'
+
+- name: 'Ensure important expressions are present in cmdline.txt.'
+  ansible.builtin.lineinfile:
+    path: '/boot/firmware/cmdline.txt'
+    regexp: '^(?!.*{{ expression }})(.*)$'
+    line: '\1 {{ expression }}'
+    state: 'present'
+    backrefs: true
+  become: true
+  loop:
+    - 'cgroup_enable=cpuset'
+    - 'cgroup_enable=memory'
+    - 'cgroup_enable=hugetlb'
+    - 'cgroup_memory=1'
+  loop_control:
+    loop_var: 'expression'
+  notify: 'Reboot.'
 
 - name: 'Disable swap.'
   when: 'ansible_swaptotal_mb > 0'
   block:
     - name: 'Disable the swapfile.'
-      ansible.builtin.shell: 'dphys-swapfile swapoff'
-      become: yes
-      changed_when: no
+      ansible.builtin.command: 'dphys-swapfile swapoff'
+      become: true
+      changed_when: false
 
     - name: 'Uninstall the swapfile.'
-      ansible.builtin.shell: 'dphys-swapfile uninstall'
-      become: yes
-      changed_when: no
+      ansible.builtin.command: 'dphys-swapfile uninstall'
+      become: true
+      changed_when: false
 
     - name: 'Disable the swapfile service.'
       ansible.builtin.systemd:
         name: 'dphys-swapfile'
         state: 'stopped'
-        enabled: 'no'
-      become: yes
-
-    - name: 'Indicate that swap was disabled.'
-      ansible.builtin.set_fact:
-        disable_swap: true
-
-- name: 'Create selected editor file if it does not exist.'
-  ansible.builtin.file:
-    path: '~/.selected_editor'
-    state: 'file'
+        enabled: false
+      become: true
+      notify: 'Reboot.'
 
 - name: 'Select editor.'
   ansible.builtin.lineinfile:
     path: '~/.selected_editor'
     regexp: '^SELECTED_EDITOR'
     line: 'SELECTED_EDITOR="/bin/nano"'
+    create: true
     state: 'present'
+    mode: '0644'
 
-- name: 'Indicate reboot required.'
-  ansible.builtin.set_fact:
-    reboot_required: true
-  when: 'set_keyboard.changed or enable_fan.changed or enable_overclock.changed or disable_swap | default(false)'
+- name: 'Load kernel modules.'
+  ansible.builtin.lineinfile:
+    path: '/etc/modprobe.d/kubernetes.conf'
+    regexp: "^#?{{ module }}$"
+    line: "{{ module }}"
+    create: true
+    state: 'present'
+    mode: '0644'
+  become: true
+  loop:
+    - 'overlay'
+    - 'br_netfilter'
+  loop_control:
+    loop_var: 'module'
+  notify: 'Reboot.'
 
-- name: 'Reboot.'
-  ansible.builtin.reboot:
-  become: yes
-  when: 'reboot_required | default(false)'
+- name: 'Ensure kernel modules are enabled.'
+  community.general.modprobe:
+    name: "{{ module }}"
+    state: 'present'
+  become: true
+  loop:
+    - 'overlay'
+    - 'br_netfilter'
+  loop_control:
+    loop_var: 'module'
+
+- name: 'Let iptables see bridged traffic.'
+  ansible.posix.sysctl:
+    name: "{{ item }}"
+    value: '1'
+    state: 'present'
+  loop:
+    - 'net.bridge.bridge-nf-call-iptables'
+    - 'net.bridge.bridge-nf-call-ip6tables'
+    - 'net.ipv4.ip_forward'
+  become: true
+  notify: 'Reboot.'
+
+- name: 'Add authorized key.'
+  ansible.posix.authorized_key:
+    user: 'root'
+    state: 'present'
+    key: "{{ vault.ssh_public_key }}"
+  become: true

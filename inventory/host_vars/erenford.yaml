@@ -1,6 +1,6 @@
-# Hostname: Erenford
-# MAC Address: d8:3a:dd:8a:80:3c
-# IP Address: 10.4.0.14
+clean_hostname: erenford
+mac_address: d8:3a:dd:8a:80:3c
+ipv4_address: 10.4.0.14
 prompt:
   colors:
     primary: 210
@@ -8,3 +8,5 @@ prompt:
     tertiary: 95
   emoji: 🦩
 host_index: 4
+# Kubespray
+ansible_host: "{{ ipv4_address }}"

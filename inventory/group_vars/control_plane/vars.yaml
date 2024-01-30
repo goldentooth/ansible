@@ -1,11 +1,12 @@
+# The role this host will play in the cluster.
+#
+# Valid values are:
+# - 'control_plane'
+# - 'load_balancer'
+# - 'worker'
+#
+cluster_role: 'control_plane'
+
 # #############################################################################
 # Variables for vendored roles.
 # #############################################################################
-
-# geerlingguy.containerd
-# #############################################################################
-
-# geerlingguy.kubernetes
-# #############################################################################
-
-kubernetes_role: 'control_plane'

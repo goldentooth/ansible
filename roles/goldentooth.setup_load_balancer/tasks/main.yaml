@@ -1,0 +1,32 @@
+---
+- name: 'Setup load balancer.'
+  when: 'cluster_role == "load_balancer"'
+  block:
+
+    - name: 'Install rsyslog.'
+      ansible.builtin.apt:
+        name:
+          - 'rsyslog'
+        state: 'present'
+        cache_valid_time: 3600
+      become: true
+      notify: 'Restart rsyslog.'
+
+    - name: 'Install HAProxy.'
+      ansible.builtin.apt:
+        name:
+          - 'haproxy'
+        state: 'present'
+        cache_valid_time: 3600
+      become: true
+      notify: 'Restart HAProxy.'
+
+    - name: 'Configure HAProxy.'
+      ansible.builtin.template:
+        src: 'haproxy.cfg.j2'
+        dest: '/etc/haproxy/haproxy.cfg'
+        owner: 'root'
+        group: 'root'
+        mode: '0644'
+      become: true
+      notify: 'Restart HAProxy.'

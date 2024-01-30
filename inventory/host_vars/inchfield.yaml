@@ -1,6 +1,6 @@
-# Hostname: Inchfield
-# MAC Address: d8:3a:dd:89:fa:fc
-# IP Address: 10.4.0.18
+clean_hostname: inchfield
+mac_address: d8:3a:dd:89:fa:fc
+ipv4_address: 10.4.0.18
 prompt:
   colors:
     primary: 102
@@ -8,3 +8,5 @@ prompt:
     tertiary: 102
   emoji: 🏁
 host_index: 8
+# Kubespray
+ansible_host: "{{ ipv4_address }}"

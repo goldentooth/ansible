@@ -1,4 +1,0 @@
----
-- name: 'Reset Kubernetes cluster.'
-  ansible.builtin.shell: 'kubeadm reset --force'
-  ignore_errors: True
