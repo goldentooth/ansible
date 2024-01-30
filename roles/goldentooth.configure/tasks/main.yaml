@@ -1,31 +1,16 @@
 ---
-- name: 'Update `raspi-config`.'
-  ansible.builtin.apt:
-    name: 'raspi-config'
-    update_cache: yes 
-    state: 'present'
-    cache_valid_time: 3600
-  become: yes
-
-- name: 'Set the timezone.'
-  ansible.builtin.shell: "raspi-config nonint do_change_timezone {{ pi_timezone }}"
-  become: yes
-  changed_when: no
+- name: Set timezone to Asia/Tokyo
+  community.general.timezone:
+    name: "{{ pi_timezone }}"
 
 - name: 'Set the keyboard.'
-  ansible.builtin.shell: "raspi-config nonint do_configure_keyboard {{ pi_keyboard }}"
+  ansible.builtin.lineinfile:
+    path: '/etc/default/keyboard'
+    regexp: '^XKBLAYOUT='
+    line: 'XKBLAYOUT="{{ pi_keyboard }}"'
+    state: 'present'
   become: yes
-  changed_when: no
-
-- name: 'Set the WLAN country.'
-  ansible.builtin.shell: "raspi-config nonint do_wifi_country {{ pi_wlan_country }}"
-  become: yes
-  changed_when: no
-
-- name: 'Expand the filesystem.'
-  ansible.builtin.shell: "raspi-config nonint do_expand_rootfs"
-  become: yes
-  changed_when: no
+  register: 'set_keyboard'
 
 - name: 'Enable fan control.'
   ansible.builtin.lineinfile:
@@ -34,6 +19,7 @@
     line: "dtoverlay=gpio-fan,gpiopin={{ pi_fan_gpio }},temp={{ pi_fan_temp }}"
     state: 'present'
   become: yes
+  register: 'enable_fan'
 
 - name: 'Enable overclocking.'
   ansible.builtin.lineinfile:
@@ -51,25 +37,50 @@
       line: 'over_voltage={{ pi_overclock_voltage }}'
   loop_control:
     loop_var: 'line'
+  register: 'enable_overclock'
 
-- name: 'Disable the swapfile.'
-  ansible.builtin.shell: 'dphys-swapfile swapoff'
+- name: 'Disable swap.'
+  when: 'ansible_swaptotal_mb > 0'
+  block:
+    - name: 'Disable the swapfile.'
+      ansible.builtin.shell: 'dphys-swapfile swapoff'
+      become: yes
+      changed_when: no
+
+    - name: 'Uninstall the swapfile.'
+      ansible.builtin.shell: 'dphys-swapfile uninstall'
+      become: yes
+      changed_when: no
+
+    - name: 'Disable the swapfile service.'
+      ansible.builtin.systemd:
+        name: 'dphys-swapfile'
+        state: 'stopped'
+        enabled: 'no'
+      become: yes
+
+    - name: 'Indicate that swap was disabled.'
+      ansible.builtin.set_fact:
+        disable_swap: true
+
+- name: 'Create selected editor file if it does not exist.'
+  ansible.builtin.file:
+    path: '~/.selected_editor'
+    state: 'file'
+
+- name: 'Select editor.'
+  ansible.builtin.lineinfile:
+    path: '~/.selected_editor'
+    regexp: '^SELECTED_EDITOR'
+    line: 'SELECTED_EDITOR="/bin/nano"'
+    state: 'present'
+
+- name: 'Indicate reboot required.'
+  ansible.builtin.set_fact:
+    reboot_required: true
+  when: 'set_keyboard.changed or enable_fan.changed or enable_overclock.changed or disable_swap | default(false)'
+
+- name: 'Reboot.'
+  ansible.builtin.reboot:
   become: yes
-  changed_when: no
-
-- name: 'Uninstall the swapfile.'
-  ansible.builtin.shell: 'dphys-swapfile uninstall'
-  become: yes
-  changed_when: no
-
-- name: 'Disable the swapfile service.'
-  ansible.builtin.systemd:
-    name: 'dphys-swapfile'
-    state: 'stopped'
-    enabled: 'no'
-  become: yes
-
-# - name: 'Reboot.'
-#   ansible.builtin.reboot:
-#   become: yes
-#   when: ''
+  when: 'reboot_required | default(false)'

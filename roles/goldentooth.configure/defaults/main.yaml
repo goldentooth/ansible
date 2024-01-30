@@ -42,3 +42,8 @@ pi_overclock_freq: '2000'
 #
 # Set the overclocking voltage.
 pi_overclock_voltage: '6'
+
+# Selected Editor
+#
+# Select a default editor, for example `nano`.
+selected_editor: 'nano'
