@@ -13,5 +13,7 @@ jobs:
     steps:
       - name: 'Checkout'
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - name: 'Create vault password.'
+        run: echo "${{ secrets.VAULT_PASSWORD }}" > ~/.goldentooth_vault_password
       - name: 'Run ansible-lint.'
         uses: ansible/ansible-lint@24ac1cdb1ae30a273a844ac869fadd8d7b544ef5 # v6.22.2
