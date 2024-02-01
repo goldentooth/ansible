@@ -3,5 +3,4 @@ collections:
   - name: 'community.general'
 roles:
   - src: 'geerlingguy.containerd'
-  - src: 'geerlingguy.kubernetes'
   - src: 'geerlingguy.security'

@@ -37,8 +37,17 @@ my:
 # geerlingguy.containerd
 # #############################################################################
 
+containerd_package: 'containerd.io'
+containerd_package_state: 'present'
+containerd_service_state: 'started'
+containerd_service_enabled: true
+containerd_config_cgroup_driver_systemd: true
+
 # geerlingguy.kubernetes
 # #############################################################################
+
+# The version of Kubernetes to install.
+kubernetes_version: '1.28'
 
 # It's free real estate.
 kubernetes_allow_pods_on_control_plane: true

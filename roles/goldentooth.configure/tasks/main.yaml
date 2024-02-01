@@ -1,4 +1,8 @@
 ---
+- name: 'Set default for disable_swap.'
+  ansible.builtin.set_fact:
+    disable_swap: false
+
 - name: Set timezone to Asia/Tokyo
   community.general.timezone:
     name: "{{ pi_timezone }}"
@@ -39,6 +43,23 @@
     loop_var: 'line'
   register: 'enable_overclock'
 
+- name: 'Ensure important expressions are present in cmdline.txt.'
+  ansible.builtin.lineinfile:
+    path: '/boot/firmware/cmdline.txt'
+    regexp: '^(?!.*{{ expression }})(.*)$'
+    line: '\1 {{ expression }}'
+    state: 'present'
+    backrefs: true
+  become: true
+  loop:
+    - 'cgroup_enable=cpuset'
+    - 'cgroup_enable=memory'
+    - 'cgroup_enable=hugetlb'
+    - 'cgroup_memory=1'
+  loop_control:
+    loop_var: 'expression'
+  register: 'ensure_cmdline'
+
 - name: 'Disable swap.'
   when: 'ansible_swaptotal_mb > 0'
   block:
@@ -63,22 +84,62 @@
       ansible.builtin.set_fact:
         disable_swap: true
 
-- name: 'Create selected editor file if it does not exist.'
-  ansible.builtin.file:
-    path: '~/.selected_editor'
-    state: 'file'
-
 - name: 'Select editor.'
   ansible.builtin.lineinfile:
     path: '~/.selected_editor'
     regexp: '^SELECTED_EDITOR'
     line: 'SELECTED_EDITOR="/bin/nano"'
+    create: true
     state: 'present'
+
+- name: 'Load kernel modules.'
+  ansible.builtin.lineinfile:
+    path: '/etc/modprobe.d/kubernetes.conf'
+    regexp: "^#?{{ module }}$"
+    line: "{{ module }}"
+    create: true
+    state: 'present'
+  become: true
+  loop:
+    - 'overlay'
+    - 'br_netfilter'
+  loop_control:
+    loop_var: 'module'
+
+- name: 'Ensure kernel modules are enabled.'
+  community.general.modprobe:
+    name: "{{ module }}"
+    state: 'present'
+  become: true
+  loop:
+    - 'overlay'
+    - 'br_netfilter'
+  loop_control:
+    loop_var: 'module'
+
+- name: 'Let iptables see bridged traffic.'
+  ansible.posix.sysctl:
+    name: "{{ item }}"
+    value: '1'
+    state: 'present'
+  loop:
+    - 'net.bridge.bridge-nf-call-iptables'
+    - 'net.bridge.bridge-nf-call-ip6tables'
+    - 'net.ipv4.ip_forward'
+  become: true
+
+- name: 'Install some packages.'
+  ansible.builtin.apt:
+    name:
+      - 'sshpass'
+    state: 'present'
+    cache_valid_time: 3600
+  become: true
 
 - name: 'Indicate reboot required.'
   ansible.builtin.set_fact:
     reboot_required: true
-  when: 'set_keyboard.changed or enable_fan.changed or enable_overclock.changed or disable_swap | default(false)'
+  when: 'set_keyboard.changed or enable_fan.changed or enable_overclock.changed or ensure_cmdline.changed or disable_swap | default(false)'
 
 - name: 'Reboot.'
   ansible.builtin.reboot:

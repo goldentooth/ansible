@@ -1,0 +1,32 @@
+---
+- name: 'Setup load balancer.'
+  when: 'cluster_role == "load_balancer"'
+  block:
+
+    - name: 'Install HAProxy.'
+      ansible.builtin.apt:
+        name:
+          - 'haproxy'
+        state: 'present'
+        update_cache: true
+        cache_valid_time: 3600
+      become: true
+      register: haproxy_install
+
+    - name: 'Configure HAProxy.'
+      ansible.builtin.template:
+        src: 'haproxy.cfg.j2'
+        dest: '/etc/haproxy/haproxy.cfg'
+        owner: 'root'
+        group: 'root'
+        mode: '0644'
+      become: true
+      register: haproxy_config
+
+    - name: 'Restart HAProxy.'
+      ansible.builtin.service:
+        name: 'haproxy'
+        state: 'restarted'
+        enabled: true
+      become: true
+      when: 'haproxy_config.changed or haproxy_install.changed'

@@ -1,27 +1,11 @@
 ---
-- name: Ensure br_netfilter is enabled.
-  community.general.modprobe:
-    name: br_netfilter
-    state: present
-  become: true
-
-- name: Let iptables see bridged traffic.
-  ansible.posix.sysctl:
-    name: "{{ item }}"
-    value: '1'
-    state: present
-  loop:
-    - net.bridge.bridge-nf-call-iptables
-    - net.bridge.bridge-nf-call-ip6tables
-    - net.ipv4.ip_forward
-  become: true
-
 - name: 'Setup containerd.'
   ansible.builtin.import_role:
     name: 'geerlingguy.containerd'
   become: true
 
-- name: 'Create cluster.'
+- name: 'Setup load balancer.'
   ansible.builtin.import_role:
-    name: 'geerlingguy.kubernetes'
+    name: 'goldentooth.setup_load_balancer'
+  when: 'cluster_role == "load_balancer"'
   become: true

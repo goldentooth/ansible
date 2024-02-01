@@ -1,16 +1,18 @@
 all:
   children:
-    control_plane:
+    load_balancer:
       hosts:
         allyrion:
-        bettley:
-        cargyll:
-        dalt:
-    worker:
+    control_plane:
       hosts:
-        erenford:
+        bettley:
         fenn:
         gardener:
+    worker:
+      hosts:
+        cargyll:
+        dalt:
+        erenford:
         harlton:
         inchfield:
         jast:
