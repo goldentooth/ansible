@@ -1,6 +1,6 @@
-# Hostname: Harlton
-# MAC Address: d8:3a:dd:89:f9:23
-# IP Address: 10.4.0.17
+clean_hostname: harlton
+mac_address: d8:3a:dd:89:f9:23
+ipv4_address: 10.4.0.17
 prompt:
   colors:
     primary: 28

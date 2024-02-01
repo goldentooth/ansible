@@ -1,6 +1,6 @@
-# Hostname: Dalt
-# MAC Address: d8:3a:dd:8a:7e:9a
-# IP Address: 10.4.0.13
+clean_hostname: dalt
+mac_address: d8:3a:dd:8a:7e:9a
+ipv4_address: 10.4.0.13
 prompt:
   colors:
     primary: 127

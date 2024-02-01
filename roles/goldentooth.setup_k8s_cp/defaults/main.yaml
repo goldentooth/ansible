@@ -1,0 +1,64 @@
+# The packages we need to install from the get-go.
+k8s_apt_packages:
+  - 'kubeadm'
+  - 'kubelet'
+  - 'kubectl'
+
+# The admin.conf file is created when the cluster is initialized.
+k8s_admin_config_path: '/etc/kubernetes/admin.conf'
+
+# The Kubeadm and Kubelet configuration file path.
+k8s_kubeadm_config_path: '/etc/kubernetes/kubeadm.conf'
+
+# The path to the kubeadm configuration file for the control plane.
+k8s_kubeadm_control_plane_config_path: '/etc/kubernetes/kubeadm-control-plane.conf'
+
+# The Kubernetes pod network CNI.
+k8s_pod_network_cni: 'flannel'
+
+# The Kubernetes pod network CIDR.
+k8s_pod_network_cidr: '10.244.0.0/16'
+
+# The Kubeadm init configuration.
+k8s_kubeadm_init_config:
+  localAPIEndpoint:
+    advertiseAddress: "{{ ipv4_address }}"
+
+# The Kubeadm cluster configuration.
+k8s_kubeadm_cluster_config:
+  clusterName: "{{ cluster_name }}"
+  networking:
+    podSubnet: "{{ k8s_pod_network_cidr }}"
+  kubernetesVersion: "stable-{{ k8s_version }}"
+
+# The Kubelet configuration.
+k8s_kubelet_config:
+  cgroupDriver: "systemd"
+
+# The Kube-Proxy configuration.
+k8s_kubeproxy_config:
+  bindAddress: "{{ ipv4_address }}"
+
+# Taints for the control plane.
+kubeadm_control_plane_taints:
+  - key: 'node-role.kubernetes.io/master'
+    effect: 'NoSchedule'
+
+# The Kubeadm control plane configuration.
+k8s_kubeadm_control_plane_config:
+  discovery:
+    bootstrapToken:
+      apiServerEndpoint: "{{ load_balancer.ipv4_address }}:6443"
+      token: "{{ kubeadm_token }}"
+      unsafeSkipCAVerification: true
+    timeout: '5m0s'
+    tlsBootstrapToken: "{{ kubeadm_token }}"
+  controlPlane:
+    localAPIEndpoint:
+      advertiseAddress: "{{ ipv4_address }}"
+      bindPort: 6443
+    certificateKey: "{{ kubeadm_certificate_key }}"
+  nodeRegistration:
+    name: "{{ inventory_hostname }}"
+    criSocket: 'unix:///var/run/containerd/containerd.sock'
+    taints: "{{ kubeadm_control_plane_taints }}"

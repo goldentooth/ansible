@@ -1,0 +1,3 @@
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: JoinConfiguration
+{{ k8s_kubeadm_control_plane_config | to_nice_yaml }}

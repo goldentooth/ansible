@@ -1,6 +1,6 @@
-# Hostname: Cargyll
-# MAC Address: d8:3a:dd:8a:7d:ef
-# IP Address: 10.4.0.12
+clean_hostname: cargyll
+mac_address: d8:3a:dd:8a:7d:ef
+ipv4_address: 10.4.0.12
 prompt:
   colors:
     primary: 124

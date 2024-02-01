@@ -12,7 +12,7 @@ defaults
   mode tcp
   maxconn 2000
 frontend k8s-api-server
-  bind {{ ipv4_address }}:9000
+  bind {{ ipv4_address }}:6443
   mode tcp
   option tcplog
   default_backend k8s-api-server
