@@ -1,0 +1,11 @@
+# Kubernetes Apt repository URL.
+k8s_apt_repository_key_url: "https://pkgs.k8s.io/core:/stable:/v{{ k8s_version }}/deb/Release.key"
+
+# Kubernetes Apt repository key temporary download path.
+k8s_apt_repository_key_tmp_path: "/tmp/kubernetes-release.key"
+
+# Kubernetes Apt repository keyring path.
+k8s_apt_repository_keyring_path: "/etc/apt/keyrings/kubernetes-apt-keyring.gpg"
+
+# Kubernetes Apt repository URL.
+k8s_apt_repository_url: "https://pkgs.k8s.io/core:/stable:/v{{ k8s_version }}/deb/"

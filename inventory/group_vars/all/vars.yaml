@@ -10,6 +10,9 @@ clean_hostname: "{{ inventory_hostname | splitext | first | lower }}"
 # Calculated IPv4 address for the current host.  Doesn't always work, usually does.
 ipv4_address: "{{ ansible_default_ipv4.address | default(ansible_all_ipv4_addresses[0]) }}"
 
+# Kubernetes major and minor version.
+k8s_version: '1.28'
+
 # Data structure for my personal preferences.
 my:
   name:
@@ -42,15 +45,6 @@ containerd_package_state: 'present'
 containerd_service_state: 'started'
 containerd_service_enabled: true
 containerd_config_cgroup_driver_systemd: true
-
-# geerlingguy.kubernetes
-# #############################################################################
-
-# The version of Kubernetes to install.
-kubernetes_version: '1.28'
-
-# It's free real estate.
-kubernetes_allow_pods_on_control_plane: true
 
 # geerlingguy.security
 # #############################################################################
