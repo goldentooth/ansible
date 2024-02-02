@@ -1,0 +1,6 @@
+# Description: Setup the load balancer.
+
+- name: 'Setup the load balancer.'
+  hosts: 'load_balancer'
+  roles:
+    - { role: 'goldentooth.setup_load_balancer' }

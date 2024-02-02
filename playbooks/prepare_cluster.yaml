@@ -1,0 +1,10 @@
+# Description: Prepare the nodes in the cluster.
+
+- name: 'Prepare the nodes in the cluster.'
+  hosts: 'all'
+  roles:
+    - { role: 'goldentooth.configure' }
+    - { role: 'goldentooth.set_hostname' }
+    - { role: 'goldentooth.set_motd' }
+    - { role: 'goldentooth.set_bash_prompt' }
+    - { role: 'geerlingguy.setup_security' }

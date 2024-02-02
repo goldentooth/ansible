@@ -1,0 +1,6 @@
+# Description: Reset the Kubernetes cluster.
+
+- name: 'Reset Kubernetes cluster.'
+  ansible.builtin.import_playbook: '../kubespray/playbooks/reset.yml'
+  vars:
+    ansible_user: 'root'

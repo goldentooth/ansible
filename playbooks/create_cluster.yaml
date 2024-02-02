@@ -1,0 +1,6 @@
+# Description: Create a Kubernetes cluster.
+
+- name: 'Create cluster with Kubespray.'
+  ansible.builtin.import_playbook: '../kubespray/playbooks/cluster.yml'
+  vars:
+    ansible_user: 'root'

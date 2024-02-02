@@ -128,12 +128,11 @@
     - 'net.ipv4.ip_forward'
   become: true
 
-- name: 'Install some packages.'
-  ansible.builtin.apt:
-    name:
-      - 'sshpass'
+- name: 'Add authorized key.'
+  ansible.posix.authorized_key:
+    user: 'root'
     state: 'present'
-    cache_valid_time: 3600
+    key: "{{ vault.ssh_public_key }}"
   become: true
 
 - name: 'Indicate reboot required.'

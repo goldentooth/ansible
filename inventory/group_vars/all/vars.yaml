@@ -5,20 +5,11 @@
 # This should always be 'python3'.
 ansible_python_interpreter: 'python3'
 
-# Just the name of the project as a whole.  This will be used in a few places.
-project_name: 'goldentooth'
-
 # A clean, consistent version of the hostname.
 clean_hostname: "{{ inventory_hostname | splitext | first | lower }}"
 
 # Calculated IPv4 address for the current host.  Doesn't always work, usually does.
 ipv4_address: "{{ ansible_default_ipv4.address | default(ansible_all_ipv4_addresses[0]) }}"
-
-# The cluster name.
-cluster_name: 'goldentooth'
-
-# Kubernetes major and minor version.
-k8s_version: '1.28'
 
 # #############################################################################
 # Data structure for my personal preferences.
@@ -85,8 +76,12 @@ containerd_config_cgroup_driver_systemd: true
 # geerlingguy.security
 # #############################################################################
 
+# Permit root login via SSH.
+security_ssh_permit_root_login: 'yes'
+
 # Allow only these users to log in via SSH.
 security_ssh_allowed_users:
+  - 'root'
   - "{{ my.name.lower }}"
 
 # Allow the normal user account to run sudo without a password.
@@ -110,3 +105,7 @@ security_autoupdate_mail_on_error: true
 
 # Don't worry about `fail2ban` for now.
 security_fail2ban_enabled: true
+
+# Kubespray
+# #############################################################################
+# See `kubespray/vars.yaml`.

@@ -1,18 +1,32 @@
 all:
   children:
-    load_balancer:
-      hosts:
-        allyrion:
-    control_plane:
-      hosts:
-        bettley:
-        fenn:
-        gardener:
-    worker:
-      hosts:
-        cargyll:
-        dalt:
-        erenford:
-        harlton:
-        inchfield:
-        jast:
+    # Kubespray
+    kubespray:
+      children:
+        load_balancer:
+          hosts:
+            allyrion:
+        # Kubespray
+        k8s_cluster:
+          children:
+            # Kubespray
+            kube_control_plane:
+              children:
+                etcd:
+                  children:
+                    control_plane:
+                      hosts:
+                        bettley:
+                        fenn:
+                        gardener:
+            # Kubespray
+            kube_node:
+              children:
+                worker:
+                  hosts:
+                    cargyll:
+                    dalt:
+                    erenford:
+                    harlton:
+                    inchfield:
+                    jast:
