@@ -22,7 +22,7 @@
     backup: true
     unsafe_writes: true
     marker: "# Ansible inventory hosts {mark}"
-    mode: 0644
+    mode: '0644'
   become: true
 
 - name: 'Add load balancer to /etc/hosts.'
