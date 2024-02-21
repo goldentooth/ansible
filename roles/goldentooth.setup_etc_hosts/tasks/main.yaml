@@ -1,0 +1,36 @@
+---
+- name: 'Create hosts list from inventory.'
+  ansible.builtin.set_fact:
+    etc_hosts_inventory_block: |-
+      {% for item in groups['all'] | unique -%}
+      {% if 'ipv4_address' in hostvars[item] -%}
+      {{ hostvars[item]['ipv4_address'] }} {{ hostvars[item]['clean_hostname'] }}
+      {% endif %}
+      {% endfor %}
+  delegate_to: 'localhost'
+  connection: 'local'
+  delegate_facts: true
+  run_once: true
+  become: true
+
+- name: 'Add inventory hosts to /etc/hosts.'
+  ansible.builtin.blockinfile:
+    path: '/etc/hosts'
+    block: "{{ hostvars.localhost.etc_hosts_inventory_block }}"
+    state: 'present'
+    create: true
+    backup: true
+    unsafe_writes: true
+    marker: "# Ansible inventory hosts {mark}"
+    mode: 0644
+  become: true
+
+- name: 'Add load balancer to /etc/hosts.'
+  ansible.builtin.lineinfile:
+    dest: '/etc/hosts'
+    regexp: ".*{{ apiserver_loadbalancer_domain_name }}$"
+    line: "{{ load_balancer.ipv4_address }} {{ apiserver_loadbalancer_domain_name }}"
+    state: 'present'
+    backup: true
+    unsafe_writes: true
+  become: true

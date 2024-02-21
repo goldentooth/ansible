@@ -8,6 +8,7 @@
     - { role: 'goldentooth.set_motd' }
     - { role: 'goldentooth.set_bash_prompt' }
     - { role: 'goldentooth.setup_security' }
+    - { role: 'goldentooth.setup_etc_hosts' }
   remote_user: "{{ my.name.lower }}"
   handlers:
     - name: 'Reboot.'
