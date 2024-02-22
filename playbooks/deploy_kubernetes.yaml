@@ -1,0 +1,6 @@
+# Description: Deploy Kubernetes.
+
+- name: 'Setup `containerd`.'
+  hosts: 'k8s_cluster'
+  roles:
+    - { role: 'geerlingguy.containerd' }
