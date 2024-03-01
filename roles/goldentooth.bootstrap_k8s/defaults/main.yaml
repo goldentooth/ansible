@@ -1,0 +1,15 @@
+# The version of Kubernetes we're rolling with.
+k8s_version_clean: '1.29'
+k8s_version: "v{{ k8s_version_clean }}"
+
+# The Kubernetes config file path.
+k8s_config_path: '/etc/kubernetes/admin.conf'
+
+# The Calico project manifest file.
+k8s_calico_manifest_url: 'https://projectcalico.docs.tigera.io/manifests/calico.yaml'
+
+# The Kubernetes certificate directory.
+k8s_cert_dir: '/etc/kubernetes/pki'
+
+# The CRI socket URI.
+k8s_cri_socket: 'unix:///var/run/containerd/containerd.sock'

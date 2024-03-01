@@ -1,0 +1,13 @@
+---
+- name: 'Unhold Kubernetes packages.'
+  ansible.builtin.dpkg_selections:
+    name: "{{ package }}"
+    selection: 'install'
+  loop: "{{ k8s_packages }}"
+  loop_control:
+    loop_var: 'package'
+
+- name: 'Uninstall Kubernetes packages.'
+  ansible.builtin.apt:
+    name: "{{ k8s_packages }}"
+    state: 'absent'

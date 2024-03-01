@@ -1,0 +1,18 @@
+# The version of Kubernetes we're rolling with.
+k8s_version_clean: '1.29'
+k8s_version: "v{{ k8s_version_clean }}"
+
+# The Kubernetes keyring file path.
+k8s_keyring_path: '/etc/apt/trusted.gpg.d/kubernetes.gpg'
+
+# The Kubernetes Apt repository URL.
+k8s_apt_repo_url: "https://pkgs.k8s.io/core:/stable:/{{ k8s_version }}/deb/"
+
+# The Kubernetes packages to install.
+k8s_packages:
+  - 'kubeadm'
+  - 'kubectl'
+  - 'kubelet'
+
+# The Kubernetes package repository line.
+k8s_apt_repo_line: "deb [signed-by={{ k8s_keyring_path }}] {{ k8s_apt_repo_url }} /"

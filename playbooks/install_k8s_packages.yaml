@@ -1,0 +1,26 @@
+# Description: Install Kubernetes packages.
+
+- name: 'Setup `containerd`.'
+  hosts: 'k8s_cluster'
+  roles:
+    - { role: 'geerlingguy.containerd' }
+
+- name: 'Install Kubernetes packages.'
+  hosts: 'k8s_cluster'
+  roles:
+    - { role: 'goldentooth.install_k8s_packages' }
+  handlers:
+    - name: 'Update Apt cache.'
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: 'Hold Kubernetes packages.'
+      ansible.builtin.dpkg_selections:
+        name: "{{ package }}"
+        selection: 'hold'
+      loop:
+        - 'kubeadm'
+        - 'kubectl'
+        - 'kubelet'
+      loop_control:
+        loop_var: 'package'

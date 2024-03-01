@@ -1,0 +1,4 @@
+---
+- name: 'Reset Kubernetes cluster with kubeadm.'
+  ansible.builtin.command: |
+    kubeadm reset --force

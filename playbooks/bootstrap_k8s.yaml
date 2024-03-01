@@ -1,0 +1,13 @@
+# Description: Bootstrap Kubernetes cluster with kubeadm.
+
+- name: 'Bootstrap Kubernetes cluster with kubeadm.'
+  hosts: 'k8s_cluster'
+  roles:
+    - { role: 'goldentooth.bootstrap_k8s' }
+  handlers:
+    - name: 'Restart kubelet.'
+      ansible.builtin.service:
+        name: 'kubelet'
+        state: 'restarted'
+        enabled: true
+      become: true

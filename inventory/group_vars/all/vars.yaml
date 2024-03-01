@@ -52,13 +52,26 @@ control_plane:
     hostname: "{{ hostvars[groups['control_plane'][0]]['clean_hostname'] }}"
     ipv4_address: "{{ hostvars[groups['control_plane'][0]]['ipv4_address'] }}"
   rest:
-    hostnames: "{{ groups['control_plane'] | map('extract', hostvars, 'clean_hostname') | list }}"
-    ipv4_addresses: "{{ groups['control_plane'] | map('extract', hostvars, 'ipv4_address') | list }}"
+    hostnames: "{{ groups['control_plane'][1:] | map('extract', hostvars, 'clean_hostname') | list }}"
+    ipv4_addresses: "{{ groups['control_plane'][1:] | map('extract', hostvars, 'ipv4_address') | list }}"
 
 # Worker data:
 worker:
   hostnames: "{{ groups['worker'] | map('extract', hostvars, 'clean_hostname') | list }}"
   ipv4_addresses: "{{ groups['worker'] | map('extract', hostvars, 'ipv4_address') | list }}"
+
+# Network data:
+network:
+  infrastructure:
+    cidr: '10.4.0.0/20'
+  service:
+    cidr: '172.16.0.0/24'
+  pod:
+    cidr: '192.168.0.0/16'
+
+# The version of Kubernetes we're rolling with.
+k8s_version_clean: '1.29'
+k8s_version: "v{{ k8s_version_clean }}"
 
 # #############################################################################
 # Variables for vendored roles.

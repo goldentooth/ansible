@@ -1,0 +1,96 @@
+---
+- name: 'Initialize the first control plane node.'
+  when: 'inventory_hostname == control_plane.first.hostname'
+  block:
+
+    - name: 'Initialize the first control plane node with kubeadm.'
+      ansible.builtin.command: |-
+        kubeadm init
+          --control-plane-endpoint "{{ load_balancer.ipv4_address }}:6443"
+          --kubernetes-version "stable-{{ k8s_version_clean }}"
+          --upload-certs
+      args:
+        creates: "{{ k8s_config_path }}"
+      environment:
+        KUBECONFIG: "{{ k8s_config_path }}"
+      notify: 'Restart kubelet.'
+      register: 'kubeadm_init'
+
+    - name: 'Ensure .kube directory exists.'
+      ansible.builtin.file:
+        path: '~/.kube'
+        state: 'directory'
+        mode: 0755
+
+    - name: 'Symlink the kubectl admin.conf to ~/.kube/conf.'
+      ansible.builtin.file:
+        src: '/etc/kubernetes/admin.conf'
+        dest: '~/.kube/config'
+        state: 'link'
+        mode: 0644
+
+    - name: 'Configure Calico networking.'
+      ansible.builtin.command: "kubectl apply -f {{ k8s_calico_manifest_url }}"
+      register: 'calico_result'
+      until: 'calico_result is not failed'
+      retries: 12
+      delay: 5
+
+- name: 'Set the kubeadm certificate key.'
+  ansible.builtin.set_fact:
+    k8s_certificate_key: "{{ line | regex_search('--certificate-key ([^ ]+)', '\\1') | first }}"
+  loop: "{{ hostvars[control_plane.first.hostname]['kubeadm_init'].stdout_lines | default([]) }}"
+  loop_control:
+    loop_var: 'line'
+  when: '(line | trim) is match(".*--certificate-key.*")'
+
+- name: 'Create kubeadm token for joining nodes.'
+  ansible.builtin.command: "kubeadm --kubeconfig {{ k8s_config_path }} token create"
+  changed_when: false
+  register: 'temp_token'
+  delegate_to: "{{ control_plane.first.hostname }}"
+
+- name: 'Set kubeadm token fact.'
+  ansible.builtin.set_fact:
+    kubeadm_token: "{{ temp_token.stdout }}"
+
+
+- name: 'Set up the rest of the control plane nodes.'
+  when: 'inventory_hostname in control_plane.rest.hostnames'
+  block:
+
+    - name: 'Create kubeadm control plane config.'
+      ansible.builtin.template:
+        src: 'kubeadm-controlplane.yaml.j2'
+        dest: '/etc/kubernetes/kubeadm-controlplane.yaml'
+        mode: 0640
+        backup: true
+
+    - name: 'Wait for the kube-apiserver to be ready.'
+      ansible.builtin.wait_for:
+        host: "{{ load_balancer.ipv4_address }}"
+        port: '6443'
+        timeout: 180
+
+    - name: 'Reset certificate directory.'
+      ansible.builtin.shell: |
+        if [ -f /etc/kubernetes/manifests/kube-apiserver.yaml ]; then
+          kubeadm reset -f --cert-dir {{ k8s_cert_dir }};
+        fi
+
+    - name: 'Join the control plane node to the cluster.'
+      ansible.builtin.command: |
+        kubeadm join --config /etc/kubernetes/kubeadm-controlplane.yaml
+
+    - name: 'Ensure .kube directory exists.'
+      ansible.builtin.file:
+        path: '~/.kube'
+        state: 'directory'
+        mode: 0755
+
+    - name: 'Symlink the kubectl admin.conf to ~/.kube/conf.'
+      ansible.builtin.file:
+        src: '/etc/kubernetes/admin.conf'
+        dest: '~/.kube/config'
+        state: 'link'
+        mode: 0644

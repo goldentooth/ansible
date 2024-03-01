@@ -1,0 +1,6 @@
+# Description: Reset Kubernetes cluster with kubeadm.
+
+- name: 'Reset Kubernetes cluster with kubeadm.'
+  hosts: 'k8s_cluster'
+  roles:
+    - { role: 'goldentooth.reset_k8s' }

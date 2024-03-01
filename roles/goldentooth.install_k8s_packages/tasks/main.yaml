@@ -1,0 +1,36 @@
+---
+- name: 'Install packages needed to use the Kubernetes Apt repository.'
+  ansible.builtin.apt:
+    name:
+      - 'apt-transport-https'
+      - 'ca-certificates'
+      - 'curl'
+      - 'gnupg'
+      - 'python3-debian'
+    state: 'present'
+
+- name: 'Prepare Apt keyring directory.'
+  ansible.builtin.file:
+    path: "{{ k8s_keyring_path | dirname }}"
+    state: 'directory'
+    mode: 0755
+
+- name: 'Get Kubernetes Apt key.'
+  ansible.builtin.get_url:
+    url: "{{ k8s_apt_repo_url }}/Release.key"
+    dest: "{{ k8s_keyring_path }}"
+    mode: '0644'
+    force: true
+
+- name: 'Add Kubernetes repository.'
+  ansible.builtin.apt_repository:
+    repo: "{{ k8s_apt_repo_line }}"
+    filename: 'kubernetes'
+    state: 'present'
+    update_cache: true
+
+- name: 'Install Kubernetes packages.'
+  ansible.builtin.apt:
+    name: "{{ k8s_packages }}"
+    state: 'present'
+  notify: 'Hold Kubernetes packages.'

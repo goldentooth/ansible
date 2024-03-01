@@ -1,0 +1,6 @@
+# Description: Uninstall Kubernetes packages.
+
+- name: 'Uninstall Kubernetes packages.'
+  hosts: 'k8s_cluster'
+  roles:
+    - { role: 'goldentooth.uninstall_k8s_packages' }
