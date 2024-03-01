@@ -9,24 +9,18 @@
       - 'python3-debian'
     state: 'present'
 
-- name: 'Prepare Apt keyring directory.'
-  ansible.builtin.file:
-    path: "{{ k8s_keyring_path | dirname }}"
-    state: 'directory'
-    mode: '0755'
-
-- name: 'Get Kubernetes Apt key.'
-  ansible.builtin.get_url:
-    url: "{{ k8s_apt_repo_url }}/Release.key"
-    dest: "{{ k8s_keyring_path }}"
-    mode: '0644'
-    force: true
-
 - name: 'Add Kubernetes repository.'
-  ansible.builtin.apt_repository:
-    repo: "{{ k8s_apt_repo_line }}"
-    filename: 'kubernetes'
-    state: 'present'
+  ansible.builtin.deb822_repository:
+    name: 'kubernetes'
+    types:
+      - 'deb'
+    uris:
+      - "{{ k8s_apt_repo_url }}"
+    suites:
+      - '/'
+    architectures:
+      - 'arm64'
+    signed_by: "{{ k8s_apt_repo_url }}/Release.key"
   notify: 'Update Apt cache.'
 
 - name: 'Install Kubernetes packages.'
@@ -35,10 +29,4 @@
     state: 'present'
   notify:
     - 'Hold Kubernetes packages.'
-
-- name: 'Enable and restart kubelet service.'
-  ansible.builtin.systemd_service:
-    name: 'kubelet'
-    state: 'restarted'
-    enabled: true
-    daemon_reload: true
+    - 'Enable and restart kubelet service.'

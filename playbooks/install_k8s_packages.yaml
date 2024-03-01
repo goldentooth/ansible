@@ -1,9 +1,9 @@
 # Description: Install Kubernetes packages.
 
-- name: 'Setup `containerd`.'
-  hosts: 'k8s_cluster'
-  roles:
-    - { role: 'geerlingguy.containerd' }
+# - name: 'Setup `containerd`.'
+#   hosts: 'k8s_cluster'
+#   roles:
+#     - { role: 'geerlingguy.containerd' }
 
 - name: 'Install Kubernetes packages.'
   hosts: 'k8s_cluster'
@@ -21,3 +21,10 @@
       loop: "{{ k8s_packages }}"
       loop_control:
         loop_var: 'package'
+
+    - name: 'Enable and restart kubelet service.'
+      ansible.builtin.systemd_service:
+        name: 'kubelet'
+        state: 'restarted'
+        enabled: true
+        daemon_reload: true
