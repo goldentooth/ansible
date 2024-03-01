@@ -6,8 +6,9 @@
     - { role: 'goldentooth.bootstrap_k8s' }
   handlers:
     - name: 'Restart kubelet.'
-      ansible.builtin.service:
+      ansible.builtin.systemd:
         name: 'kubelet'
         state: 'restarted'
         enabled: true
+        daemon_reload: true
       become: true

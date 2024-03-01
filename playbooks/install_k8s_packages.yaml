@@ -12,7 +12,7 @@
   handlers:
     - name: 'Update Apt cache.'
       ansible.builtin.apt:
-        update_cache: yes
+        update_cache: true
 
     - name: 'Hold Kubernetes packages.'
       ansible.builtin.dpkg_selections:

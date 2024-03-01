@@ -1,6 +1,0 @@
-# Description: Upgrade the Kubernetes deployment.
-
-- name: 'Upgrade the Kubernetes deployment.'
-  ansible.builtin.import_playbook: '../kubespray/playbooks/upgrade_cluster.yml'
-  vars:
-    ansible_user: 'root'

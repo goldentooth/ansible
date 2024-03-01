@@ -1,6 +1,0 @@
-# Description: Reset the Kubernetes deployment.
-
-- name: 'Reset the Kubernetes deployment.'
-  ansible.builtin.import_playbook: '../kubespray/playbooks/reset.yml'
-  vars:
-    ansible_user: 'root'

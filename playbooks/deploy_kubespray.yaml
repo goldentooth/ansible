@@ -1,6 +1,0 @@
-# Description: Deploys Kubernetes to the cluster.
-
-- name: 'Deploy Kubernetes with Kubespray.'
-  ansible.builtin.import_playbook: '../kubespray/playbooks/cluster.yml'
-  vars:
-    ansible_user: 'root'

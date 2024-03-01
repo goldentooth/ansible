@@ -13,7 +13,7 @@
   ansible.builtin.file:
     path: "{{ k8s_keyring_path | dirname }}"
     state: 'directory'
-    mode: 0755
+    mode: '0755'
 
 - name: 'Get Kubernetes Apt key.'
   ansible.builtin.get_url:

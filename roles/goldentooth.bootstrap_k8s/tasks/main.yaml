@@ -25,14 +25,14 @@
       ansible.builtin.file:
         path: '~/.kube'
         state: 'directory'
-        mode: 0755
+        mode: '0755'
 
     - name: 'Symlink the kubectl admin.conf to ~/.kube/conf.'
       ansible.builtin.file:
         src: '/etc/kubernetes/admin.conf'
         dest: '~/.kube/config'
         state: 'link'
-        mode: 0644
+        mode: '0644'
 
     - name: 'Configure Calico networking.'
       ansible.builtin.command:
@@ -41,6 +41,7 @@
       until: 'calico_result is not failed'
       retries: 12
       delay: 5
+      changed_when: false
 
 - name: 'Set the kubeadm certificate key.'
   ansible.builtin.set_fact:
@@ -69,12 +70,13 @@
       ansible.builtin.file:
         path: '/etc/kubernetes'
         state: 'directory'
+        mode: '0755'
 
     - name: 'Create kubeadm control plane config.'
       ansible.builtin.template:
         src: 'kubeadm-controlplane.yaml.j2'
         dest: '/etc/kubernetes/kubeadm-controlplane.yaml'
-        mode: 0640
+        mode: '0640'
         backup: true
 
     - name: 'Wait for the kube-apiserver to be ready.'
@@ -89,24 +91,27 @@
           if [ -f /etc/kubernetes/manifests/kube-apiserver.yaml ]; then
             kubeadm reset -f --cert-dir {{ k8s_cert_dir }};
           fi
+      changed_when: false
 
     - name: 'Join the control plane node to the cluster.'
       ansible.builtin.command:
         cmd: |
           kubeadm join --config /etc/kubernetes/kubeadm-controlplane.yaml
+      register: 'kubeadm_join'
+      changed_when: false
 
     - name: 'Ensure .kube directory exists.'
       ansible.builtin.file:
         path: '~/.kube'
         state: 'directory'
-        mode: 0755
+        mode: '0755'
 
     - name: 'Symlink the kubectl admin.conf to ~/.kube/conf.'
       ansible.builtin.file:
         src: '/etc/kubernetes/admin.conf'
         dest: '~/.kube/config'
         state: 'link'
-        mode: 0644
+        mode: '0644'
 
 - name: 'Get a kubeadm join command for worker nodes.'
   ansible.builtin.command:
@@ -122,6 +127,7 @@
         --ignore-preflight-errors=all
 
 - name: 'Join node to Kubernetes control plane.'
-  ansible.builtin.shell:
+  ansible.builtin.command:
     cmd: "{{ kubeadm_join_command }}"
   when: 'inventory_hostname in worker.hostnames'
+  changed_when: false
