@@ -1,4 +1,12 @@
 ---
 - name: 'Reset Kubernetes cluster with kubeadm.'
-  ansible.builtin.command: |
-    kubeadm reset --force
+  ansible.builtin.command:
+    cmd: 'kubeadm reset --force'
+  ignore_errors: true
+  when: 'inventory_hostname != load_balancer.hostname'
+
+- name: 'Remove Kubernetes directory and its contents.'
+  ansible.builtin.file:
+    path: '/etc/kubernetes'
+    state: 'absent'
+

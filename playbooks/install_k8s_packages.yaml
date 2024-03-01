@@ -18,9 +18,6 @@
       ansible.builtin.dpkg_selections:
         name: "{{ package }}"
         selection: 'hold'
-      loop:
-        - 'kubeadm'
-        - 'kubectl'
-        - 'kubelet'
+      loop: "{{ k8s_packages }}"
       loop_control:
         loop_var: 'package'

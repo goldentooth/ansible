@@ -7,8 +7,12 @@
       ansible.builtin.command:
         cmd: |-
           kubeadm init
-            --control-plane-endpoint "{{ load_balancer.ipv4_address }}:6443"
-            --kubernetes-version "stable-{{ k8s_version_clean }}"
+            --control-plane-endpoint="{{ load_balancer.ipv4_address }}:6443"
+            --kubernetes-version="stable-{{ k8s_version_clean }}"
+            --service-cidr="{{ network.service.cidr }}"
+            --pod-network-cidr="{{ network.pod.cidr }}"
+            --cert-dir="{{ k8s_cert_dir }}"
+            --cri-socket="{{ k8s_cri_socket }}"
             --upload-certs
       args:
         creates: "{{ k8s_config_path }}"
@@ -61,6 +65,11 @@
   when: 'inventory_hostname in control_plane.rest.hostnames'
   block:
 
+    - name: 'Ensure presence of Kubernetes directory.'
+      ansible.builtin.file:
+        path: '/etc/kubernetes'
+        state: 'directory'
+
     - name: 'Create kubeadm control plane config.'
       ansible.builtin.template:
         src: 'kubeadm-controlplane.yaml.j2'
@@ -106,8 +115,13 @@
   when: 'ansible_hostname == control_plane.first.hostname'
   register: 'kubeadm_join_command'
 
+- name: 'Set the kubeadm join command fact.'
+  ansible.builtin.set_fact:
+    kubeadm_join_command: |-
+      {{ hostvars[control_plane.first.hostname]['kubeadm_join_command'].stdout }} \
+        --ignore-preflight-errors=all
+
 - name: 'Join node to Kubernetes control plane.'
   ansible.builtin.shell:
-    cmd: "{{ hostvars[control_plane.first.hostname]['kubeadm_join_command'].stdout }}"
-    creates: '/etc/kubernetes/kubelet.conf'
+    cmd: "{{ kubeadm_join_command }}"
   when: 'inventory_hostname in worker.hostnames'

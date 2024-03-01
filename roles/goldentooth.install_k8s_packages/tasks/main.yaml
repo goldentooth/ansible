@@ -27,10 +27,18 @@
     repo: "{{ k8s_apt_repo_line }}"
     filename: 'kubernetes'
     state: 'present'
-    update_cache: true
+  notify: 'Update Apt cache.'
 
 - name: 'Install Kubernetes packages.'
   ansible.builtin.apt:
     name: "{{ k8s_packages }}"
     state: 'present'
-  notify: 'Hold Kubernetes packages.'
+  notify:
+    - 'Hold Kubernetes packages.'
+
+- name: 'Enable and restart kubelet service.'
+  ansible.builtin.systemd_service:
+    name: 'kubelet'
+    state: 'restarted'
+    enabled: true
+    daemon_reload: true

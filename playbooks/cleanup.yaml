@@ -3,9 +3,3 @@
 - name: 'Cleanup the cluster.'
   hosts: 'all'
   tasks:
-
-    - name: 'Uninstall HAProxy except on the load balancer.'
-      ansible.builtin.apt:
-        name: 'haproxy'
-        state: 'absent'
-      when: "inventory_hostname not in groups['load_balancer']"

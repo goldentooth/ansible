@@ -73,6 +73,12 @@ network:
 k8s_version_clean: '1.29'
 k8s_version: "v{{ k8s_version_clean }}"
 
+# The Kubernetes packages to install from Apt.
+k8s_packages:
+  - 'kubeadm'
+  - 'kubectl'
+  - 'kubelet'
+
 # #############################################################################
 # Variables for vendored roles.
 # #############################################################################

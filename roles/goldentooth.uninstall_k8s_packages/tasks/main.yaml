@@ -7,6 +7,13 @@
   loop_control:
     loop_var: 'package'
 
+- name: 'Disable kubelet service.'
+  ansible.builtin.systemd_service:
+    name: 'kubelet'
+    state: 'stopped'
+    enabled: false
+    daemon_reload: true
+
 - name: 'Uninstall Kubernetes packages.'
   ansible.builtin.apt:
     name: "{{ k8s_packages }}"
