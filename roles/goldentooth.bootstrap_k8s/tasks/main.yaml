@@ -27,7 +27,7 @@
         state: 'directory'
         mode: '0755'
 
-    - name: 'Symlink the kubectl admin.conf to ~/.kube/conf.'
+    - name: 'Symlink the kubectl admin.conf to ~/.kube/config.'
       ansible.builtin.file:
         src: '/etc/kubernetes/admin.conf'
         dest: '~/.kube/config'
@@ -122,9 +122,8 @@
 
 - name: 'Set the kubeadm join command fact.'
   ansible.builtin.set_fact:
-    kubeadm_join_command: |-
-      {{ hostvars[control_plane.first.hostname]['kubeadm_join_command'].stdout }} \
-        --ignore-preflight-errors=all
+    kubeadm_join_command: |
+      {{ hostvars[control_plane.first.hostname]['kubeadm_join_command'].stdout }} --ignore-preflight-errors=all
 
 - name: 'Join node to Kubernetes control plane.'
   ansible.builtin.command:
