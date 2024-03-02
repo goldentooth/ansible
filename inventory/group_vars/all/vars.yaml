@@ -69,6 +69,12 @@ network:
   pod:
     cidr: '192.168.0.0/16'
 
+# Cluster data:
+cluster_name: 'goldentooth'
+cluster:
+  name: "{{ cluster_name }}"
+  fqdn: "{{ cluster_name }}.{{ my.domain.private }}"
+
 # The version of Kubernetes we're rolling with.
 k8s_version_clean: '1.29'
 k8s_version: "v{{ k8s_version_clean }}"

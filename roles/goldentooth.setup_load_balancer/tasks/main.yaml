@@ -9,7 +9,6 @@
           - 'rsyslog'
         state: 'present'
         cache_valid_time: 3600
-      become: true
       notify: 'Restart rsyslog.'
 
     - name: 'Install HAProxy.'
@@ -18,7 +17,6 @@
           - 'haproxy'
         state: 'present'
         cache_valid_time: 3600
-      become: true
       notify: 'Restart HAProxy.'
 
     - name: 'Configure HAProxy.'
@@ -28,5 +26,4 @@
         owner: 'root'
         group: 'root'
         mode: '0644'
-      become: true
       notify: 'Restart HAProxy.'

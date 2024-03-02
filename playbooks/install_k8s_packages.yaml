@@ -2,11 +2,13 @@
 
 - name: 'Setup `containerd`.'
   hosts: 'k8s_cluster'
+  remote_user: 'root'
   roles:
     - { role: 'geerlingguy.containerd' }
 
 - name: 'Install Kubernetes packages.'
   hosts: 'k8s_cluster'
+  remote_user: 'root'
   roles:
     - { role: 'goldentooth.install_k8s_packages' }
   handlers:

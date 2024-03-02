@@ -1,0 +1,26 @@
+---
+- name: 'Add Helm package repository.'
+  ansible.builtin.deb822_repository:
+    name: 'helm'
+    types:
+      - 'deb'
+    uris:
+      - 'https://baltocdn.com/helm/stable/debian/'
+    suites:
+      - 'all'
+    components:
+      - 'main'
+    architectures:
+      - 'arm64'
+    signed_by: 'https://baltocdn.com/helm/signing.asc'
+  notify: 'Update Apt cache.'
+
+- name: 'Flush handlers.'
+  ansible.builtin.meta: 'flush_handlers'
+
+- name: 'Install Helm.'
+  ansible.builtin.apt:
+    name:
+      - 'helm'
+    state: 'present'
+    cache_valid_time: 3600

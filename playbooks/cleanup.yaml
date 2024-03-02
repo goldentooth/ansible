@@ -1,5 +1,13 @@
 # Description: Perform various cleanup tasks.
 
 - name: 'Cleanup the cluster.'
-  hosts: 'all'
+  hosts: 'control_plane'
+  remote_user: 'root'
   tasks:
+
+    - name: 'Symlink the kubectl admin.conf to ~/.kube/conf.'
+      ansible.builtin.file:
+        src: '/etc/kubernetes/admin.conf'
+        dest: '~/.kube/config'
+        state: 'link'
+        mode: '0600'

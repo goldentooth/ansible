@@ -4,3 +4,4 @@
   hosts: 'k8s_cluster'
   roles:
     - { role: 'goldentooth.bootstrap_k8s' }
+  remote_user: 'root'

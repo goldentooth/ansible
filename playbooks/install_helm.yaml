@@ -1,0 +1,11 @@
+# Description: Install Helm on Kubernetes cluster.
+
+- name: 'Install Helm.'
+  hosts: 'control_plane'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.install_helm' }
+  handlers:
+    - name: 'Update Apt cache.'
+      ansible.builtin.apt:
+        update_cache: true

@@ -1,0 +1,11 @@
+# Argo CD chart version.
+argo_cd_chart_version: '6.6.0'
+
+# Argo CD chart repository URL.
+argo_cd_chart_repo_url: 'https://argoproj.github.io/argo-helm'
+
+# Argo CD default domain.
+argo_cd_domain: 'argo-cd.{{ cluster.fqdn }}'
+
+# Argo CD App-of-Apps repository URL.
+argo_cd_app_repo_url: "https://github.com/{{ cluster.name }}/gitops.git"

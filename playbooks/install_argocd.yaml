@@ -1,6 +1,0 @@
-# Description: Install ArgoCD on Kubernetes cluster.
-
-- name: 'Install ArgoCD.'
-  hosts: 'control_plane'
-  roles:
-    - { role: 'goldentooth.install_argocd' }
