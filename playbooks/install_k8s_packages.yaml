@@ -1,9 +1,9 @@
 # Description: Install Kubernetes packages.
 
-# - name: 'Setup `containerd`.'
-#   hosts: 'k8s_cluster'
-#   roles:
-#     - { role: 'geerlingguy.containerd' }
+- name: 'Setup `containerd`.'
+  hosts: 'k8s_cluster'
+  roles:
+    - { role: 'geerlingguy.containerd' }
 
 - name: 'Install Kubernetes packages.'
   hosts: 'k8s_cluster'
