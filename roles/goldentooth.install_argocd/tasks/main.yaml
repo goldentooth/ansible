@@ -5,4 +5,4 @@
     kind: 'Namespace'
     name: "{{ argocd_namespace }}"
     state: 'present'
-  run_once: yes
+  run_once: true

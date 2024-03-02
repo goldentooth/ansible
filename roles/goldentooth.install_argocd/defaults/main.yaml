@@ -1,3 +1,2 @@
 # ArgoCD options.
 argocd_namespace: 'argocd'
-
