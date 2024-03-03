@@ -1,0 +1,58 @@
+# Argo CD chart version.
+argocd_chart_version: '6.6.0'
+
+# Argo CD chart repository URL.
+argocd_chart_repo_url: 'https://argoproj.github.io/argo-helm'
+
+# Argo CD default domain.
+argocd_domain: 'argocd.{{ cluster.fqdn }}'
+
+# Argo CD Repositories.
+argocd_repositories:
+  gitops:
+    type: 'git'
+    name: 'gitops'
+    url: "https://github.com/{{ cluster.name }}/gitops.git"
+
+argocd_release_values:
+  nameOverride: 'argocd'
+  global:
+    domain: "{{ argocd_domain }}"
+    # Add Prometheus scrape annotations to all metrics services. This can
+    # be used as an alternative to the ServiceMonitors.
+    addPrometheusAnnotations: true
+    # Default network policy rules used by all components
+    networkPolicy:
+      # -- Create NetworkPolicy objects for all components
+      create: false
+      # -- Default deny all ingress traffic
+      defaultDenyIngress: false
+  configs:
+    secret:
+      createSecret: true
+      argocdServerAdminPassword: "{{ argocd_password }}"
+    repositories: "{{ argocd_repositories }}"
+
+  redis-ha:
+    # Enable Redis high availability.
+    enabled: true
+
+  controller:
+    replicas: 1
+
+  server:
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+    extraArgs:
+      - '--insecure'
+    service:
+      type: 'ClusterIP'
+
+  repoServer:
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+
+  applicationSet:
+    replicas: 2

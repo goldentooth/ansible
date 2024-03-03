@@ -4,5 +4,5 @@
   hosts: 'control_plane'
   remote_user: 'root'
   roles:
-    - { role: 'goldentooth.install_argo_cd' }
+    - { role: 'goldentooth.install_argocd' }
   handlers:

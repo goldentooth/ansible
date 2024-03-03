@@ -1,0 +1,30 @@
+---
+- name: 'Set facts.'
+  ansible.builtin.set_fact:
+    argocd_password: "{{ vault.easy_password | password_hash('bcrypt') }}"
+
+- name: 'Add Argo Helm chart repository.'
+  kubernetes.core.helm_repository:
+    name: 'argo'
+    repo_url: "{{ argocd_chart_repo_url }}"
+
+- name: 'Install the Argo CD command-line interface.'
+  ansible.builtin.shell:
+    cmd: |
+      curl -sSL -o argocd-linux-arm64 https://github.com/argoproj/argo-cd/releases/download/v2.8.6/argocd-linux-arm64
+      install -m 555 argocd-linux-arm64 /usr/local/bin/argocd
+      rm argocd-linux-arm64
+    creates: '/usr/local/bin/argocd'
+
+- name: 'Install Argo CD from Helm chart.'
+  kubernetes.core.helm:
+    atomic: true
+    chart_ref: 'argo/argo-cd'
+    chart_version: "{{ argocd_chart_version }}"
+    create_namespace: true
+    release_name: 'argocd'
+    release_namespace: 'argocd'
+    release_values: "{{ argocd_release_values }}"
+    update_repo_cache: true
+    wait: true
+  run_once: true
