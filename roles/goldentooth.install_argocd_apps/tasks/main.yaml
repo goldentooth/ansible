@@ -56,4 +56,3 @@
           - RespectIgnoreDifferences=true
           - ApplyOutOfSyncOnly=true
   run_once: true
-
