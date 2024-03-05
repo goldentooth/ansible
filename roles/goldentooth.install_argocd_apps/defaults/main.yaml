@@ -1,2 +1,0 @@
-# The GitOps repository URL.
-argocd_gitops_repo_url: "https://github.com/{{ cluster.name }}/gitops.git"

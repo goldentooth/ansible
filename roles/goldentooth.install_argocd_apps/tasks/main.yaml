@@ -1,58 +1,7 @@
 ---
-- name: 'Create Argo CD GitOps project.'
-  kubernetes.core.k8s:
-    state: 'present'
-    definition:
-      apiVersion: argoproj.io/v1alpha1
-      kind: AppProject
-      metadata:
-        name: gitops
-        namespace: argocd
-        finalizers:
-          - resources-finalizer.argocd.argoproj.io
-      spec:
-        description: GoldenTooth GitOps project
-        sourceRepos:
-          - "{{ argocd_gitops_repo_url }}"
-        destinations:
-          - namespace: gitops
-            server: https://kubernetes.default.svc
-            name: in-cluster
-          - namespace: helm-guestbook
-            server: https://kubernetes.default.svc
-            name: in-cluster
-  run_once: true
-
-- name: 'Create Argo CD Application for GitOps.'
-  kubernetes.core.k8s:
-    state: 'present'
-    definition:
-      apiVersion: argoproj.io/v1alpha1
-      kind: Application
-      metadata:
-        name: gitops
-        namespace: argocd
-        labels:
-          name: gitops
-          managed-by: argocd
-      spec:
-        project: gitops
-        source:
-          repoURL: '{{ argocd_gitops_repo_url }}'
-          path: './'
-          targetRevision: HEAD
-        destination:
-          server: 'https://kubernetes.default.svc'
-          namespace: gitops
-        syncPolicy:
-          automated:
-            prune: true
-            selfHeal: true
-        syncOptions:
-          - Validate=true
-          - CreateNamespace=true
-          - PrunePropagationPolicy=foreground
-          - PruneLast=true
-          - RespectIgnoreDifferences=true
-          - ApplyOutOfSyncOnly=true
-  run_once: true
+- name: 'Create Argo CD projects.'
+  ansible.builtin.include_tasks: "{{ project_file }}"
+  loop:
+    - 'projects/incubator.yaml'
+  loop_control:
+    loop_var: 'project_file'
