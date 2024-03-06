@@ -12,7 +12,7 @@
         finalizers:
           - resources-finalizer.argocd.argoproj.io
       spec:
-        description: GoldenTooth GitOps project
+        description: GoldenTooth incubator project
         # Allow manifests to deploy from any Git repository.
         # This is an acceptable security risk because this is a lab environment.
         sourceRepos:
