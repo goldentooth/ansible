@@ -1,0 +1,33 @@
+---
+- name: 'Create "Incubator" app-of-apps application.'
+  kubernetes.core.k8s:
+    state: 'present'
+    definition:
+      apiVersion: 'argoproj.io/v1alpha1'
+      kind: 'Application'
+      metadata:
+        name: 'incubator'
+        namespace: 'argocd'
+        labels:
+          name: 'incubator'
+          managed-by: 'argocd'
+      spec:
+        project: 'incubator'
+        source:
+          repoURL: "https://github.com/{{ cluster.name }}/incubator.git"
+          path: './'
+          targetRevision: 'HEAD'
+        destination:
+          server: 'https://kubernetes.default.svc'
+        syncPolicy:
+          automated:
+            prune: true
+            selfHeal: true
+          syncOptions:
+            - Validate=true
+            - CreateNamespace=true
+            - PrunePropagationPolicy=foreground
+            - PruneLast=true
+            - RespectIgnoreDifferences=true
+            - ApplyOutOfSyncOnly=true
+  run_once: true

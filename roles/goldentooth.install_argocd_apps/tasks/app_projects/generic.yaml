@@ -1,0 +1,21 @@
+---
+- name: 'Create generic projects.'
+  kubernetes.core.k8s:
+    state: 'present'
+    definition:
+      apiVersion: 'argoproj.io/v1alpha1'
+      kind: 'AppProject'
+      metadata:
+        name: "{{ project.name }}"
+        namespace: 'argocd'
+        finalizers:
+          - 'resources-finalizer.argocd.argoproj.io'
+      spec:
+        description: "{{ project.description | default(argocd_default_project_options.description) }}"
+        sourceRepos: "{{ project.sourceRepos | default(argocd_default_project_options.sourceRepos) }}"
+        destinations: "{{ project.destinations | default(argocd_default_project_options.destinations) }}"
+        clusterResourceWhitelist: "{{ project.clusterResourceWhitelist | default(argocd_default_project_options.clusterResourceWhitelist) }}"
+  run_once: true
+  loop: "{{ argocd_generic_projects }}"
+  loop_control:
+    loop_var: 'project'
