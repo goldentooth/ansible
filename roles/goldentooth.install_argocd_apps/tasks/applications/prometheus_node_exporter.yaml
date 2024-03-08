@@ -1,0 +1,36 @@
+---
+- name: 'Create "Prometheus Node Exporter" application.'
+  kubernetes.core.k8s:
+    state: 'present'
+    definition:
+      apiVersion: 'argoproj.io/v1alpha1'
+      kind: 'Application'
+      metadata:
+        name: 'prometheus-node-exporter'
+        namespace: 'argocd'
+        labels:
+          name: 'prometheus-node-exporter'
+          managed-by: 'argocd'
+      spec:
+        project: 'prometheus-node-exporter'
+        source:
+          repoURL: 'https://prometheus-community.github.io/helm-charts'
+          chart: 'prometheus-node-exporter'
+          targetRevision: '4.31.0'
+          helm:
+            releaseName: 'prometheus-node-exporter'
+            namespace: 'prometheus-node-exporter'
+        destination:
+          server: 'https://kubernetes.default.svc'
+        syncPolicy:
+          automated:
+            prune: true
+            selfHeal: true
+          syncOptions:
+            - Validate=true
+            - CreateNamespace=true
+            - PrunePropagationPolicy=foreground
+            - PruneLast=true
+            - RespectIgnoreDifferences=true
+            - ApplyOutOfSyncOnly=true
+  run_once: true

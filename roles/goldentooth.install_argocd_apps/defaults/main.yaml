@@ -17,5 +17,5 @@ argocd_default_project_options:
 
 # Generic projects
 argocd_generic_projects:
-  - name: 'guestbook'
-    description: 'Guestbook GitOps project'
+  - name: 'prometheus-node-exporter'
+    description: 'Prometheus Node Exporter'
