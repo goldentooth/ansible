@@ -33,4 +33,15 @@
             destination:
               server: https://kubernetes.default.svc
               namespace: "{{ '{{' }} .repository {{ '}}' }}"
+            syncPolicy:
+              automated:
+                prune: true
+                selfHeal: true
+              syncOptions:
+                - Validate=true
+                - CreateNamespace=true
+                - PrunePropagationPolicy=foreground
+                - PruneLast=true
+                - RespectIgnoreDifferences=true
+                - ApplyOutOfSyncOnly=true
   run_once: true

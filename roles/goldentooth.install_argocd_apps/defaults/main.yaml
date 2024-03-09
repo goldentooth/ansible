@@ -19,5 +19,3 @@ argocd_default_project_options:
 argocd_generic_projects:
   - name: 'prometheus-node-exporter'
     description: 'Prometheus Node Exporter'
-  - name: 'httpbin'
-    description: 'HTTPBin'
