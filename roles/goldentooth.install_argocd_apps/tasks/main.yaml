@@ -4,12 +4,14 @@
   loop:
     - 'app_projects/incubator.yaml'
     - 'app_projects/generic.yaml'
+    - 'app_projects/gitops_repo.yaml'
   loop_control:
     loop_var: 'project_file'
 
 - name: 'Create Argo CD Application resources.'
   ansible.builtin.include_tasks: "{{ application_file }}"
   loop:
+    - 'applications/httpbin.yaml'
     - 'applications/incubator.yaml'
     - 'applications/prometheus_node_exporter.yaml'
   loop_control:
@@ -17,6 +19,7 @@
 
 - name: 'Create Argo CD ApplicationSet resources.'
   ansible.builtin.include_tasks: "{{ application_set_file }}"
-  loop: []
+  loop:
+    - 'application_sets/gitops_repo.yaml'
   loop_control:
     loop_var: 'application_set_file'

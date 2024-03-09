@@ -10,9 +10,23 @@
 
 - name: 'Install the Argo CD command-line interface.'
   ansible.builtin.get_url:
-    url: 'https://github.com/argoproj/argo-cd/releases/download/v2.8.6/argocd-linux-arm64'
+    url: 'https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-arm64'
     dest: '/usr/local/bin/argocd'
     mode: '0555'
+
+- name: 'Create a Kubernetes secret for the GitHub token.'
+  kubernetes.core.k8s:
+    state: 'present'
+    definition:
+      apiVersion: 'v1'
+      kind: 'Secret'
+      metadata:
+        name: 'github-token'
+        namespace: 'argocd'
+      type: 'Opaque'
+      data:
+        token: "{{ vault.github_token | b64encode }}"
+  run_once: true
 
 - name: 'Install Argo CD from Helm chart.'
   kubernetes.core.helm:

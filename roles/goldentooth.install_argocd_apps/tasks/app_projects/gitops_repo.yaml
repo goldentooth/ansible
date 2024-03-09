@@ -1,0 +1,25 @@
+---
+- name: 'Create "GitOps Repo" project.'
+  kubernetes.core.k8s:
+    state: 'present'
+    definition:
+      apiVersion: 'argoproj.io/v1alpha1'
+      kind: 'AppProject'
+      metadata:
+        name: 'gitops-repo'
+        namespace: 'argocd'
+        finalizers:
+          - 'resources-finalizer.argocd.argoproj.io'
+      spec:
+        description: 'GoldenTooth GitOps-Repo project'
+        sourceRepos:
+          - '*'
+        destinations:
+          - namespace: '!kube-system'
+            server: '*'
+          - namespace: '*'
+            server: '*'
+        clusterResourceWhitelist:
+          - group: '*'
+            kind: '*'
+  run_once: true

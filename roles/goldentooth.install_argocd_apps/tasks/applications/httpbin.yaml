@@ -1,0 +1,39 @@
+---
+- name: 'Create "HTTPBin" application.'
+  kubernetes.core.k8s:
+    state: 'present'
+    definition:
+      apiVersion: 'argoproj.io/v1alpha1'
+      kind: 'Application'
+      metadata:
+        name: 'httpbin'
+        namespace: 'argocd'
+        labels:
+          name: 'httpbin'
+          managed-by: 'argocd'
+      spec:
+        project: 'httpbin'
+        source:
+          repoURL: 'https://matheusfm.dev/charts'
+          chart: 'httpbin'
+          targetRevision: '0.1.1'
+          helm:
+            releaseName: 'httpbin'
+            valuesObject:
+              service:
+                type: 'LoadBalancer'
+        destination:
+          server: 'https://kubernetes.default.svc'
+          namespace: 'httpbin'
+        syncPolicy:
+          automated:
+            prune: true
+            selfHeal: true
+          syncOptions:
+            - Validate=true
+            - CreateNamespace=true
+            - PrunePropagationPolicy=foreground
+            - PruneLast=true
+            - RespectIgnoreDifferences=true
+            - ApplyOutOfSyncOnly=true
+  run_once: true

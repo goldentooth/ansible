@@ -7,13 +7,6 @@ argocd_chart_repo_url: 'https://argoproj.github.io/argo-helm'
 # Argo CD default domain.
 argocd_domain: 'argocd.{{ cluster.fqdn }}'
 
-# Argo CD Repositories.
-argocd_repositories:
-  gitops:
-    type: 'git'
-    name: 'gitops'
-    url: "https://github.com/{{ cluster.name }}/gitops.git"
-
 argocd_release_values:
   nameOverride: 'argocd'
   global:
@@ -31,7 +24,6 @@ argocd_release_values:
     secret:
       createSecret: true
       argocdServerAdminPassword: "{{ argocd_password }}"
-    repositories: "{{ argocd_repositories }}"
 
   redis-ha:
     # Enable Redis high availability.
@@ -47,7 +39,7 @@ argocd_release_values:
     extraArgs:
       - '--insecure'
     service:
-      type: 'ClusterIP'
+      type: 'LoadBalancer'
 
   repoServer:
     autoscaling:

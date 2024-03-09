@@ -1,0 +1,50 @@
+---
+- name: 'Create a Kubernetes secret for the GitHub token.'
+  kubernetes.core.k8s:
+    state: 'present'
+    definition:
+      apiVersion: 'v1'
+      kind: 'Secret'
+      metadata:
+        name: 'github-token'
+        namespace: 'argocd'
+      type: 'Opaque'
+      data:
+        token: "{{ vault.github_token | b64encode }}"
+  run_once: true
+
+- name: 'Create the "GitOps Repo" ApplicationSet.'
+  kubernetes.core.k8s:
+    state: 'present'
+    definition:
+      apiVersion: 'argoproj.io/v1alpha1'
+      kind: 'ApplicationSet'
+      metadata:
+        name: 'gitops-repo'
+        namespace: 'argocd'
+      spec:
+        goTemplate: true
+        goTemplateOptions: ["missingkey=error"]
+        generators:
+          - scmProvider:
+              cloneProtocol: 'https'
+              github:
+                organization: "{{ cluster.name }}"
+                tokenRef:
+                  secretName: 'github-token'
+                  key: 'token'
+              filters:
+                - labelMatch: 'gitops-repo'
+        template:
+          metadata:
+            name: "gitops-repo-{{ '{{' }} .repository {{ '}}' }}"
+          spec:
+            source:
+              repoURL: "{{ '{{' }} .url {{ '}}' }}"
+              targetRevision: "{{ '{{' }} .branch {{ '}}' }}"
+              path: './'
+            project: 'gitops-repo'
+            destination:
+              server: https://kubernetes.default.svc
+              namespace: "{{ '{{' }} .repository {{ '}}' }}"
+  run_once: true
