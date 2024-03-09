@@ -1,18 +1,4 @@
 ---
-- name: 'Create a Kubernetes secret for the GitHub token.'
-  kubernetes.core.k8s:
-    state: 'present'
-    definition:
-      apiVersion: 'v1'
-      kind: 'Secret'
-      metadata:
-        name: 'github-token'
-        namespace: 'argocd'
-      type: 'Opaque'
-      data:
-        token: "{{ vault.github_token | b64encode }}"
-  run_once: true
-
 - name: 'Create the "GitOps Repo" ApplicationSet.'
   kubernetes.core.k8s:
     state: 'present'
