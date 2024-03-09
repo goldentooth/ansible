@@ -16,6 +16,4 @@ argocd_default_project_options:
       kind: '*'
 
 # Generic projects
-argocd_generic_projects:
-  - name: 'prometheus-node-exporter'
-    description: 'Prometheus Node Exporter'
+argocd_generic_projects: []

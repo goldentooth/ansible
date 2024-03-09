@@ -19,6 +19,5 @@
   ansible.builtin.include_tasks: "{{ application_file }}"
   loop:
     - 'applications/incubator.yaml'
-    - 'applications/prometheus_node_exporter.yaml'
   loop_control:
     loop_var: 'application_file'
