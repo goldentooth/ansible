@@ -25,14 +25,20 @@ my:
   local:
     timezone: 'America/New_York'
   domain:
-    private: 'hellholt.net'
-    public: 'bitterbridge.net'
+    # Personal domain, e.g. blog, email, etc.
     personal: 'darkdell.net'
+    # Private-facing domain, i.e. internal services.
+    private: 'hellholt.net'
+    # Public-facing domain, i.e. public services.
+    public: 'bitterbridge.net'
 
 # Data structure of the vault.
 # vault:
 #   easy_password: <string>
 #   ssh_public_key: <string>
+#   aws:
+#     access_key_id: <string>
+#     secret_access_key: <string>
 
 # #############################################################################
 # Shared variables.
@@ -73,7 +79,13 @@ network:
 cluster_name: 'goldentooth'
 cluster:
   name: "{{ cluster_name }}"
-  fqdn: "{{ cluster_name }}.{{ my.domain.private }}"
+  domain:
+    # Personal cluster domain, e.g. blog, email, etc.
+    personal: "{{ cluster_name }}.{{ my.domain.personal }}"
+    # Private-facing cluster domain, i.e. internal services.
+    private: "{{ cluster_name }}.{{ my.domain.private }}"
+    # Public-facing cluster domain, i.e. public services.
+    public: "{{ cluster_name }}.{{ my.domain.public }}"
 
 # The version of Kubernetes we're rolling with.
 k8s_version_clean: '1.29'
