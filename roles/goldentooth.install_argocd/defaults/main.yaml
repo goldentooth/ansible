@@ -36,6 +36,9 @@ argocd_release_values:
     extraArgs:
       - '--insecure'
     service:
+      annotations:
+        external-dns.alpha.kubernetes.io/hostname: "argocd.{{ cluster.domain.private }}"
+        external-dns.alpha.kubernetes.io/ttl: "60"
       type: 'LoadBalancer'
 
   repoServer:
