@@ -2,9 +2,7 @@
 - name: 'Create Argo CD AppProject resources.'
   ansible.builtin.include_tasks: "{{ project_file }}"
   loop:
-    - 'app_projects/incubator.yaml'
     - 'app_projects/generic.yaml'
-    - 'app_projects/gitops_repo.yaml'
   loop_control:
     loop_var: 'project_file'
 
@@ -14,10 +12,3 @@
     - 'application_sets/gitops_repo.yaml'
   loop_control:
     loop_var: 'application_set_file'
-
-- name: 'Create Argo CD Application resources.'
-  ansible.builtin.include_tasks: "{{ application_file }}"
-  loop:
-    - 'applications/incubator.yaml'
-  loop_control:
-    loop_var: 'application_file'
