@@ -1,0 +1,9 @@
+# Description: Cleanly shut down the hosts in the cluster.
+
+- name: 'Shut down the hosts in the cluster.'
+  hosts: 'all'
+  tasks:
+    - name: 'Shut down the hosts.'
+      ansible.builtin.command:
+        cmd: 'shutdown -h now'
+      become: true
