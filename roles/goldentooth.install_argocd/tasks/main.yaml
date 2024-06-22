@@ -14,6 +14,16 @@
     dest: '/usr/local/bin/argocd'
     mode: '0555'
 
+- name: 'Create the Argo CD namespace.'
+  kubernetes.core.k8s:
+    state: 'present'
+    definition:
+      apiVersion: 'v1'
+      kind: 'Namespace'
+      metadata:
+        name: 'argocd'
+  run_once: true
+
 - name: 'Create a Kubernetes secret for the GitHub token.'
   kubernetes.core.k8s:
     state: 'present'
@@ -30,7 +40,7 @@
 
 - name: 'Install Argo CD from Helm chart.'
   kubernetes.core.helm:
-    atomic: true
+    atomic: false
     chart_ref: 'argo/argo-cd'
     chart_version: "{{ argocd_chart_version }}"
     create_namespace: true
@@ -38,5 +48,5 @@
     release_namespace: 'argocd'
     release_values: "{{ argocd_release_values }}"
     update_repo_cache: true
-    wait: true
+    wait: false
   run_once: true

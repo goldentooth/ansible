@@ -1,5 +1,5 @@
 # Argo CD chart version.
-argocd_chart_version: '6.6.0'
+argocd_chart_version: '7.1.5'
 
 # Argo CD chart repository URL.
 argocd_chart_repo_url: 'https://argoproj.github.io/argo-helm'

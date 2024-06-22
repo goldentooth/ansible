@@ -22,5 +22,5 @@
   ansible.builtin.apt:
     name:
       - 'helm'
-    state: 'present'
+    state: 'latest'
     cache_valid_time: 3600

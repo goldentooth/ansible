@@ -9,13 +9,13 @@ all:
         control_plane:
           hosts:
             bettley:
-            fenn:
-            gardener:
-        worker:
-          hosts:
             cargyll:
             dalt:
+        worker:
+          hosts:
             erenford:
+            fenn:
+            gardener:
             harlton:
             inchfield:
             jast:

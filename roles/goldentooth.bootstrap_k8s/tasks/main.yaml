@@ -38,7 +38,7 @@
         src: '/etc/kubernetes/admin.conf'
         dest: '~/.kube/config'
         state: 'link'
-        mode: '0644'
+        mode: '0600'
 
     - name: 'Configure Calico networking.'
       ansible.builtin.command:
