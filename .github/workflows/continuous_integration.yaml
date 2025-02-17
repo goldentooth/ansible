@@ -20,4 +20,4 @@ jobs:
       - name: 'Install requirements.'
         run: ansible-galaxy install -r requirements.yml
       - name: 'Run ansible-lint.'
-        uses: ansible/ansible-lint@2d9f1ed1e6d08e1f6a18e50f789ab1580220c7db # v24.6.0
+        uses: ansible/ansible-lint@9cf49a01ac6b34f45aab16f0bbac1196fcd681e5 # v25.1.2
