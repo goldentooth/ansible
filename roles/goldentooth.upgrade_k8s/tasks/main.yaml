@@ -5,6 +5,7 @@
   tags:
     - 'first_control_plane'
     - 'other_control_plane'
+    - 'kubelet'
 
 - name: 'Unhold kubeadm.'
   ansible.builtin.dpkg_selections:
@@ -14,7 +15,7 @@
     - 'first_control_plane'
     - 'other_control_plane'
 
-- name: 'Upgrade kubeadm on first control plane node.'
+- name: 'Upgrade kubeadm on control plane nodes.'
   ansible.builtin.apt:
     name: 'kubeadm'
     state: 'latest'
@@ -24,3 +25,39 @@
     - 'first_control_plane'
     - 'other_control_plane'
 
+- name: 'Drain node to upgrade kubelet.'
+  kubernetes.core.k8s_drain:
+    state: 'drain'
+    name: "{{ clean_hostname }}"
+    delete_options:
+      terminate_grace_period: 900
+      delete_emptydir_data: true
+      ignore_daemonsets: true
+  delegate_to: "{{ control_plane_node }}"
+  tags:
+    - 'kubelet'
+
+- name: 'Unhold kubelet.'
+  ansible.builtin.dpkg_selections:
+    name: 'kubelet'
+    selection: 'install'
+  tags:
+    - 'kubelet'
+
+- name: 'Upgrade kubelet on node.'
+  ansible.builtin.apt:
+    name: 'kubelet'
+    state: 'latest'
+  notify:
+    - 'Hold kubelet.'
+    - 'Restart kubelet.'
+  tags:
+    - 'kubelet'
+
+- name: 'Uncordon node.'
+  kubernetes.core.k8s_drain:
+    state: 'uncordon'
+    name: "{{ clean_hostname }}"
+  delegate_to: "{{ control_plane_node }}"
+  tags:
+    - 'kubelet'

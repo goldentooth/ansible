@@ -10,12 +10,10 @@
         selection: 'hold'
   tasks:
     - name: 'Upgrade kubeadm (first control plane node).'
-      include_role:
+      ansible.builtin.include_role:
         name: 'goldentooth.upgrade_k8s'
       tags:
         - 'first_control_plane'
-  tags:
-    - 'first_control_plane'
 
 - name: 'Upgrade kubeadm on other control plane nodes.'
   hosts: "{{ groups['control_plane'][1:] | join(',') }}"
@@ -27,9 +25,32 @@
         selection: 'hold'
   tasks:
     - name: 'Upgrade kubeadm (other control plane nodes).'
-      include_role:
+      ansible.builtin.include_role:
         name: 'goldentooth.upgrade_k8s'
       tags:
         - 'other_control_plane'
-  tags:
-    - 'other_control_plane'
+
+- name: 'Upgrade kubelet on all nodes.'
+  hosts: 'k8s_cluster'
+  serial: 1
+  remote_user: 'root'
+  handlers:
+    - name: 'Hold kubelet.'
+      ansible.builtin.dpkg_selections:
+        name: 'kubelet'
+        selection: 'hold'
+    - name: 'Restart kubelet.'
+      ansible.builtin.systemd_service:
+        name: 'kubelet'
+        state: 'restarted'
+        daemon_reload: true
+        enabled: true
+  tasks:
+    - name: 'Upgrade kubelet.'
+      ansible.builtin.include_role:
+        name: 'goldentooth.upgrade_k8s'
+      vars:
+        control_plane_node: "{{ groups['control_plane'][0] }}"
+      tags:
+        - 'kubelet'
+
