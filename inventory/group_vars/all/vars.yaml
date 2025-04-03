@@ -88,7 +88,7 @@ cluster:
     public: "{{ cluster_name }}.{{ my.domain.public }}"
 
 # The version of Kubernetes we're rolling with.
-k8s_version_clean: '1.29'
+k8s_version_clean: '1.30'
 k8s_version: "v{{ k8s_version_clean }}"
 
 # The Kubernetes packages to install from Apt.
