@@ -91,6 +91,16 @@ k8s_packages:
   - 'kubectl'
   - 'kubelet'
 
+# NFS mount information.
+nfs_server: "{{ groups['nfs_server'] }}"
+nfs_mounts:
+  Primary:
+    share: "{{ hostvars[nfs_server[0]].ipv4_address }}:/mnt/usb1"
+    mount: '/mnt/nfs'
+    safe_name: 'mnt-nfs'
+    type: 'nfs'
+    options: {}
+
 # #############################################################################
 # Variables for vendored roles.
 # #############################################################################

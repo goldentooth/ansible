@@ -1,0 +1,2 @@
+nfs_server: "{{ groups['load_balancer'] }}"
+nfs_mounts: {}

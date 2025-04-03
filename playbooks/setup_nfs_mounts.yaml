@@ -1,0 +1,24 @@
+# Description: Setup NFS mounts.
+
+- name: 'Setup NFS mounts.'
+  hosts: 'all'
+  remote_user: 'root'
+  handlers:
+    - name: 'Restart NFS mount.'
+      ansible.builtin.systemd_service:
+        name: "{{ item.value.safe_name }}.mount"
+        state: 'restarted'
+        daemon_reload: true
+        enabled: true
+      loop: "{{ nfs_mounts | dict2items }}"
+    - name: 'Restart NFS automount.'
+      ansible.builtin.systemd_service:
+        name: "{{ item.value.safe_name }}.automount"
+        state: 'restarted'
+        daemon_reload: true
+        enabled: true
+      loop: "{{ nfs_mounts | dict2items }}"
+  tasks:
+    - name: 'Setup NFS mounts.'
+      ansible.builtin.include_role:
+        name: 'goldentooth.setup_nfs_mounts'

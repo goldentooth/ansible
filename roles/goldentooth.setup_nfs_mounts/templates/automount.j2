@@ -1,0 +1,10 @@
+[Unit]
+Description=Automount {{ item.key }}
+After=remote-fs-pre.target network-online.target network.target
+Before=umount.target remote-fs.target
+
+[Automount]
+Where={{ item.value.mount }}
+
+[Install]
+WantedBy=default.target

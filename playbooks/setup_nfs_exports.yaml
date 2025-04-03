@@ -1,0 +1,7 @@
+# Description: Setup NFS exports.
+
+- name: 'Setup NFS exports.'
+  hosts: 'nfs_server'
+  remote_user: 'root'
+  roles:
+    - { role: 'geerlingguy.nfs' }
