@@ -1,5 +1,5 @@
 # The version of Kubernetes we're rolling with.
-k8s_version_clean: '1.29'
+k8s_version_clean: '1.32'
 k8s_version: "v{{ k8s_version_clean }}"
 
 # The Kubernetes packages to unhold and uninstall.

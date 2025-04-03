@@ -3,8 +3,8 @@
   ansible.builtin.apt:
     update_cache: true
   tags:
-    - 'first_control_plane'
-    - 'other_control_plane'
+    - 'kubeadm_first'
+    - 'kubeadm_rest'
     - 'kubelet'
     - 'kubectl'
 
@@ -13,8 +13,8 @@
     name: 'kubeadm'
     selection: 'install'
   tags:
-    - 'first_control_plane'
-    - 'other_control_plane'
+    - 'kubeadm_first'
+    - 'kubeadm_rest'
 
 - name: 'Upgrade kubeadm on control plane nodes.'
   ansible.builtin.apt:
@@ -23,8 +23,8 @@
   notify:
     - 'Hold kubeadm.'
   tags:
-    - 'first_control_plane'
-    - 'other_control_plane'
+    - 'kubeadm_first'
+    - 'kubeadm_rest'
 
 - name: 'Drain node to upgrade kubelet.'
   kubernetes.core.k8s_drain:

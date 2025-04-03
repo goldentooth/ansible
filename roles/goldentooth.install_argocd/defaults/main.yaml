@@ -7,7 +7,7 @@ argocd_chart_repo_url: 'https://argoproj.github.io/argo-helm'
 argocd_release_values:
   nameOverride: 'argocd'
   global:
-    domain: "argocd.{{ cluster.domain.private }}"
+    domain: "argocd.{{ cluster.domain }}"
     # Add Prometheus scrape annotations to all metrics services. This can
     # be used as an alternative to the ServiceMonitors.
     addPrometheusAnnotations: true
@@ -37,7 +37,7 @@ argocd_release_values:
       - '--insecure'
     service:
       annotations:
-        external-dns.alpha.kubernetes.io/hostname: "argocd.{{ cluster.domain.private }}"
+        external-dns.alpha.kubernetes.io/hostname: "argocd.{{ cluster.domain }}"
         external-dns.alpha.kubernetes.io/ttl: "60"
       type: 'LoadBalancer'
 

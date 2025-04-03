@@ -79,16 +79,10 @@ network:
 cluster_name: 'goldentooth'
 cluster:
   name: "{{ cluster_name }}"
-  domain:
-    # Personal cluster domain, e.g. blog, email, etc.
-    personal: "{{ cluster_name }}.{{ my.domain.personal }}"
-    # Private-facing cluster domain, i.e. internal services.
-    private: "{{ cluster_name }}.{{ my.domain.private }}"
-    # Public-facing cluster domain, i.e. public services.
-    public: "{{ cluster_name }}.{{ my.domain.public }}"
+  domain: "{{ cluster_name }}.net"
 
 # The version of Kubernetes we're rolling with.
-k8s_version_clean: '1.30'
+k8s_version_clean: '1.32'
 k8s_version: "v{{ k8s_version_clean }}"
 
 # The Kubernetes packages to install from Apt.

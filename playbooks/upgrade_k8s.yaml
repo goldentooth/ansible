@@ -13,7 +13,7 @@
       ansible.builtin.include_role:
         name: 'goldentooth.upgrade_k8s'
       tags:
-        - 'first_control_plane'
+        - 'kubeadm_first'
 
 - name: 'Upgrade kubeadm on other control plane nodes.'
   hosts: "{{ groups['control_plane'][1:] | join(',') }}"
@@ -28,7 +28,7 @@
       ansible.builtin.include_role:
         name: 'goldentooth.upgrade_k8s'
       tags:
-        - 'other_control_plane'
+        - 'kubeadm_rest'
 
 - name: 'Upgrade kubelet on all nodes.'
   hosts: 'k8s_cluster'
