@@ -1,0 +1,26 @@
+---
+- name: 'Update Apt cache.'
+  ansible.builtin.apt:
+    update_cache: true
+  tags:
+    - 'first_control_plane'
+    - 'other_control_plane'
+
+- name: 'Unhold kubeadm.'
+  ansible.builtin.dpkg_selections:
+    name: 'kubeadm'
+    selection: 'install'
+  tags:
+    - 'first_control_plane'
+    - 'other_control_plane'
+
+- name: 'Upgrade kubeadm on first control plane node.'
+  ansible.builtin.apt:
+    name: 'kubeadm'
+    state: 'latest'
+  notify:
+    - 'Hold kubeadm.'
+  tags:
+    - 'first_control_plane'
+    - 'other_control_plane'
+
