@@ -79,6 +79,6 @@ backend k8s-api-server
   # after which the server is considered to be down.
   # The `rise` parameter sets the number of consecutive health check successes
   # after which the server is considered to be up.
-{% for host in groups['control_plane'] %}
+{% for host in groups['k8s_control_plane'] %}
   server {{ host }} {{ hostvars[host]['ipv4_address'] }}:6443 check fall 3 rise 2
 {% endfor %}

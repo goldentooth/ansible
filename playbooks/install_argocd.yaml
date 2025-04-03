@@ -1,7 +1,7 @@
 # Description: Install Argo CD on Kubernetes cluster.
 
 - name: 'Install Argo CD.'
-  hosts: 'control_plane'
+  hosts: 'k8s_control_plane'
   remote_user: 'root'
   roles:
     - { role: 'goldentooth.install_argocd' }

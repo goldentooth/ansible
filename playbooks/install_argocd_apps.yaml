@@ -1,7 +1,7 @@
 # Description: Install Argo CD applications.
 
 - name: 'Install Argo CD applications.'
-  hosts: 'control_plane'
+  hosts: 'k8s_control_plane'
   remote_user: 'root'
   roles:
     - { role: 'goldentooth.install_argocd_apps' }

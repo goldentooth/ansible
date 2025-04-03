@@ -1,7 +1,7 @@
 # Description: Upgrade Kubernetes.
 
 - name: 'Upgrade kubeadm on first control plane node.'
-  hosts: "{{ groups['control_plane'][0] }}"
+  hosts: "{{ groups['k8s_control_plane'][0] }}"
   remote_user: 'root'
   handlers:
     - name: 'Hold kubeadm.'
@@ -16,7 +16,7 @@
         - 'kubeadm_first'
 
 - name: 'Upgrade kubeadm on other control plane nodes.'
-  hosts: "{{ groups['control_plane'][1:] | join(',') }}"
+  hosts: "{{ groups['k8s_control_plane'][1:] | join(',') }}"
   remote_user: 'root'
   handlers:
     - name: 'Hold kubeadm.'
@@ -50,12 +50,12 @@
       ansible.builtin.include_role:
         name: 'goldentooth.upgrade_k8s'
       vars:
-        control_plane_node: "{{ groups['control_plane'][0] }}"
+        k8s_control_plane_node: "{{ groups['k8s_control_plane'][0] }}"
       tags:
         - 'kubelet'
 
 - name: 'Upgrade kubectl on control plane nodes.'
-  hosts: 'control_plane'
+  hosts: 'k8s_control_plane'
   remote_user: 'root'
   handlers:
     - name: 'Hold kubectl.'

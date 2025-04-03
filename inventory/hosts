@@ -6,12 +6,12 @@ all:
         allyrion:
     k8s_cluster:
       children:
-        control_plane:
+        k8s_control_plane:
           hosts:
             bettley:
             cargyll:
             dalt:
-        worker:
+        k8s_worker:
           hosts:
             erenford:
             fenn:
@@ -22,3 +22,12 @@ all:
     nfs_server:
       children:
         load_balancer:
+    slurm:
+      children:
+        slurm_controller:
+          children:
+            k8s_control_plane:
+        slurm_compute:
+          children:
+            k8s_control_plane:
+            k8s_worker:

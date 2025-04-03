@@ -1,0 +1,50 @@
+---
+- name: 'Install MUNGE.'
+  ansible.builtin.apt:
+    name:
+      - 'munge'
+    state: 'present'
+  notify:
+    - 'Retrieve first MUNGE key.'
+    - 'Synchronize MUNGE key.'
+    - 'Restart MUNGE.'
+
+- name: 'Install slurmd.'
+  ansible.builtin.apt:
+    name:
+      - 'slurm-wlm'
+    state: 'present'
+  notify:
+    - 'Restart slurmd.'
+    - 'Disable slurmctld.'
+    - 'Restart slurmctld.'
+
+- name: 'Create Slurm directories.'
+  ansible.builtin.file:
+    path: "{{ slurm.base_path }}/{{ shared_directory }}"
+    state: 'directory'
+    mode: '0755'
+    owner: 'slurm'
+    group: 'slurm'
+  loop: "{{ slurm_shared_directories }}"
+  loop_control:
+    loop_var: 'shared_directory'
+  run_once: true
+
+- name: 'Deploy config files'
+  ansible.builtin.template:
+    src: "{{ config_file }}.conf.j2"
+    dest: '/etc/slurm/{{ config_file }}.conf'
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+  loop:
+    - 'slurm'
+    - 'cgroup'
+    - 'cgroup_allowed_devices_file'
+  loop_control:
+    loop_var: 'config_file'
+  notify:
+    - 'Restart slurmd.'
+    - 'Disable slurmctld.'
+    - 'Restart slurmctld.'

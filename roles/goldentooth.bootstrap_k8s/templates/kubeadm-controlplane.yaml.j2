@@ -15,7 +15,7 @@ controlPlane:
 nodeRegistration:
   name: {{ inventory_hostname }}
   criSocket: {{ k8s_cri_socket }}
-{% if inventory_hostname in control_plane.rest.hostnames %}
+{% if inventory_hostname in k8s_control_plane.rest.hostnames %}
   taints:
   - effect: NoSchedule
     key: node-role.kubernetes.io/control-plane

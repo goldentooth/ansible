@@ -34,7 +34,7 @@
       terminate_grace_period: 900
       delete_emptydir_data: true
       ignore_daemonsets: true
-  delegate_to: "{{ control_plane_node }}"
+  delegate_to: "{{ k8s_control_plane_node }}"
   tags:
     - 'kubelet'
 
@@ -59,7 +59,7 @@
   kubernetes.core.k8s_drain:
     state: 'uncordon'
     name: "{{ clean_hostname }}"
-  delegate_to: "{{ control_plane_node }}"
+  delegate_to: "{{ k8s_control_plane_node }}"
   tags:
     - 'kubelet'
 

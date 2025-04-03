@@ -1,11 +1,11 @@
 # The role this host will play in the cluster.
 #
 # Valid values are:
-# - 'control_plane'
+# - 'k8s_control_plane'
 # - 'load_balancer'
-# - 'worker'
+# - 'k8s_worker'
 #
-cluster_role: 'control_plane'
+cluster_role: 'k8s_control_plane'
 
 # #############################################################################
 # Variables for vendored roles.

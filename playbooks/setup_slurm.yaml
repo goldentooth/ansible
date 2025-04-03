@@ -1,0 +1,60 @@
+# Description: Setup Slurm.
+
+- name: 'Setup Slurm.'
+  hosts: 'slurm'
+  remote_user: 'root'
+  handlers:
+    - name: 'Retrieve first MUNGE key.'
+      ansible.builtin.slurp:
+        src: '/etc/munge/munge.key'
+      register: 'munge_key'
+      delegate_to: "{{ groups['slurm_controller'][0] }}"
+
+    - name: 'Synchronize MUNGE key.'
+      ansible.builtin.copy:
+        content: "{{ munge_key.content | b64decode }}"
+        dest: '/etc/munge/munge.key'
+        owner: 'munge'
+        group: 'munge'
+        mode: '0600'
+
+    - name: 'Restart MUNGE.'
+      ansible.builtin.systemd_service:
+        name: 'munge'
+        state: 'restarted'
+        daemon_reload: true
+        enabled: true
+
+    - name: 'Disable slurmd.'
+      ansible.builtin.systemd_service:
+        name: 'slurmd'
+        state: 'stopped'
+        daemon_reload: true
+        enabled: false
+      when: "'slurm_compute' not in group_names"
+
+    - name: 'Restart slurmd.'
+      ansible.builtin.systemd_service:
+        name: 'slurmd'
+        state: 'restarted'
+        daemon_reload: true
+        enabled: true
+      when: "'slurm_compute' in group_names"
+
+    - name: 'Disable slurmctld.'
+      ansible.builtin.systemd_service:
+        name: 'slurmctld'
+        state: 'stopped'
+        daemon_reload: true
+        enabled: false
+      when: "'slurm_controller' not in group_names"
+
+    - name: 'Restart slurmctld.'
+      ansible.builtin.systemd_service:
+        name: 'slurmctld'
+        state: 'restarted'
+        daemon_reload: true
+        enabled: true
+      when: "'slurm_controller' in group_names"
+  roles:
+    - { role: 'goldentooth.setup_slurm' }

@@ -1,6 +1,6 @@
 # Description: Perform various cleanup tasks.
 
 - name: 'Cleanup the cluster.'
-  hosts: 'control_plane'
+  hosts: 'k8s_control_plane'
   remote_user: 'root'
   tasks:

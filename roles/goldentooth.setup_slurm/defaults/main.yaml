@@ -1,0 +1,6 @@
+slurm_shared_directories:
+  - ''
+  - 'var'
+  - 'var/spool'
+  - 'var/spool/slurm'
+  - 'var/spool/slurm/ctld'
