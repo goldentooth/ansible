@@ -1,6 +1,11 @@
 slurm_shared_directories:
-  - ''
-  - 'var'
-  - 'var/spool'
-  - 'var/spool/slurm'
-  - 'var/spool/slurm/ctld'
+  - "{{ slurm.nfs_base_path }}"
+  - "{{ slurm.nfs_base_path }}/var"
+  - "{{ slurm.nfs_base_path }}/var/spool"
+  - "{{ slurm.nfs_base_path }}/var/spool/slurm"
+  - "{{ slurm.nfs_base_path }}/var/spool/slurm/ctld"
+
+slurm_local_directories:
+  - "/var/run/slurm"
+  - "/var/spool/slurm"
+  - "/var/spool/slurm/d"

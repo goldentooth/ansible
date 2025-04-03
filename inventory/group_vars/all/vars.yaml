@@ -103,7 +103,7 @@ nfs_mounts:
 
 # Slurm options.
 slurm:
-  base_path: "{{ nfs_mounts['Primary']['mount'] }}/slurm"
+  nfs_base_path: "{{ nfs_mounts['Primary']['mount'] }}/slurm"
 
 # #############################################################################
 # Variables for vendored roles.

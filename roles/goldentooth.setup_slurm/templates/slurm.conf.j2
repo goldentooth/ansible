@@ -14,9 +14,9 @@ NodeName={{ slurm_compute_name }} NodeAddr={{ hostvars[slurm_compute_name].ipv4_
 
 # The partition configuration permits you to establish different job limits or
 # access controls for various groups (or partitions) of nodes.
-PartitionName=DEFAULT Nodes=ALL MaxTime=INFINITE State=UP
-PartitionName=default Default=YES
-PartitionName=debug
+PartitionName=DEFAULT MaxTime=INFINITE State=UP
+PartitionName=default Default=YES Nodes=ALL
+PartitionName=debug Default=NO Nodes=ALL
 
 # The name of the user that the slurmctld daemon executes as.
 SlurmUser=slurm
@@ -28,7 +28,7 @@ AuthType=auth/munge
 # slurmctld, saves its state (e.g. "/usr/local/slurm/checkpoint").
 #
 # This should be on the NFS volume.
-StateSaveLocation={{ slurm.base_path }}/var/spool/slurm/ctld
+StateSaveLocation={{ slurm.nfs_base_path }}/var/spool/slurm/ctld
 
 # Fully qualified pathname of a directory into which the slurmd daemon's
 # state information and batch job script information are written.
@@ -37,18 +37,18 @@ StateSaveLocation={{ slurm.base_path }}/var/spool/slurm/ctld
 SlurmdSpoolDir=/var/spool/slurm/d
 
 # Controls when a DOWN node will be returned to service.
-ReturnToService=1
+ReturnToService=2
 
 # Fully qualified pathname of a file into which the slurmctld daemon may write
 # its process id.
-SlurmctldPidFile=/var/run/slurmctld.pid
+SlurmctldPidFile=/var/run/slurm/slurmctld.pid
 
 # The port number that the Slurm controller, slurmctld, listens to for work.
 SlurmctldPort=6817
 
 # Fully qualified pathname of a file into which the slurmd daemon may write its
 # process id.
-SlurmdPidFile=/var/run/slurmd.pid
+SlurmdPidFile=/var/run/slurm/slurmd.pid
 
 # The port number that the Slurm compute node daemon, slurmd, listens to for
 # work.
@@ -60,3 +60,19 @@ TaskPlugin=task/none
 
 # Identifies the default type of MPI to be used.
 MpiDefault=none
+
+# The level of detail to provide slurmd daemon's logs. The default value is
+# info.
+SlurmdDebug=verbose
+
+# Fully qualified pathname of a file into which the slurmd daemon's logs are
+# written.
+SlurmdLogFile=/var/log/slurm/slurmd.log
+
+# The level of detail to provide slurmctld daemon's logs. The default value is
+# info.
+SlurmctldDebug=verbose
+
+# Fully qualified pathname of a file into which the slurmctld daemon's logs are
+# written.
+SlurmctldLogFile=/var/log/slurm/slurmctld.log

@@ -19,17 +19,28 @@
     - 'Disable slurmctld.'
     - 'Restart slurmctld.'
 
-- name: 'Create Slurm directories.'
+- name: 'Create Slurm shared directories.'
   ansible.builtin.file:
-    path: "{{ slurm.base_path }}/{{ shared_directory }}"
+    path: "{{ slurm_directory }}"
     state: 'directory'
     mode: '0755'
     owner: 'slurm'
     group: 'slurm'
   loop: "{{ slurm_shared_directories }}"
   loop_control:
-    loop_var: 'shared_directory'
+    loop_var: 'slurm_directory'
   run_once: true
+
+- name: 'Create Slurm local directories.'
+  ansible.builtin.file:
+    path: "{{ slurm_directory }}"
+    state: 'directory'
+    mode: '0755'
+    owner: 'slurm'
+    group: 'slurm'
+  loop: "{{ slurm_local_directories }}"
+  loop_control:
+    loop_var: 'slurm_directory'
 
 - name: 'Deploy config files'
   ansible.builtin.template:
