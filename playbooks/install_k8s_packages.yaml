@@ -10,6 +10,7 @@
   hosts: 'k8s_cluster'
   remote_user: 'root'
   roles:
+    - { role: 'goldentooth.setup_k8s_apt' }
     - { role: 'goldentooth.install_k8s_packages' }
   handlers:
     - name: 'Update Apt cache.'
