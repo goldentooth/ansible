@@ -54,3 +54,17 @@
       tags:
         - 'kubelet'
 
+- name: 'Upgrade kubectl on control plane nodes.'
+  hosts: 'control_plane'
+  remote_user: 'root'
+  handlers:
+    - name: 'Hold kubectl.'
+      ansible.builtin.dpkg_selections:
+        name: 'kubectl'
+        selection: 'hold'
+  tasks:
+    - name: 'Upgrade kubectl (all control plane nodes).'
+      ansible.builtin.include_role:
+        name: 'goldentooth.upgrade_k8s'
+      tags:
+        - 'kubectl'

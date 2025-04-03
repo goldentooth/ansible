@@ -6,6 +6,7 @@
     - 'first_control_plane'
     - 'other_control_plane'
     - 'kubelet'
+    - 'kubectl'
 
 - name: 'Unhold kubeadm.'
   ansible.builtin.dpkg_selections:
@@ -61,3 +62,19 @@
   delegate_to: "{{ control_plane_node }}"
   tags:
     - 'kubelet'
+
+- name: 'Unhold kubectl.'
+  ansible.builtin.dpkg_selections:
+    name: 'kubectl'
+    selection: 'install'
+  tags:
+    - 'kubectl'
+
+- name: 'Upgrade kubectl on control plane nodes.'
+  ansible.builtin.apt:
+    name: 'kubectl'
+    state: 'latest'
+  notify:
+    - 'Hold kubectl.'
+  tags:
+    - 'kubectl'
