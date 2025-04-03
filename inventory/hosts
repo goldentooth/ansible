@@ -19,3 +19,6 @@ all:
             harlton:
             inchfield:
             jast:
+    nfs:
+      children:
+        load_balancer:
