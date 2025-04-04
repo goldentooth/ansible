@@ -15,7 +15,7 @@ NodeName={{ slurm_compute_name }} NodeAddr={{ hostvars[slurm_compute_name].ipv4_
 # The partition configuration permits you to establish different job limits or
 # access controls for various groups (or partitions) of nodes.
 PartitionName=DEFAULT MaxTime=INFINITE State=UP
-PartitionName=default Default=YES Nodes=ALL
+PartitionName=general Default=YES Nodes=ALL
 PartitionName=debug Default=NO Nodes=ALL
 
 # The name of the user that the slurmctld daemon executes as.
