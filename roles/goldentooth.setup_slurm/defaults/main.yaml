@@ -4,6 +4,9 @@ slurm_shared_directories:
   - "{{ slurm.nfs_base_path }}/var/spool"
   - "{{ slurm.nfs_base_path }}/var/spool/slurm"
   - "{{ slurm.nfs_base_path }}/var/spool/slurm/ctld"
+  - "{{ slurm.nfs_base_path }}/apps"
+  - "{{ slurm.nfs_base_path }}/apps/modulefiles"
+  - "{{ slurm.nfs_base_path }}/bin"
 
 slurm_local_directories:
   - "/var/run/slurm"

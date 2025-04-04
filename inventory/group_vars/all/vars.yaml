@@ -103,6 +103,8 @@ nfs_mounts:
 
 # Slurm options.
 slurm:
+  lmod:
+    source_url: "https://sourceforge.net/projects/lmod/files/Lmod-8.4.tar.bz2"
   nfs_base_path: "{{ nfs_mounts['Primary']['mount'] }}/slurm"
 
 # #############################################################################

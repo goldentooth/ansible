@@ -42,7 +42,7 @@
   loop_control:
     loop_var: 'slurm_directory'
 
-- name: 'Deploy config files'
+- name: 'Deploy config files.'
   ansible.builtin.template:
     src: "{{ config_file }}.conf.j2"
     dest: '/etc/slurm/{{ config_file }}.conf'
@@ -59,3 +59,99 @@
     - 'Restart slurmd.'
     - 'Disable slurmctld.'
     - 'Restart slurmctld.'
+
+- name: 'Install Lua packages.'
+  ansible.builtin.apt:
+    name:
+      - 'lua5.1'
+      - 'lua-posix'
+      - 'liblua5.1-0-dev'
+      - 'lua-term'
+    state: 'present'
+
+- name: 'Symlink lua and luac.'
+  ansible.builtin.file:
+    src: "{{ file }}"
+    dest: "{{ slurm.nfs_base_path }}/bin/{{ file | basename }}"
+    owner: 'slurm'
+    group: 'slurm'
+    state: 'link'
+  loop:
+    - '/usr/bin/lua'
+    - '/usr/bin/luac'
+  loop_control:
+    loop_var: 'file'
+  run_once: true
+
+- name: Check if Lmod is installed.
+  ansible.builtin.stat:
+    path: "{{ slurm.nfs_base_path }}/lmod/lmod/init/cshrc"
+  register: lmod_cshrc
+
+- name: 'Install Lmod.'
+  block:
+
+    - name: 'Install tclsh for Lmod.'
+      ansible.builtin.apt:
+        name:
+          - 'tclsh'
+        state: 'present'
+
+    - name: 'Set Lmod source filename.'
+      ansible.builtin.set_fact:
+        lmod_source_filename: "{{ slurm.lmod.source_url | ansible.builtin.basename }}"
+
+    - name: 'Create temporary build directory.'
+      ansible.builtin.tempfile:
+        state: 'directory'
+      register: 'lmod_source_dir'
+
+    - name: 'Download and unarchive Lmod source.'
+      ansible.builtin.unarchive:
+        src: "{{ slurm.lmod.source_url }}"
+        dest: "{{ lmod_source_dir.path }}"
+        remote_src: true
+      register: 'lmod_unarchive'
+
+    - name: 'Build and install Lmod.'
+      ansible.builtin.shell:
+        cmd: |
+          ./configure \
+            --prefix="{{ slurm.nfs_base_path }}" \
+            --with-fastTCLInterp=no
+          make install
+        chdir: "{{ lmod_unarchive.dest }}/Lmod-8.4"
+
+    - name: 'Create StdEnv.lua.'
+      ansible.builtin.copy:
+        content: ' '
+        dest: "{{ slurm.nfs_base_path }}/apps/modulefiles/StdEnv.lua"
+
+    - name: 'Add modulefiles path to relevant files.'
+      ansible.builtin.lineinfile:
+        path: "{{ path }}"
+        regexp: '^export MODULEPATH'
+        line: 'export MODULEPATH="{{ slurm.nfs_base_path }}/apps/modulefiles";'
+      loop:
+        - "{{ slurm.nfs_base_path }}/lmod/lmod/init/profile"
+        - "{{ slurm.nfs_base_path }}/lmod/lmod/init/cshrc"
+      loop_control:
+        loop_var: 'path'
+
+  run_once: true
+  when: "not lmod_cshrc.stat.exists"
+
+- name: 'Symlink profile and cshrc.'
+  ansible.builtin.file:
+    src: "{{ slurm.nfs_base_path }}/{{ file.src }}"
+    dest: "/etc/profile.d/{{ file.dest }}"
+    owner: 'slurm'
+    group: 'slurm'
+    state: 'link'
+  loop:
+    - src: 'lmod/lmod/init/profile'
+      dest: 'z00_lmod.sh'
+    - src: 'lmod/lmod/init/cshrc'
+      dest: 'z00_lmod.csh'
+  loop_control:
+    loop_var: 'file'
