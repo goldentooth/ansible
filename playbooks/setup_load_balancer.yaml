@@ -12,6 +12,12 @@
         state: 'restarted'
         enabled: true
 
+    - name: 'Restart Nginx.'
+      ansible.builtin.service:
+        name: 'nginx'
+        state: 'restarted'
+        enabled: true
+
     - name: 'Restart rsyslog.'
       ansible.builtin.service:
         name: 'rsyslog'

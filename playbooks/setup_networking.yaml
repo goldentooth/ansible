@@ -1,0 +1,13 @@
+# Description: Setup networking.
+
+- name: 'Setup networking.'
+  hosts: 'all'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.setup_networking' }
+  handlers:
+    - name: 'Restart networking service.'
+      ansible.builtin.service:
+        name: 'networking'
+        state: 'restarted'
+        enabled: true

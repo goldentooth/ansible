@@ -27,3 +27,20 @@
         group: 'root'
         mode: '0644'
       notify: 'Restart HAProxy.'
+
+    - name: 'Install Nginx.'
+      ansible.builtin.apt:
+        name:
+          - 'nginx'
+        state: 'present'
+        cache_valid_time: 3600
+      notify: 'Restart Nginx.'
+
+    - name: 'Configure Nginx.'
+      ansible.builtin.template:
+        src: 'reverse-proxy.conf.j2'
+        dest: '/etc/nginx/sites-enabled/reverse-proxy.conf'
+        owner: 'root'
+        group: 'root'
+        mode: '0644'
+      notify: 'Restart Nginx.'

@@ -1,0 +1,33 @@
+---
+- name: 'Autodetect interface connected to 10.4.0.0/24.'
+  ansible.builtin.command:
+    cmd: 'ip route show 10.4.0.0/24'
+  register: 'route_info_0'
+  when: 'route_interface == ""'
+
+- name: 'Determine if route already exists.'
+  ansible.builtin.command:
+    cmd: 'ip route show 10.4.11.0/24'
+  changed_when: false
+  register: 'route_info_11'
+
+- name: 'Set autodetected route interface.'
+  ansible.builtin.set_fact:
+    route_interface: "{{ route_info_0.stdout.split()[2] }}"
+  when: 'route_interface == ""'
+
+- name: 'Ensure static route is added.'
+  ansible.builtin.command:
+    cmd: |
+      ip route add {{ route_network }}/24 dev {{ route_interface }}
+  register: 'route_result'
+  when: 'route_info_11.stdout.split() | length == 0'
+  failed_when: 'route_result.rc != 0 and "File exists" not in route_result.stderr'
+
+- name: 'Persist the route.'
+  ansible.builtin.lineinfile:
+    path: "/etc/network/interfaces.d/{{ route_interface }}.cfg"
+    create: true
+    line: 'up route add -net {{ route_network }} netmask {{ route_netmask }} dev {{ route_interface }}'
+  notify:
+    - 'Restart networking service.'
