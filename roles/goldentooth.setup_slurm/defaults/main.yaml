@@ -7,8 +7,11 @@ slurm_shared_directories:
   - "{{ slurm.nfs_base_path }}/apps"
   - "{{ slurm.nfs_base_path }}/apps/modulefiles"
   - "{{ slurm.nfs_base_path }}/bin"
+  - "{{ slurm.nfs_base_path }}/tmp"
 
 slurm_local_directories:
   - "/var/run/slurm"
   - "/var/spool/slurm"
   - "/var/spool/slurm/d"
+
+go_version: '1.21.0'

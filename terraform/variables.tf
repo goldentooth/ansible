@@ -4,39 +4,20 @@ variable "cluster_name" {
   default     = "goldentooth"
 }
 
-variable "parent_domains" {
-  description = "A map of parent domain names to their info."
-  type        = map(map(string))
-  default = {
-    "darkdell.net" = {
-      domain  = "darkdell.net"
-      zone_id = "Z10369503CRN6LP4ETMDZ"
-      ttl     = "60"
-    }
-    "hellholt.net" = {
-      domain  = "hellholt.net"
-      zone_id = "Z024261316ZE4JWVSMJRN"
-      ttl     = "60"
-    }
-  }
-}
-
-variable "public_domain" {
-  description = "The public domain name for our cluster."
+variable "domain_name" {
+  description = "The domain name."
   type        = string
-  default     = "darkdell.net"
+  default     = "goldentooth.net"
 }
 
-variable "private_domain" {
-  description = "The private domain for our cluster."
+variable "default_ttl" {
+  description = "The default TTL for records."
   type        = string
-  default     = "hellholt.net"
+  default     = "60"
 }
 
-variable "private_domain_ips" {
-  description = "The IP addresses for the private domain."
-  type        = list(string)
-  default = [
-    "10.4.0.10"
-  ]
+variable "zone_id" {
+  description = "The Route53 Zone ID."
+  type        = string
+  default     = "Z0736727S7ZH91VKK44A"
 }

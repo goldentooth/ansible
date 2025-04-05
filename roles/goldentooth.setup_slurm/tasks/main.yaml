@@ -126,6 +126,9 @@
       ansible.builtin.copy:
         content: ' '
         dest: "{{ slurm.nfs_base_path }}/apps/modulefiles/StdEnv.lua"
+        owner: 'slurm'
+        group: 'slurm'
+        mode: 0755
 
     - name: 'Add modulefiles path to relevant files.'
       ansible.builtin.lineinfile:
@@ -155,3 +158,145 @@
       dest: 'z00_lmod.csh'
   loop_control:
     loop_var: 'file'
+
+- name: 'Install OpenMPI.'
+  ansible.builtin.apt:
+    name:
+      - 'libopenmpi3'
+      - 'libopenmpi-dev'
+      - 'openmpi-bin'
+      - 'openmpi-common'
+    state: 'present'
+
+- name: 'Create OpenMPI.lua.'
+  ansible.builtin.copy:
+    content: |
+      help([[
+      Description
+      ===========
+      Open MPI Library
+
+      More information
+      ================
+      - Homepage: http://www.open-mpi.org/
+      ]])
+      prepend_path("PATH", "/usr/bin")
+      prepend_path("CPATH", "/usr/lib/aarch64-linux-gnu/openmpi/include")
+      prepend_path("LD_LIBRARY_PATH", "/usr/lib/aarch64-linux-gnu/openmpi/lib")
+      prepend_path("LIBRARY_PATH", "/usr/lib/aarch64-linux-gnu/openmpi/lib")
+      conflict("OpenMPI")
+    dest: "{{ slurm.nfs_base_path }}/apps/modulefiles/OpenMPI.lua"
+    owner: 'slurm'
+    group: 'slurm'
+    mode: 0755
+  run_once: true
+
+- name: Check if Golang is installed.
+  ansible.builtin.stat:
+    path: "{{ slurm.nfs_base_path }}/go/{{ go_version }}/bin/go"
+  register: go_bin_dir
+
+- name: 'Install Golang.'
+  block:
+
+    - name: 'Create Golang version directory.'
+      ansible.builtin.file:
+        path: "{{ slurm.nfs_base_path }}/go/{{ go_version }}"
+        state: 'directory'
+        mode: '0755'
+        owner: 'slurm'
+        group: 'slurm'
+
+    - name: 'Download and unarchive Golang archive.'
+      ansible.builtin.unarchive:
+        src: "https://dl.google.com/go/go{{ go_version }}.linux-arm64.tar.gz"
+        dest: "{{ slurm.nfs_base_path }}/go/{{ go_version }}"
+        remote_src: true
+      register: 'go_unarchive'
+
+    - name: 'Create Golang.lua directory.'
+      ansible.builtin.file:
+        path: "{{ slurm.nfs_base_path }}/apps/modulefiles/Golang"
+        state: 'directory'
+        mode: '0755'
+        owner: 'slurm'
+        group: 'slurm'
+
+    - name: 'Create Golang.lua.'
+      ansible.builtin.copy:
+        content: |
+          help([[
+          Description
+          ===========
+          GO Programming Language
+
+          More information
+          ================
+          - Homepage: https://go.dev
+          ]])
+          local base = "{{ go_unarchive.dest }}/go"
+          prepend_path("PATH", pathJoin(base, "bin"))
+          conflict("Golang")
+        dest: "{{ slurm.nfs_base_path }}/apps/modulefiles/Golang/{{ go_version }}.lua"
+        owner: 'slurm'
+        group: 'slurm'
+        mode: 0755
+
+  run_once: true
+  when: "not go_bin_dir.stat.exists"
+
+- name: Check if Singularity is installed.
+  ansible.builtin.stat:
+    path: "{{ slurm.nfs_base_path }}/singularity"
+  register: singularity_dir
+
+- name: 'Build and install Singularity.'
+  block:
+
+    - name: 'Install SingularityCE dependencies.'
+      ansible.builtin.apt:
+        name:
+          - 'autoconf'
+          - 'automake'
+          - 'conmon'
+          - 'cryptsetup'
+          - 'fuse2fs'
+          - 'git'
+          - 'fuse'
+          - 'libfuse-dev'
+          - 'libglib2.0-dev'
+          - 'libseccomp-dev'
+          - 'libsubid-dev'
+          - 'libtool'
+          - 'pkg-config'
+          - 'runc'
+          - 'squashfs-tools'
+          - 'squashfs-tools-ng'
+          - 'uidmap'
+          - 'wget'
+          - 'zlib1g-dev'
+        state: 'present'
+
+    - name: 'Create temporary build directory.'
+      ansible.builtin.tempfile:
+        state: 'directory'
+      register: 'singularity_git_dir'
+
+    - name: 'Check out Singularity Git repo.'
+      ansible.builtin.git:
+        repo: 'https://github.com/sylabs/singularity.git'
+        dest: "{{ singularity_git_dir.path }}"
+        version: 'v4.3.0'
+
+    - name: 'Build Singularity.'
+      ansible.builtin.shell:
+        cmd: |
+          module load Golang/{{ go_version }}
+          ./mconfig
+          make -C builddir
+          make -C builddir install
+        executable: '/bin/bash'
+        chdir: "{{ singularity_git_dir.path }}"
+
+  run_once: true
+  when: "not singularity_dir.stat.exists"

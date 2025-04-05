@@ -7,7 +7,7 @@ SlurmctldHost={{ slurm_controller_name }}({{ hostvars[slurm_controller_name].ipv
 {% endfor %}
 
 # Worker nodes.
-NodeName=DEFAULT CPUs=1 RealMemory=4096 Sockets=1 CoresPerSocket=4 ThreadsPerCore=1 State=UNKNOWN
+NodeName=DEFAULT CPUs=4 RealMemory=4096 Sockets=1 CoresPerSocket=4 ThreadsPerCore=1 State=UNKNOWN
 {% for slurm_compute_name in groups['slurm_compute'] %}
 NodeName={{ slurm_compute_name }} NodeAddr={{ hostvars[slurm_compute_name].ipv4_address }}
 {% endfor %}
