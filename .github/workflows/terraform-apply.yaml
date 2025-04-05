@@ -21,7 +21,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@ececac1a45f3b08a01d2dd070d28d111c5fe6722 # v4.1.0
         with:
           aws-region: 'us-east-1'
-          role-to-assume: 'github-oidc-provider-aws'
+          role-to-assume: 'arn:aws:iam::665449637458:role/github-oidc-provider-aws'
 
       - name: 'Setup Terraform.'
         uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
