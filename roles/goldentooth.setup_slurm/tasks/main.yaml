@@ -329,3 +329,4 @@
         mode: 0755
 
   run_once: true
+  when: "not singularity_dir.stat.exists"
