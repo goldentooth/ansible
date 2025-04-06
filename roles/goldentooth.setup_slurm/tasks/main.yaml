@@ -247,7 +247,7 @@
 
 - name: Check if Singularity is installed.
   ansible.builtin.stat:
-    path: "{{ slurm.nfs_base_path }}/singularity"
+    path: "{{ slurm.nfs_base_path }}/singularity/{{ singularity_version }}"
   register: singularity_dir
 
 - name: 'Build and install Singularity.'
@@ -286,17 +286,46 @@
       ansible.builtin.git:
         repo: 'https://github.com/sylabs/singularity.git'
         dest: "{{ singularity_git_dir.path }}"
-        version: 'v4.3.0'
+        version: "v{{ singularity_version }}"
 
     - name: 'Build Singularity.'
       ansible.builtin.shell:
         cmd: |
+          source /etc/profile.d/z00_lmod.sh
           module load Golang/{{ go_version }}
-          ./mconfig
+          ./mconfig --prefix={{ slurm.nfs_base_path }}/singularity/{{ singularity_version }}
           make -C builddir
           make -C builddir install
         executable: '/bin/bash'
         chdir: "{{ singularity_git_dir.path }}"
 
+    - name: 'Create Singularity.lua directory.'
+      ansible.builtin.file:
+        path: "{{ slurm.nfs_base_path }}/apps/modulefiles/Singularity"
+        state: 'directory'
+        mode: '0755'
+        owner: 'slurm'
+        group: 'slurm'
+
+    - name: 'Create Singularity.lua.'
+      ansible.builtin.copy:
+        content: |
+          help([[
+          Description
+          ===========
+          Singularity Container
+
+          More information
+          ================
+          - Homepage: https://sylabs.io/singularity
+          ]])
+          load("Golang")
+          local base = "{{ slurm.nfs_base_path }}/singularity/{{ singularity_version }}"
+          prepend_path("PATH", pathJoin(base, "bin"))
+          conflict("Singularity")
+        dest: "{{ slurm.nfs_base_path }}/apps/modulefiles/Singularity/{{ singularity_version }}.lua"
+        owner: 'slurm'
+        group: 'slurm'
+        mode: 0755
+
   run_once: true
-  when: "not singularity_dir.stat.exists"

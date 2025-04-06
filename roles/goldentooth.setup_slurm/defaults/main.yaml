@@ -15,3 +15,5 @@ slurm_local_directories:
   - "/var/spool/slurm/d"
 
 go_version: '1.21.0'
+
+singularity_version: '4.3.0'
