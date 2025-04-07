@@ -381,11 +381,49 @@
           source /etc/profile.d/z00_lmod.sh
           module load Conda
           conda update -n base conda
-          conda create -n default-env python
+          conda create -n default-env python -y
         chdir: "{{ miniforge_script_dir.path }}"
         creates: "{{ slurm.nfs_base_path }}/miniforge/envs/default-env"
         executable: '/bin/bash'
 
+    - name: 'Add settings to .condarc.'
+      ansible.builtin.lineinfile:
+        path: "{{ slurm.nfs_base_path }}/miniforge/.condarc"
+        block: |
+          env_prompt: ({name})
+          envs_dirs:
+            - {{ slurm.nfs_base_path }}/miniforge/user_envs
+          pkgs_dirs:
+            - {{ slurm.nfs_base_path }}/miniforge/user_pkgs
+
+    - name: 'Create user_envs and user_pkgs directories.'
+      ansible.builtin.file:
+        path: "{{ slurm.nfs_base_path }}/miniforge/{{ dir_name }}"
+        state: 'directory'
+        mode: '0775'
+        owner: 'users'
+        group: 'users'
+      loop:
+        - 'user_envs'
+        - 'user_pkgs'
+      loop_control:
+        loop_var: 'dir_name'
+
   run_once: true
   when: "not miniforge_dir.stat.exists"
 
+- name: 'Create user Conda environments.'
+  ansible.builtin.shell:
+    cmd: |
+      source /etc/profile.d/z00_lmod.sh
+      module load Conda
+      conda update -n base conda
+      conda create -n python{{ python_version }} python={{ python_version }} -y
+    creates: "{{ slurm.nfs_base_path }}/miniforge/user_envs/python{{ python_version }}"
+    executable: '/bin/bash'
+  become: true
+  become_user: "{{ my.name.lower }}"
+  run_once: true
+  loop: "{{ python_versions }}"
+  loop_control:
+    loop_var: 'python_version'

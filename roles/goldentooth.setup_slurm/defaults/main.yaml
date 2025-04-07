@@ -17,3 +17,9 @@ slurm_local_directories:
 go_version: '1.21.0'
 
 singularity_version: '4.3.0'
+
+python_versions:
+  - '3.10'
+  - '3.11'
+  - '3.12'
+  - '3.13'

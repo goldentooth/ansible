@@ -110,6 +110,13 @@ slurm:
 # Golang version.
 go_version: '1.23.0'
 
+# Python versions for Conda user environments.
+python_versions:
+  - '3.10'
+  - '3.11'
+  - '3.12'
+  - '3.13'
+
 # #############################################################################
 # Variables for vendored roles.
 # #############################################################################
