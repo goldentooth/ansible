@@ -80,6 +80,7 @@ cluster_name: 'goldentooth'
 cluster:
   name: "{{ cluster_name }}"
   domain: "{{ cluster_name }}.net"
+  cloudfront_distribution_domain: "home-proxy.{{ cluster_name }}.net"
   cloudfront_origin_domain: "clearbrook.{{ cluster_name }}.net"
 
 # The version of Kubernetes we're rolling with.
