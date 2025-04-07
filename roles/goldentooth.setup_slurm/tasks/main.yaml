@@ -191,7 +191,7 @@
     mode: 0755
   run_once: true
 
-- name: Check if Golang is installed.
+- name: 'Check if Golang is installed.'
   ansible.builtin.stat:
     path: "{{ slurm.nfs_base_path }}/go/{{ go_version }}/bin/go"
   register: go_bin_dir
@@ -245,7 +245,7 @@
   run_once: true
   when: "not go_bin_dir.stat.exists"
 
-- name: Check if Singularity is installed.
+- name: 'Check if Singularity is installed.'
   ansible.builtin.stat:
     path: "{{ slurm.nfs_base_path }}/singularity/{{ singularity_version }}"
   register: singularity_dir
@@ -330,3 +330,62 @@
 
   run_once: true
   when: "not singularity_dir.stat.exists"
+
+- name: 'Check if Miniforge is installed.'
+  ansible.builtin.stat:
+    path: "{{ slurm.nfs_base_path }}/miniforge"
+  register: 'miniforge_dir'
+
+- name: 'Build and install Miniforge.'
+  block:
+
+    - name: 'Create temporary directory.'
+      ansible.builtin.tempfile:
+        state: 'directory'
+      register: 'miniforge_script_dir'
+
+    - name: 'Download installation script.'
+      ansible.builtin.get_url:
+        url: 'https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh'
+        dest: "{{ miniforge_script_dir.path }}/miniforge.sh"
+        mode: '0755'
+
+    - name: 'Execute installation script.'
+      ansible.builtin.command:
+        cmd: "bash miniforge.sh -b -u -p {{ slurm.nfs_base_path }}/miniforge"
+        chdir: "{{ miniforge_script_dir.path }}"
+
+    - name: 'Create Conda.lua.'
+      ansible.builtin.copy:
+        content: |
+          help([[
+            Description
+            ===========
+            Mini Forge Conda
+
+            More information
+            ================
+            - Homepage: https://github.com/conda-forge/miniforge
+          ]])
+          local base = "{{ slurm.nfs_base_path }}/miniforge"
+          prepend_path("PATH", pathJoin(base, "bin"))
+          conflict("Conda")
+        dest: "{{ slurm.nfs_base_path }}/apps/modulefiles/Conda.lua"
+        owner: 'slurm'
+        group: 'slurm'
+        mode: 0755
+
+    - name: 'Create default environment.'
+      ansible.builtin.shell:
+        cmd: |
+          source /etc/profile.d/z00_lmod.sh
+          module load Conda
+          conda update -n base conda
+          conda create -n default-env python
+        chdir: "{{ miniforge_script_dir.path }}"
+        creates: "{{ slurm.nfs_base_path }}/miniforge/envs/default-env"
+        executable: '/bin/bash'
+
+  run_once: true
+  when: "not miniforge_dir.stat.exists"
+
