@@ -1,9 +1,9 @@
 server {
   listen 8080;
   resolver 8.8.8.8 valid=10s;
-  server_name ~^(?<subdomain>[^.]+)\.clearbrook\.goldentooth\.net$;
+  server_name ~^(?<subdomain>[^.]+)\.{{ cluster.cloudfront_origin_domain }}$;
   location / {
-    set $target_host "$subdomain.goldentooth.net";
+    set $target_host "$subdomain.{{ cluster.domain }}";
     proxy_pass http://$target_host;
     proxy_set_header Host $target_host;
     proxy_set_header X-Real-IP $remote_addr;
