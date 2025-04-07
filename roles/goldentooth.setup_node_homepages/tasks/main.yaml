@@ -1,0 +1,68 @@
+---
+- name: 'Install ACL support.'
+  ansible.builtin.apt:
+    pkg:
+      - 'acl'
+    state: 'present'
+
+- name: 'Create web root directory.'
+  ansible.builtin.file:
+    path: "{{ node_homepage_web_root }}"
+    state: 'directory'
+    mode: '0755'
+    owner: "{{ nginx_user }}"
+    group: "{{ nginx_group }}"
+
+- name: 'Sets default ACL for Nginx on web root directory.'
+  ansible.posix.acl:
+    path: "{{ node_homepage_web_root }}"
+    entity: "{{ nginx_user }}"
+    etype: 'user'
+    permissions: 'rX'
+    state: 'present'
+    recursive: true
+    default: true
+  notify:
+    - 'Restart Nginx.'
+
+- name: 'Install nginx.'
+  ansible.builtin.apt:
+    pkg:
+      - 'nginx'
+    state: 'present'
+  notify:
+    - 'Restart Nginx.'
+
+- name: 'Remove default Nginx server configuration.'
+  ansible.builtin.file:
+    dest: '/etc/nginx/sites-enabled/default'
+    state: 'absent'
+  notify:
+    - 'Restart Nginx.'
+
+- name: 'Configure Nginx.'
+  ansible.builtin.template:
+    src: 'node-homepage.conf.j2'
+    dest: '/etc/nginx/sites-enabled/node-homepage.conf'
+    owner: "{{ nginx_user }}"
+    group: "{{ nginx_group }}"
+    mode: '0644'
+  notify:
+    - 'Restart Nginx.'
+
+- name: 'Copy index.html into place.'
+  ansible.builtin.template:
+    src: 'index.html.j2'
+    dest: "{{ node_homepage_web_root }}/index.html"
+    owner: "{{ nginx_user }}"
+    group: "{{ nginx_group }}"
+    mode: '0755'
+
+- name: 'Set the node 128x128 png.'
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/{{ clean_hostname }}.png"
+    dest: "{{ node_homepage_web_root }}/node.png"
+    owner: "{{ nginx_user }}"
+    group: "{{ nginx_group }}"
+    mode: '0755'
+  changed_when: false

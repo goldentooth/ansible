@@ -1,0 +1,13 @@
+# Description: Setup the node homepages.
+
+- name: 'Setup node homepages.'
+  hosts: 'all'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.setup_node_homepages' }
+  handlers:
+    - name: 'Restart Nginx.'
+      ansible.builtin.service:
+        name: 'nginx'
+        state: 'restarted'
+        enabled: true
