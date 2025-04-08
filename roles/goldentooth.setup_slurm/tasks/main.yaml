@@ -269,7 +269,6 @@
           - 'libsubid-dev'
           - 'libtool'
           - 'pkg-config'
-          - 'runc'
           - 'squashfs-tools'
           - 'squashfs-tools-ng'
           - 'uidmap'
