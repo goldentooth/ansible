@@ -209,19 +209,39 @@ prometheus_scrape_configs:
     static_configs:
       - targets:
           - "{{ clean_hostname }}:9090"
+    relabel_configs:
+      - source_labels: [instance]
+        target_label: instance
+        regex: '([^:]+):\d+'
+        replacement: '${1}'
   - job_name: 'haproxy'
     static_configs:
       - targets:
           - "{{ groups['load_balancer'] | first }}:8405"
+    relabel_configs:
+      - source_labels: [instance]
+        target_label: instance
+        regex: '([^:]+):\d+'
+        replacement: '${1}'
   - job_name: 'nginx'
     static_configs:
       - targets:
           - "{{ groups['load_balancer'] | first }}:9113"
+    relabel_configs:
+      - source_labels: [instance]
+        target_label: instance
+        regex: '([^:]+):\d+'
+        replacement: '${1}'
   - job_name: 'unknown'
     file_sd_configs:
       - files:
           - "/etc/prometheus/file_sd/*.yaml"
           - "/etc/prometheus/file_sd/*.json"
+    relabel_configs:
+      - source_labels: [instance]
+        target_label: instance
+        regex: '([^:]+):\d+'
+        replacement: '${1}'
 
 # List of folders where ansible will look for files containing custom scrape
 # config configuration files which will be copied to
