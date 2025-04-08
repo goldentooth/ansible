@@ -1,0 +1,11 @@
+# This is a regex, so it will be matched last; as a result, we need to ensure
+# this is processed before the "catch-all" regex for dynamic services.
+
+server {
+  listen 8081;
+  resolver 10.4.0.1 valid=10s;
+  server_name ~^(?<nodename>{{ groups['all'] | join('|') }})\.(?<subdomain>[^.]+)\.goldentooth\.net$;
+  location / {
+    proxy_pass http://$nodename:80;
+  }
+}

@@ -1,9 +1,9 @@
 localhost:
 all:
   children:
-    load_balancer:
-      hosts:
-        allyrion:
+    docker:
+      children:
+        load_balancer:
     k8s_cluster:
       children:
         k8s_control_plane:
@@ -19,7 +19,13 @@ all:
             harlton:
             inchfield:
             jast:
+    load_balancer:
+      hosts:
+        allyrion:
     nfs_server:
+      children:
+        load_balancer:
+    prometheus:
       children:
         load_balancer:
     slurm:

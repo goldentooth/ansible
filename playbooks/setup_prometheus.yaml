@@ -1,0 +1,14 @@
+# Description: Setup Prometheus.
+
+- name: 'Setup Prometheus.'
+  hosts: 'prometheus'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.setup_prometheus' }
+  handlers:
+    - name: 'Restart Nginx on the load balancer.'
+      ansible.builtin.service:
+        name: 'nginx'
+        state: 'restarted'
+        enabled: true
+      delegate_to: "{{ groups['load_balancer'][0] }}"

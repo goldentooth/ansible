@@ -1,8 +1,12 @@
 collections:
   - name: 'ansible.posix'
+  - name: 'community.docker'
   - name: 'community.general'
   - name: 'kubernetes.core'
+  - name: 'prometheus.prometheus'
 roles:
   - src: 'geerlingguy.containerd'
+  - src: 'geerlingguy.docker'
   - src: 'geerlingguy.nfs'
   - src: 'geerlingguy.security'
+

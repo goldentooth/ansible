@@ -66,3 +66,15 @@
     group: "{{ nginx_group }}"
     mode: '0755'
   changed_when: false
+
+- name: 'Configure Nginx on the load balancer.'
+  ansible.builtin.template:
+    src: 'node-homepages-proxy.conf.j2'
+    dest: '/etc/nginx/sites-enabled/node-homepages-proxy.conf'
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+  delegate_to: "{{ groups['load_balancer'][0] }}"
+  run_once: true
+  notify:
+  - 'Restart Nginx on the load balancer.'

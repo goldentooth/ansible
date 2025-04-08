@@ -11,3 +11,9 @@
         name: 'nginx'
         state: 'restarted'
         enabled: true
+    - name: 'Restart Nginx on the load balancer.'
+      ansible.builtin.service:
+        name: 'nginx'
+        state: 'restarted'
+        enabled: true
+      delegate_to: "{{ groups['load_balancer'][0] }}"

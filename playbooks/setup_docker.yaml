@@ -1,0 +1,8 @@
+# Description: Setup Docker.
+
+- name: 'Setup Docker.'
+  hosts: 'docker'
+  remote_user: 'root'
+  roles:
+    - { role: 'geerlingguy.docker' }
+    - { role: 'goldentooth.setup_docker' }

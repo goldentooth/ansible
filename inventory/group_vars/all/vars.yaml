@@ -164,3 +164,9 @@ security_autoupdate_mail_on_error: true
 
 # Don't worry about `fail2ban` for now.
 security_fail2ban_enabled: true
+
+# prometheus.prometheus.prometheus
+# #############################################################################
+
+# Prometheus package version. Also accepts `latest` as parameter.
+prometheus_version: "3.2.1"
