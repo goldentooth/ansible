@@ -25,6 +25,9 @@ prometheus_alert_rules: []
 # It is compatible with the official alertmanager_config
 prometheus_alertmanager_config: []
 
+# Path to directory with prometheus configuration
+prometheus_config_dir: '/etc/prometheus'
+
 # Prometheus scrape jobs provided in same format as in the official docs
 # See https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config
 prometheus_scrape_configs: []

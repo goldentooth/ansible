@@ -1,0 +1,5 @@
+[
+  {% for host in groups['all'] %}
+  { "targets": ["{{ hostvars[host]['ansible_host'] }}:9100"], "labels": { "role": "cluster-node" } }{% if not loop.last %},{% endif %}
+  {% endfor %}
+]

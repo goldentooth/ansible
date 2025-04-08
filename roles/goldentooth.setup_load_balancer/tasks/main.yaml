@@ -1,67 +1,67 @@
 ---
-- name: 'Setup load balancer.'
-  when: 'cluster_role == "load_balancer"'
-  block:
+- name: 'Install rsyslog.'
+  ansible.builtin.apt:
+    name:
+      - 'rsyslog'
+    state: 'present'
+    cache_valid_time: 3600
+  notify: 'Restart rsyslog.'
 
-    - name: 'Install rsyslog.'
-      ansible.builtin.apt:
-        name:
-          - 'rsyslog'
-        state: 'present'
-        cache_valid_time: 3600
-      notify: 'Restart rsyslog.'
+- name: 'Install HAProxy.'
+  ansible.builtin.apt:
+    name:
+      - 'haproxy'
+    state: 'present'
+    cache_valid_time: 3600
+  notify: 'Restart HAProxy.'
 
-    - name: 'Install HAProxy.'
-      ansible.builtin.apt:
-        name:
-          - 'haproxy'
-        state: 'present'
-        cache_valid_time: 3600
-      notify: 'Restart HAProxy.'
+- name: 'Install other packages.'
+  ansible.builtin.apt:
+    name:
+      - 'python3-passlib'
+    state: 'present'
+    cache_valid_time: 3600
 
-    - name: 'Install other packages.'
-      ansible.builtin.apt:
-        name:
-          - 'python3-passlib'
-        state: 'present'
-        cache_valid_time: 3600
+- name: 'Configure HAProxy.'
+  ansible.builtin.template:
+    src: 'haproxy.cfg.j2'
+    dest: '/etc/haproxy/haproxy.cfg'
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+  notify: 'Restart HAProxy.'
 
-    - name: 'Configure HAProxy.'
-      ansible.builtin.template:
-        src: 'haproxy.cfg.j2'
-        dest: '/etc/haproxy/haproxy.cfg'
-        owner: 'root'
-        group: 'root'
-        mode: '0644'
-      notify: 'Restart HAProxy.'
+- name: 'Install Nginx.'
+  ansible.builtin.apt:
+    name:
+      - 'nginx'
+    state: 'present'
+    cache_valid_time: 3600
+  notify: 'Restart Nginx.'
 
-    - name: 'Install Nginx.'
-      ansible.builtin.apt:
-        name:
-          - 'nginx'
-        state: 'present'
-        cache_valid_time: 3600
-      notify: 'Restart Nginx.'
+- name: 'Create Nginx basic auth file.'
+  community.general.htpasswd:
+    path: '/etc/nginx/.htpasswd'
+    name: "{{ my.name.lower }}"
+    password: "{{ vault.easy_password }}"
+    owner: "{{ nginx_user }}"
+    group: "{{ nginx_group }}"
+    mode: 0640
 
-    - name: 'Create Nginx basic auth file.'
-      community.general.htpasswd:
-        path: '/etc/nginx/.htpasswd'
-        name: "{{ my.name.lower }}"
-        password: "{{ vault.easy_password }}"
-        owner: "{{ nginx_user }}"
-        group: "{{ nginx_group }}"
-        mode: 0640
+- name: 'Configure Nginx.'
+  ansible.builtin.template:
+    src: "nginx.{{ template }}.conf.j2"
+    dest: "/etc/nginx/sites-enabled/{{ template }}.conf"
+    owner: "{{ nginx_user }}"
+    group: "{{ nginx_group }}"
+    mode: '0644'
+  loop:
+    - 'basic_auth_gateway'
+    - 'zzz_metallb_services'
+  loop_control:
+    loop_var: 'template'
+  notify: 'Restart Nginx.'
 
-    - name: 'Configure Nginx.'
-      ansible.builtin.template:
-        src: "nginx.{{ template }}.conf.j2"
-        dest: "/etc/nginx/sites-enabled/{{ template }}.conf"
-        owner: "{{ nginx_user }}"
-        group: "{{ nginx_group }}"
-        mode: '0644'
-      loop:
-        - 'basic_auth_gateway'
-        - 'zzz_metallb_services'
-      loop_control:
-        loop_var: 'template'
-      notify: 'Restart Nginx.'
+- name: 'Install Prometheus Node Exporter.'
+  ansible.builtin.include_role:
+    name: 'prometheus.prometheus.node_exporter'
