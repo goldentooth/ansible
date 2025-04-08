@@ -44,6 +44,12 @@ frontend stats-frontend
   # Hide HAProxy version to improve security.
   stats hide-version
 
+frontend prometheus
+  bind *:8405
+  mode http
+  http-request use-service prometheus-exporter if { path /metrics }
+  no log
+
 # Kubernetes API server frontend configuration.
 frontend k8s-api-server
   # Listen on the IPv4 address of the load balancer on port 6443.

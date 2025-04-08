@@ -1,0 +1,7 @@
+{% for host in groups['all'] %}
+- targets:
+    - "{{ hostvars[host]['ipv4_address'] }}:9100"
+  labels:
+    instance: "{{ host }}"
+    job: "node"
+{% endfor %}

@@ -4,6 +4,7 @@
   hosts: 'load_balancer'
   remote_user: 'root'
   roles:
+    - { role: 'prometheus.prometheus.nginx_exporter' }
     - { role: 'goldentooth.setup_load_balancer' }
   handlers:
     - name: 'Restart HAProxy.'

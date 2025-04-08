@@ -4,6 +4,7 @@
   hosts: 'prometheus'
   remote_user: 'root'
   roles:
+    - { role: 'prometheus.prometheus.prometheus' }
     - { role: 'goldentooth.setup_prometheus' }
   handlers:
     - name: 'Restart Nginx on the load balancer.'
