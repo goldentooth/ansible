@@ -9,4 +9,4 @@ to customize the Bash prompt for Allyrion.
 
 Most of this is done in Ansible with dedicated roles. Some AWS infrastructure is configured via Terraform.
 
-For blow-by-blow coverage of me beating my head against this project, check out [_Kubernetes, the **Excruciating** Way_](https://goldentooth.github.io/kubernetes-the-excruciating-way/).
+For blow-by-blow coverage of me beating my head against this project, check out the [Blog](https://goldentooth.net/).
