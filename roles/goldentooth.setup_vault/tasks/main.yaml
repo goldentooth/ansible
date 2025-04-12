@@ -1,0 +1,56 @@
+---
+- name: 'Copy Vault service configuration into place on all nodes.'
+  ansible.builtin.template:
+    src: 'vault.service.j2'
+    dest: "{{ vault_service_path }}"
+    owner: 'vault'
+    group: 'vault'
+    mode: '0644'
+  notify:
+    - 'Trigger systemd daemon-reload.'
+    - 'Restart Vault service.'
+
+- name: 'Copy Vault configuration into place on all nodes.'
+  ansible.builtin.template:
+    src: "{{ file.src }}"
+    dest: "{{ file.dest }}"
+    owner: 'vault'
+    group: 'vault'
+    mode: '0600'
+  loop:
+    - src: 'vault.hcl.j2'
+      dest: "{{ vault_conf_path }}"
+    - src: 'vault.env.j2'
+      dest: "{{ vault_env_path }}"
+  loop_control:
+    loop_var: 'file'
+  notify:
+    - 'Restart Vault service.'
+
+- name: 'Ensure Raft directory exists.'
+  ansible.builtin.file:
+    path: "{{ vault_raft_path }}"
+    state: 'directory'
+    owner: 'vault'
+    group: 'vault'
+    mode: '0744'
+
+- name: 'Set Vault environment variables in ~/.bashrc.'
+  ansible.builtin.lineinfile:
+    path: '~/.bashrc'
+    regexp: "^export {{ variable.name }}"
+    line: "export {{ variable.name }}={{ variable.value}}"
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+  loop:
+    - name: 'VAULT_ADDR'
+      value: "https://{{ groups['vault'] | first }}:8200"
+    - name: 'VAULT_CACERT'
+      value: "{{ vault_certs_path }}/ca.crt"
+    - name: 'VAULT_CLIENT_CERT'
+      value: "{{ vault_certs_path }}/tls.crt"
+    - name: 'VAULT_CLIENT_KEY'
+      value: "{{ vault_certs_path }}/tls.key"
+  loop_control:
+    loop_var: 'variable'

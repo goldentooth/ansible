@@ -58,3 +58,6 @@ all:
           children:
             load_balancer:
             k8s_worker:
+    vault:
+      children:
+        consul_server:

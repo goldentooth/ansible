@@ -1,0 +1,98 @@
+---
+- name: 'Vault PKI setup for leader.'
+  block:
+
+    - name: 'Set fact for the name of the leader.'
+      ansible.builtin.set_fact:
+        vault_ca_server: "{{ clean_hostname }}"
+
+    - name: 'Create temporary certificate directory.'
+      ansible.builtin.tempfile:
+        state: 'directory'
+      register: 'temp_cert_dir'
+
+    - name: 'Generate the Vault Certificate Authority private key.'
+      community.crypto.openssl_privatekey:
+        path: "{{ temp_cert_dir.path }}/ca.key"
+        size: 4096
+        type: 'RSA'
+
+    - name: 'Generate the Vault Certificate Authority Certificate Signing Request (CSR).'
+      community.crypto.openssl_csr_pipe:
+        privatekey_path: "{{ temp_cert_dir.path }}/ca.key"
+        common_name: 'Vault'
+        use_common_name_for_san: true
+        basic_constraints:
+          - 'CA:TRUE'
+        basic_constraints_critical: true
+        key_usage:
+          - 'keyCertSign'
+        key_usage_critical: true
+      register: 'vault_ca_csr'
+
+    - name: 'Generate the Vault Certificate Authority certificate.'
+      community.crypto.x509_certificate:
+        path: "{{ temp_cert_dir.path }}/ca.pem"
+        csr_content: "{{ vault_ca_csr.csr }}"
+        privatekey_path: "{{ temp_cert_dir.path }}/ca.key"
+        provider: 'selfsigned'
+
+    - name: 'Slurp the Vault Certificate Authority certificate.'
+      ansible.builtin.slurp:
+        src: "{{ temp_cert_dir.path }}/ca.pem"
+      register: 'vault_ca_cert_base64'
+
+    - name: 'Slurp the Vault Certificate Authority private key.'
+      ansible.builtin.slurp:
+        src: "{{ temp_cert_dir.path }}/ca.key"
+      register: 'vault_ca_key_base64'
+
+  run_once: true
+
+- name: 'Generate the Vault server private key.'
+  community.crypto.openssl_privatekey:
+    path: "{{ vault_certs_path }}/tls.key"
+    size: 2048
+    type: 'RSA'
+
+- name: 'Create the Vault Certificate Signing Request (CSR).'
+  community.crypto.openssl_csr_pipe:
+    privatekey_path: "{{ vault_certs_path }}/tls.key"
+    common_name: 'Vault'
+    subject_alt_name:
+      - 'DNS:vault.service.consul'
+      - 'DNS:localhost'
+      - "DNS:{{ clean_hostname }}"
+  register: 'vault_csr'
+
+- name: 'Sign the Vault certificate with the Vault Certificate Authority.'
+  community.crypto.x509_certificate_pipe:
+    csr_content: "{{ vault_csr.csr }}"
+    provider: 'ownca'
+    ownca_path: "{{ temp_cert_dir.path }}/ca.pem"
+    ownca_privatekey_path: "{{ temp_cert_dir.path }}/ca.key"
+    ownca_not_after: +365d
+    ownca_not_before: "-1d"
+  delegate_to: "{{ vault_ca_server }}"
+  register: 'vault_certificate'
+
+- name: 'Write the Vault certificates to disk.'
+  ansible.builtin.copy:
+    dest: "{{ cert.dest }}"
+    content: "{{ cert.content }}"
+    owner: 'vault'
+    group: 'vault'
+    mode: '0600'
+  loop:
+    - dest: "{{ vault_certs_path }}/ca.crt"
+      content: "{{ vault_ca_cert_base64['content'] | b64decode }}"
+    - dest: "{{ vault_certs_path }}/ca.key"
+      content: "{{ vault_ca_key_base64['content'] | b64decode }}"
+    - dest: "{{ vault_certs_path }}/tls.crt"
+      content: |
+        {{ vault_certificate.certificate }}
+        {{ vault_ca_cert_base64['content'] | b64decode }}
+  loop_control:
+    loop_var: 'cert'
+  notify:
+    - 'Restart Vault service.'

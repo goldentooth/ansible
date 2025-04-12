@@ -1,0 +1,14 @@
+# Description: Rotate Vault TLS certificates.
+
+- name: 'Rotate vault TLS certificates.'
+  hosts: 'vault'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.rotate_vault_certs' }
+  handlers:
+
+    - name: 'Restart Vault service.'
+      ansible.builtin.systemd:
+        name: 'vault'
+        state: 'restarted'
+        enabled: true

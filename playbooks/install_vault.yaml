@@ -1,0 +1,12 @@
+# Description: Install HashiCorp Vault.
+
+- name: 'Install HashiCorp Vault.'
+  hosts: 'vault'
+  remote_user: 'root'
+  tasks:
+
+    - name: 'Install Vault.'
+      ansible.builtin.apt:
+        pkg:
+          - 'vault'
+        state: 'present'

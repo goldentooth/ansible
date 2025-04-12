@@ -1,0 +1,4 @@
+vault_path: '/opt/vault'
+vault_data_path: "{{ vault_path }}/data"
+vault_certs_path: "{{ vault_path }}/tls"
+

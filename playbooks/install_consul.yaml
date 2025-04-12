@@ -1,7 +1,12 @@
-# Description: Install Consul.
+# Description: Install HashiCorp Consul.
 
-- name: 'Install Consul.'
+- name: 'Install HashiCorp Consul.'
   hosts: 'consul'
   remote_user: 'root'
-  roles:
-    - { role: 'goldentooth.install_consul' }
+  tasks:
+
+    - name: 'Install Consul.'
+      ansible.builtin.apt:
+        pkg:
+          - 'consul'
+        state: 'present'

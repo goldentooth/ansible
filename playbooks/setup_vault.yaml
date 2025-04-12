@@ -1,0 +1,18 @@
+# Description: Setup HashiCorp Consul.
+
+- name: 'Setup HashiCorp Vault.'
+  hosts: 'vault'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.setup_vault' }
+  handlers:
+
+    - name: 'Trigger systemd daemon-reload.'
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: 'Restart Vault service.'
+      ansible.builtin.systemd:
+        name: 'vault'
+        state: 'restarted'
+        enabled: true
