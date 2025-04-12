@@ -159,7 +159,7 @@
 - name: 'Add the node CLI token to ~/.bashrc.'
   ansible.builtin.lineinfile:
     path: '~/.bashrc'
-    regexp: '^CONSUL_HTTP_TOKEN.*'
+    regexp: '^export CONSUL_HTTP_TOKEN.*'
     line: "export CONSUL_HTTP_TOKEN={{ consul_node_cli_token }}"
     state: 'present'
 
