@@ -162,3 +162,73 @@
   ansible.builtin.command:
     cmd: "consul validate {{ consul_path }}"
   changed_when: false
+
+- name: 'Flush handlers.'
+  ansible.builtin.meta: 'flush_handlers'
+
+# - name: 'Bootstrap the ACL System.'
+#   block:
+#
+#     - name: 'Ensure Consul policies directory exists.'
+#       ansible.builtin.file:
+#         path: "{{ consul_policies_path }}"
+#         state: 'directory'
+#         owner: 'consul'
+#         group: 'consul'
+#         mode: '0700'
+#
+#     - name: 'Copy policies to leader.'
+#       ansible.builtin.copy:
+#         src: "{{ file }}"
+#         dest: "{{ consul_policies_path }}/{{ file | basename }}"
+#         owner: 'consul'
+#         group: 'consul'
+#         mode: '0700'
+#       with_fileglob: "{{ role_path }}/files/policies/*.hcl"
+#       loop_control:
+#         loop_var: 'file'
+#
+#     - name: 'Create the bootstrap token.'
+#       ansible.builtin.shell:
+#         cmd: |
+#           consul acl bootstrap \
+#             -http-addr=http://{{ ipv4_address }}:8500
+#       register: 'bootstrap_token'
+#
+#     - name: 'Create the node policy.'
+#       ansible.builtin.command:
+#         cmd: |
+#           consul acl policy create \
+#             -http-addr=http://{{ ipv4_address }}:8500 \
+#             -token={{ bootstrap_token.stdout }} \
+#             -name node-policy \
+#             -rules @policies/node-policy.hcl
+#         chdir: "{{ consul_path }}"
+#
+#     - name: 'Create the node policy token.'
+#       ansible.builtin.command:
+#         cmd: |
+#           consul acl token create \
+#             -http-addr=http://{{ ipv4_address }}:8500 \
+#             -token={{ bootstrap_token.stdout }} \
+#             -description "node token" \
+#             -policy-name node-policy
+#         chdir: "{{ consul_path }}"
+#       register: 'agent_token'
+#
+#   when: "inventory_hostname in groups['consul_server']"
+#   run_once: true
+#
+# - name: 'Set the node agent token.'
+#   block:
+#
+#     - name: 'Set the node agent token.'
+#       ansible.builtin.command:
+#         cmd: |
+#           consul acl set-agent-token \
+#             -http-addr=http://{{ ipv4_address }}:8500 \
+#             -token={{ bootstrap_token.stdout }} \
+#             agent "{{ agent_token.stdout }}"
+#
+#   when: "inventory_hostname in groups['consul_server']"
+#

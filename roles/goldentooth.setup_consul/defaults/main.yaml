@@ -7,6 +7,7 @@ consul_server_conf_path: "{{ consul_path }}/server.hcl"
 consul_conf_path: "{{ consul_path }}/consul.hcl"
 consul_env_path: "{{ consul_path}}/consul.env"
 consul_service_path: "/etc/systemd/system/consul.service"
+consul_policies_path: "{{ consul_path }}/policies"
 
 consul_agent_ca_path: "{{ consul_certs_path }}/consul-agent-ca.pem"
 consul_agent_ca_key_path: "{{ consul_certs_path }}/consul-agent-ca-key.pem"
