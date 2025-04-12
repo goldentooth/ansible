@@ -1,0 +1,164 @@
+---
+- name: 'Install Consul.'
+  ansible.builtin.apt:
+    pkg:
+      - 'consul'
+    state: 'present'
+
+- name: 'Check if Consul certs have been generated.'
+  ansible.builtin.stat:
+    path: "{{ consul_certs_path }}"
+  register: 'consul_certs_dir'
+
+- name: 'Consul PKI setup for mTLS.'
+  block:
+
+    - name: 'Consul PKI setup for leader.'
+      block:
+
+        - name: 'Create temporary certificate directory.'
+          ansible.builtin.tempfile:
+            state: 'directory'
+          register: 'temp_cert_dir'
+
+        - name: 'Generate the Consul Certificate Authority.'
+          ansible.builtin.command:
+            cmd: 'consul tls ca create'
+            chdir: "{{ temp_cert_dir.path }}"
+
+        - name: 'Generate the Consul server certificate.'
+          ansible.builtin.command:
+            cmd: "consul tls cert create -server -dc dc1 -domain consul"
+            chdir: "{{ temp_cert_dir.path }}"
+
+        - name: 'Slurp the CA cert.'
+          ansible.builtin.slurp:
+            src: "{{ temp_cert_dir.path }}/{{ consul_agent_ca_path | basename }}"
+          register: 'consul_agent_ca_file_base64'
+
+        - name: 'Slurp the CA key.'
+          ansible.builtin.slurp:
+            src: "{{ temp_cert_dir.path }}/{{ consul_agent_ca_key_path | basename }}"
+          register: 'consul_agent_ca_key_file_base64'
+
+        - name: 'Slurp the server cert.'
+          ansible.builtin.slurp:
+            src: "{{ temp_cert_dir.path }}/{{ consul_agent_server_path | basename }}"
+          register: 'consul_agent_server_file_base64'
+
+        - name: 'Slurp the server key.'
+          ansible.builtin.slurp:
+            src: "{{ temp_cert_dir.path }}/{{ consul_agent_server_key_path | basename }}"
+          register: 'consul_agent_server_key_file_base64'
+
+      when: "inventory_hostname in groups['consul_server']"
+      run_once: true
+
+    - name: 'Ensure Consul certs directory exists.'
+      ansible.builtin.file:
+        path: "{{ consul_certs_path }}"
+        state: 'directory'
+        owner: 'consul'
+        group: 'consul'
+        mode: '0700'
+
+    - name: 'Copy certificates to servers.'
+      ansible.builtin.copy:
+        content: "{{ file.content }}"
+        dest: "{{ file.dest }}"
+        owner: 'consul'
+        group: 'consul'
+        mode: '0600'
+      loop:
+        - content: "{{ consul_agent_ca_file_base64['content'] | b64decode }}"
+          dest: "{{ consul_agent_ca_path }}"
+        - content: "{{ consul_agent_ca_key_file_base64['content'] | b64decode }}"
+          dest: "{{ consul_agent_ca_key_path }}"
+        - content: "{{ consul_agent_server_file_base64['content'] | b64decode }}"
+          dest: "{{ consul_agent_server_path }}"
+        - content: "{{ consul_agent_server_key_file_base64['content'] | b64decode }}"
+          dest: "{{ consul_agent_server_key_path }}"
+      loop_control:
+        loop_var: 'file'
+      no_log: true
+      when: "inventory_hostname in groups['consul_server']"
+
+    - name: 'Copy certificates to clients.'
+      ansible.builtin.copy:
+        content: "{{ file.content }}"
+        dest: "{{ file.dest }}"
+        owner: 'consul'
+        group: 'consul'
+        mode: '0600'
+      loop:
+        - content: "{{ consul_agent_ca_file_base64['content'] | b64decode }}"
+          dest: "{{ consul_agent_ca_path }}"
+      loop_control:
+        loop_var: 'file'
+      no_log: true
+      when: "inventory_hostname in groups['consul_client']"
+
+  when: "not consul_certs_dir.stat.exists"
+
+- name: 'Copy Consul service configuration into place on all nodes.'
+  ansible.builtin.template:
+    src: 'consul.service.j2'
+    dest: "{{ consul_service_path }}"
+    owner: 'consul'
+    group: 'consul'
+    mode: '0600'
+  notify:
+    - 'Trigger systemd daemon-reload.'
+
+- name: 'Flush handlers.'
+  ansible.builtin.meta: 'flush_handlers'
+
+- name: 'Generate the gossip encryption key.'
+  ansible.builtin.command:
+    cmd: 'consul keygen'
+  no_log: true
+  run_once: true
+  register: 'gossip_key'
+
+- name: 'Copy Consul configuration into place on servers.'
+  ansible.builtin.template:
+    src: "{{ file.src }}"
+    dest: "{{ file.dest }}"
+    owner: 'consul'
+    group: 'consul'
+    mode: '0600'
+  loop:
+    - src: 'server.hcl.j2'
+      dest: "{{ consul_server_conf_path }}"
+    - src: 'consul.server.env.j2'
+      dest: "{{ consul_env_path }}"
+    - src: 'consul.server.hcl.j2'
+      dest: "{{ consul_conf_path }}"
+  loop_control:
+    loop_var: 'file'
+  when: "inventory_hostname in groups['consul_server']"
+  notify:
+    - 'Restart Consul service.'
+
+- name: 'Copy Consul configuration into place on clients.'
+  ansible.builtin.template:
+    src: "{{ file.src }}"
+    dest: "{{ file.dest }}"
+    owner: 'consul'
+    group: 'consul'
+    mode: '0600'
+  loop:
+    - src: 'consul.client.env.j2'
+      dest: "{{ consul_env_path }}"
+    - src: 'consul.client.hcl.j2'
+      dest: "{{ consul_conf_path }}"
+  loop_control:
+    loop_var: 'file'
+  when: "inventory_hostname in groups['consul_client']"
+  notify:
+    - 'Restart Consul service.'
+
+- name: 'Validate Consul configuration.'
+  ansible.builtin.command:
+    cmd: "consul validate {{ consul_path }}"
+  changed_when: false

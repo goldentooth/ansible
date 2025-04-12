@@ -1,6 +1,18 @@
 localhost:
 all:
   children:
+    all_nodes:
+      hosts:
+        allyrion:
+        bettley:
+        cargyll:
+        dalt:
+        erenford:
+        fenn:
+        gardener:
+        harlton:
+        inchfield:
+        jast:
     docker:
       children:
         load_balancer:
@@ -36,4 +48,13 @@ all:
         slurm_compute:
           children:
             k8s_control_plane:
+            k8s_worker:
+    consul:
+      children:
+        consul_server:
+          children:
+            k8s_control_plane:
+        consul_client:
+          children:
+            load_balancer:
             k8s_worker:

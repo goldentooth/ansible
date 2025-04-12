@@ -1,0 +1,19 @@
+# Description: Setup Consul.
+
+- name: 'Setup Consul.'
+  hosts: 'consul'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.setup_consul' }
+  handlers:
+
+    - name: 'Trigger systemd daemon-reload.'
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: 'Restart Consul service.'
+      ansible.builtin.systemd:
+        name: 'consul'
+        state: 'restarted'
+        enabled: true
+
