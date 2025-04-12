@@ -1,0 +1,7 @@
+# Description: Install Consul.
+
+- name: 'Install Consul.'
+  hosts: 'consul'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.install_consul' }

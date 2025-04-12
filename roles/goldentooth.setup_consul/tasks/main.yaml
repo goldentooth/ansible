@@ -1,105 +1,4 @@
 ---
-- name: 'Install Consul.'
-  ansible.builtin.apt:
-    pkg:
-      - 'consul'
-    state: 'present'
-
-- name: 'Check if Consul certs have been generated.'
-  ansible.builtin.stat:
-    path: "{{ consul_certs_path }}"
-  register: 'consul_certs_dir'
-
-- name: 'Consul PKI setup for mTLS.'
-  block:
-
-    - name: 'Consul PKI setup for leader.'
-      block:
-
-        - name: 'Create temporary certificate directory.'
-          ansible.builtin.tempfile:
-            state: 'directory'
-          register: 'temp_cert_dir'
-
-        - name: 'Generate the Consul Certificate Authority.'
-          ansible.builtin.command:
-            cmd: 'consul tls ca create'
-            chdir: "{{ temp_cert_dir.path }}"
-
-        - name: 'Generate the Consul server certificate.'
-          ansible.builtin.command:
-            cmd: "consul tls cert create -server -dc dc1 -domain consul"
-            chdir: "{{ temp_cert_dir.path }}"
-
-        - name: 'Slurp the CA cert.'
-          ansible.builtin.slurp:
-            src: "{{ temp_cert_dir.path }}/{{ consul_agent_ca_path | basename }}"
-          register: 'consul_agent_ca_file_base64'
-
-        - name: 'Slurp the CA key.'
-          ansible.builtin.slurp:
-            src: "{{ temp_cert_dir.path }}/{{ consul_agent_ca_key_path | basename }}"
-          register: 'consul_agent_ca_key_file_base64'
-
-        - name: 'Slurp the server cert.'
-          ansible.builtin.slurp:
-            src: "{{ temp_cert_dir.path }}/{{ consul_agent_server_path | basename }}"
-          register: 'consul_agent_server_file_base64'
-
-        - name: 'Slurp the server key.'
-          ansible.builtin.slurp:
-            src: "{{ temp_cert_dir.path }}/{{ consul_agent_server_key_path | basename }}"
-          register: 'consul_agent_server_key_file_base64'
-
-      when: "inventory_hostname in groups['consul_server']"
-      run_once: true
-
-    - name: 'Ensure Consul certs directory exists.'
-      ansible.builtin.file:
-        path: "{{ consul_certs_path }}"
-        state: 'directory'
-        owner: 'consul'
-        group: 'consul'
-        mode: '0700'
-
-    - name: 'Copy certificates to servers.'
-      ansible.builtin.copy:
-        content: "{{ file.content }}"
-        dest: "{{ file.dest }}"
-        owner: 'consul'
-        group: 'consul'
-        mode: '0600'
-      loop:
-        - content: "{{ consul_agent_ca_file_base64['content'] | b64decode }}"
-          dest: "{{ consul_agent_ca_path }}"
-        - content: "{{ consul_agent_ca_key_file_base64['content'] | b64decode }}"
-          dest: "{{ consul_agent_ca_key_path }}"
-        - content: "{{ consul_agent_server_file_base64['content'] | b64decode }}"
-          dest: "{{ consul_agent_server_path }}"
-        - content: "{{ consul_agent_server_key_file_base64['content'] | b64decode }}"
-          dest: "{{ consul_agent_server_key_path }}"
-      loop_control:
-        loop_var: 'file'
-      no_log: true
-      when: "inventory_hostname in groups['consul_server']"
-
-    - name: 'Copy certificates to clients.'
-      ansible.builtin.copy:
-        content: "{{ file.content }}"
-        dest: "{{ file.dest }}"
-        owner: 'consul'
-        group: 'consul'
-        mode: '0600'
-      loop:
-        - content: "{{ consul_agent_ca_file_base64['content'] | b64decode }}"
-          dest: "{{ consul_agent_ca_path }}"
-      loop_control:
-        loop_var: 'file'
-      no_log: true
-      when: "inventory_hostname in groups['consul_client']"
-
-  when: "not consul_certs_dir.stat.exists"
-
 - name: 'Copy Consul service configuration into place on all nodes.'
   ansible.builtin.template:
     src: 'consul.service.j2'
@@ -112,6 +11,11 @@
 
 - name: 'Flush handlers.'
   ansible.builtin.meta: 'flush_handlers'
+
+- name: 'Remove any existing gossip key.'
+  ansible.builtin.file:
+    path: "{{ consul_data_path }}/serf/local.keyring"
+    state: 'absent'
 
 - name: 'Generate the gossip encryption key.'
   ansible.builtin.command:
@@ -166,6 +70,20 @@
 - name: 'Flush handlers.'
   ansible.builtin.meta: 'flush_handlers'
 
+- name: 'Set Consul environment variables in ~/.bashrc.'
+  ansible.builtin.lineinfile:
+    path: '/root/.bashrc'
+    regexp: "^export {{ variable.name }}"
+    line: "export {{ variable.name }}={{ variable.value}}"
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+  loop:
+    - name: 'CONSUL_HTTP_ADDR'
+      value: "http://{{ groups['consul_server'] | first }}:8500"
+  loop_control:
+    loop_var: 'variable'
+
 # - name: 'Bootstrap the ACL System.'
 #   block:
 #
@@ -191,8 +109,7 @@
 #     - name: 'Create the bootstrap token.'
 #       ansible.builtin.shell:
 #         cmd: |
-#           consul acl bootstrap \
-#             -http-addr=http://{{ ipv4_address }}:8500
+#           consul acl bootstrap
 #       register: 'bootstrap_token'
 #
 #     - name: 'Create the node policy.'

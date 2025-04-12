@@ -1,9 +1,9 @@
 datacenter = "{{ consul_datacenter }}"
 domain = "{{ consul_domain }}"
-data_dir = "/opt/consul"
+data_dir = "{{ consul_data_path }}"
 encrypt = "{{ gossip_key.stdout }}"
 bind_addr = "{{ ipv4_address }}"
-retry_join = ["{{ hostvars[groups['consul_server'] | first].ipv4_address }}"]
+retry_join = {{ groups['consul_server'] | map('extract', hostvars, 'ipv4_address') | ansible.builtin.to_json }}
 
 tls {
   defaults {
@@ -23,7 +23,7 @@ auto_encrypt {
 }
 
 acl {
-  enabled = false
+  enabled = true
   default_policy = "allow"
   enable_token_persistence = true
 }

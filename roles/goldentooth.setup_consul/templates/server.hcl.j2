@@ -6,7 +6,7 @@ ui_config {
   metrics_provider = "prometheus"
   metrics_proxy {
     {% set listen_address, listen_port = prometheus_web_listen_address | split(':') -%}
-    base_url = "http://{{ groups['prometheus'] | first }}:{{ listen_port }}"
+    base_url = "http://{{ hostvars[groups['prometheus'] | first].ipv4_address }}:{{ listen_port }}"
   }
 }
 connect {

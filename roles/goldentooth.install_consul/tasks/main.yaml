@@ -1,0 +1,6 @@
+---
+- name: 'Install Consul.'
+  ansible.builtin.apt:
+    pkg:
+      - 'consul'
+    state: 'present'

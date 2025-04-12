@@ -1,0 +1,7 @@
+# Description: Rotate Consul TLS certificates.
+
+- name: 'Rotate Consul TLS certificates.'
+  hosts: 'consul'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.rotate_consul_certs' }
