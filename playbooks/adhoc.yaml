@@ -1,0 +1,13 @@
+# Description: Run Some Ad-Hoc Ansible Tasks.
+---
+- name: 'Run Ad-Hoc Ansible Tasks.'
+  hosts: 'bettley'
+  tasks:
+
+    - name: 'Debug.'
+      ansible.builtin.debug:
+        msg: "{{ 'reset index: 1354' | regex_search('reset index: (\\d+)') }}"
+
+    - name: 'Debug.'
+      ansible.builtin.debug:
+        msg: "{{ 'reset index: 1354' | regex_search('reset index: (\\d+)', '\\1') }}"

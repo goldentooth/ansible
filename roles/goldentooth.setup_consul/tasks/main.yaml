@@ -72,7 +72,7 @@
 
 - name: 'Set Consul environment variables in ~/.bashrc.'
   ansible.builtin.lineinfile:
-    path: '/root/.bashrc'
+    path: '~/.bashrc'
     regexp: "^export {{ variable.name }}"
     line: "export {{ variable.name }}={{ variable.value}}"
     owner: 'root'

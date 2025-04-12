@@ -1,0 +1,13 @@
+# Description: Bootstrap Consul ACL.
+
+- name: 'Bootstrap Consul ACL.'
+  hosts: 'consul'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.bootstrap_consul_acl' }
+  handlers:
+    - name: 'Restart Consul service.'
+      ansible.builtin.systemd:
+        name: 'consul'
+        state: 'restarted'
+        enabled: true
