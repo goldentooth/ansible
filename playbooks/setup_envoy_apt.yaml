@@ -1,0 +1,11 @@
+# Description: Setup Envoy package repositories for Apt.
+
+- name: 'Setup Envoy package repositories for Apt.'
+  hosts: 'k8s_cluster'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.setup_envoy_apt' }
+  handlers:
+    - name: 'Update Apt cache.'
+      ansible.builtin.apt:
+        update_cache: true

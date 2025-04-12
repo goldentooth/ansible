@@ -26,13 +26,23 @@ listener "tcp" {
   tls_cert_file       = "{{ vault_certs_path }}/tls.crt"
   tls_key_file        = "{{ vault_certs_path }}/tls.key"
   tls_client_ca_file  = "{{ vault_certs_path }}/ca.crt"
+  telemetry {
+    unauthenticated_metrics_access = true
+  }
 }
 
 seal "awskms" {
   kms_key_id = "{{ vault_seal_kms_key_alias }}"
 }
 
-# telemetry {
-#   statsite_address = "{{ ipv4_address }}:8125"
-#   disable_hostname = true
-# }
+telemetry {
+  prometheus_retention_time = "24h"
+  usage_gauge_period = "10m"
+  maximum_gauge_cardinality = 500
+  enable_hostname_label = true
+  lease_metrics_epsilon = "1h"
+  num_lease_metrics_buckets = 168
+  add_lease_metrics_namespace_labels = false
+  filter_default = true
+  disable_hostname = true
+}
