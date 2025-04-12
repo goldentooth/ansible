@@ -1,4 +1,5 @@
 acl = "write"
+mesh = "write"
 
 node_prefix "" {
   policy = "write"
