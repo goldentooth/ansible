@@ -61,3 +61,6 @@ all:
     vault:
       children:
         consul_server:
+    envoy:
+      children:
+        load_balancer:

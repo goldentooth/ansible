@@ -1,0 +1,12 @@
+# Description: Install Envoy.
+
+- name: 'Install Envoy.'
+  hosts: 'envoy'
+  remote_user: 'root'
+  tasks:
+
+    - name: 'Install Envoy.'
+      ansible.builtin.apt:
+        pkg:
+          - 'envoy'
+        state: 'present'

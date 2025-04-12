@@ -1,0 +1,28 @@
+---
+- name: 'Create Envoy configuration directory.'
+  ansible.builtin.file:
+    path: "{{ envoy_config_path }}"
+    state: 'directory'
+    owner: 'envoy'
+    group: 'envoy'
+    mode: '0755'
+
+- name: 'Copy Envoy configuration into place.'
+  ansible.builtin.template:
+    src: "envoy.yaml.j2"
+    dest: "{{ envoy_config_path }}/envoy.yaml"
+    owner: 'envoy'
+    group: 'envoy'
+    mode: '0644'
+
+- name: 'Start Envoy.'
+  community.docker.docker_container:
+    name: 'envoy'
+    state: 'started'
+    image: 'thegrandpkizzle/envoy:1.26.1'
+    network_mode: 'host'
+    command: "-c {{ envoy_config_path }}/envoy.yaml"
+    restart_policy: 'unless-stopped'
+    user: 'envoy:envoy'
+    volumes:
+      - "{{ envoy_config_path }}/envoy.yaml:{{ envoy_config_path }}/envoy.yaml"

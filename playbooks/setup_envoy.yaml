@@ -1,0 +1,8 @@
+# Description: Setup Envoy.
+
+- name: 'Setup Envoy.'
+  hosts: 'envoy'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.setup_envoy' }
+  handlers:
