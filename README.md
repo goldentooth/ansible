@@ -6,4 +6,4 @@ This is normally used via a dedicated [Bash script](https://github.com/goldentoo
 
 Most of this is done in Ansible with dedicated roles. Some AWS infrastructure is configured via Terraform.
 
-For blow-by-blow coverage of me beating my head against this project, check out the [Blog](https://goldentooth.net/).
+For blow-by-blow coverage of me beating my head against this project, check out the [Clog (Changelog)](https://clog.goldentooth.net/).
