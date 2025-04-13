@@ -72,3 +72,6 @@ all:
         nomad_client:
           children:
             k8s_worker:
+    proxmox:
+      children:
+        all_nodes:

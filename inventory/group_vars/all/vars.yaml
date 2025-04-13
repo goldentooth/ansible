@@ -87,6 +87,9 @@ cluster:
 k8s_version_clean: '1.32'
 k8s_version: "v{{ k8s_version_clean }}"
 
+# The Kubernetes Apt repository URL.
+k8s_apt_repo_url: "https://pkgs.k8s.io/core:/stable:/{{ k8s_version }}/deb/"
+
 # The Kubernetes packages to install from Apt.
 k8s_packages:
   - 'kubeadm'

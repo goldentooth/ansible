@@ -5,16 +5,6 @@
   remote_user: 'root'
   tasks:
 
-    - name: 'Install packages needed to use the Envoy Apt repository.'
-      ansible.builtin.apt:
-        name:
-          - 'apt-transport-https'
-          - 'ca-certificates'
-          - 'curl'
-          - 'gnupg'
-          - 'python3-debian'
-        state: 'present'
-
     - name: 'Add Envoy repository.'
       ansible.builtin.deb822_repository:
         name: 'envoy'
@@ -26,7 +16,8 @@
         signed_by: "https://apt.envoyproxy.io/signing.key"
         state: 'present'
         enabled: true
-      notify: 'Update Apt cache.'
+      notify:
+        - 'Update Apt cache.'
 
   handlers:
     - name: 'Update Apt cache.'
