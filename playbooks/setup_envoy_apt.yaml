@@ -17,7 +17,7 @@
 
     - name: 'Add Envoy repository.'
       ansible.builtin.deb822_repository:
-        name: 'hashicorp'
+        name: 'envoy'
         types: ['deb']
         uris: ['https://apt.envoyproxy.io']
         suites: ["{{ ansible_distribution_release | lower }}"]

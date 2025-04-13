@@ -1,0 +1,12 @@
+# Description: Install HashiCorp Nomad.
+
+- name: 'Install HashiCorp Nomad.'
+  hosts: 'nomad'
+  remote_user: 'root'
+  tasks:
+
+    - name: 'Install Nomad.'
+      ansible.builtin.apt:
+        pkg:
+          - 'nomad'
+        state: 'present'

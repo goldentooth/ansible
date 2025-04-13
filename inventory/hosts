@@ -64,3 +64,11 @@ all:
     envoy:
       children:
         load_balancer:
+    nomad:
+      children:
+        nomad_server:
+          children:
+            k8s_control_plane:
+        nomad_client:
+          children:
+            k8s_worker:
