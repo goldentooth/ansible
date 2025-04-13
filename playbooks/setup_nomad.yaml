@@ -1,0 +1,18 @@
+# Description: Setup Nomad.
+
+- name: 'Setup Nomad.'
+  hosts: 'nomad'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.setup_nomad' }
+  handlers:
+
+    - name: 'Trigger systemd daemon-reload.'
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: 'Restart Nomad service.'
+      ansible.builtin.systemd:
+        name: 'nomad'
+        state: 'restarted'
+        enabled: true

@@ -8,6 +8,7 @@
     mode: '0600'
   notify:
     - 'Trigger systemd daemon-reload.'
+    - 'Restart Consul service.'
 
 - name: 'Flush handlers.'
   ansible.builtin.meta: 'flush_handlers'
@@ -24,7 +25,7 @@
   run_once: true
   register: 'gossip_key'
 
-- name: 'Copy Consul configuration into place on servers.'
+- name: 'Copy Consul configuration into place on all nodes.'
   ansible.builtin.template:
     src: "{{ file.src }}"
     dest: "{{ file.dest }}"
@@ -32,39 +33,18 @@
     group: 'consul'
     mode: '0600'
   loop:
-    - src: 'server.hcl.j2'
-      dest: "{{ consul_server_conf_path }}"
-    - src: 'consul.server.env.j2'
+    - src: 'consul.env.j2'
       dest: "{{ consul_env_path }}"
-    - src: 'consul.server.hcl.j2'
-      dest: "{{ consul_conf_path }}"
+    - src: 'consul.hcl.j2'
+      dest: "{{ consul_hcl_path }}"
   loop_control:
     loop_var: 'file'
-  when: "inventory_hostname in groups['consul_server']"
-  notify:
-    - 'Restart Consul service.'
-
-- name: 'Copy Consul configuration into place on clients.'
-  ansible.builtin.template:
-    src: "{{ file.src }}"
-    dest: "{{ file.dest }}"
-    owner: 'consul'
-    group: 'consul'
-    mode: '0600'
-  loop:
-    - src: 'consul.client.env.j2'
-      dest: "{{ consul_env_path }}"
-    - src: 'consul.client.hcl.j2'
-      dest: "{{ consul_conf_path }}"
-  loop_control:
-    loop_var: 'file'
-  when: "inventory_hostname in groups['consul_client']"
   notify:
     - 'Restart Consul service.'
 
 - name: 'Validate Consul configuration.'
   ansible.builtin.command:
-    cmd: "consul validate {{ consul_path }}"
+    cmd: "consul validate {{ consul_config_path }}"
   changed_when: false
 
 - name: 'Flush handlers.'

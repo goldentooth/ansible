@@ -6,7 +6,8 @@ vault_certs_path: "{{ vault_path }}/tls"
 vault_raft_path: "{{ vault_data_path }}/raft"
 
 vault_service_path: "/etc/systemd/system/vault.service"
-vault_conf_path: "{{ vault_config_path }}/vault.hcl"
+
+vault_hcl_path: "{{ vault_config_path }}/vault.hcl"
 vault_env_path: "{{ vault_config_path }}/vault.env"
 
 vault_seal_kms_key_alias: "alias/goldentooth/vault-seal"

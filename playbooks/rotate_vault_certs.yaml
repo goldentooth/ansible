@@ -1,6 +1,6 @@
 # Description: Rotate Vault TLS certificates.
 
-- name: 'Rotate vault TLS certificates.'
+- name: 'Rotate Vault TLS certificates.'
   hosts: 'vault'
   remote_user: 'root'
   roles:

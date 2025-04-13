@@ -1,0 +1,84 @@
+---
+- name: 'Nomad PKI setup for leader.'
+  block:
+
+    - name: 'Set fact for the name of the leader.'
+      ansible.builtin.set_fact:
+        nomad_ca_server: "{{ clean_hostname }}"
+
+    - name: 'Create temporary certificate directory.'
+      ansible.builtin.tempfile:
+        state: 'directory'
+      register: 'temp_cert_dir'
+
+    - name: 'Generate the Nomad Certificate Authority private key and certificate.'
+      ansible.builtin.command:
+        cmd: 'nomad tls ca create'
+        chdir: "{{ temp_cert_dir.path }}"
+
+    - name: 'Set facts for additional arguments that we can use for server and client certificates.'
+      set_fact:
+        nomad_server_dns_args: "{{ groups['nomad_server'] | map('regex_replace', '^(.*)$', '-additional-dnsname \\1') | join(' ') }}"
+        nomad_server_ip_args: "{{ groups['nomad_server'] | map('extract', hostvars) | map(attribute='ipv4_address') | map('regex_replace', '^(.*)$', '-additional-ipaddress \\1') | join(' ') }}"
+
+    - name: 'Generate a certificate for the Nomad server.'
+      ansible.builtin.command:
+        cmd: nomad tls cert create -server -region global {{ nomad_server_dns_args }} {{ nomad_server_ip_args }}
+        chdir: "{{ temp_cert_dir.path }}"
+
+    - name: 'Generate a certificate for the Nomad client.'
+      ansible.builtin.command:
+        cmd: 'nomad tls cert create -client'
+        chdir: "{{ temp_cert_dir.path }}"
+
+    - name: 'Generate a certificate for the Nomad CLI.'
+      ansible.builtin.command:
+        cmd: 'nomad tls cert create -cli'
+        chdir: "{{ temp_cert_dir.path }}"
+
+    - name: 'Slurp the Nomad certificates and keys.'
+      ansible.builtin.slurp:
+        src: "{{ temp_cert_dir.path }}/{{ cert.name }}"
+      loop:
+        - name: 'nomad-agent-ca.pem'
+          path_var: 'nomad_ca_cert_path'
+        - name: 'nomad-agent-ca-key.pem'
+          path_var: 'nomad_ca_key_path'
+        - name: 'global-server-nomad.pem'
+          path_var: 'nomad_server_cert_path'
+        - name: 'global-server-nomad-key.pem'
+          path_var: 'nomad_server_key_path'
+        - name: 'global-client-nomad.pem'
+          path_var: 'nomad_client_cert_path'
+        - name: 'global-client-nomad-key.pem'
+          path_var: 'nomad_client_key_path'
+        - name: 'global-cli-nomad.pem'
+          path_var: 'nomad_cli_cert_path'
+        - name: 'global-cli-nomad-key.pem'
+          path_var: 'nomad_cli_key_path'
+      loop_control:
+        loop_var: 'cert'
+      register: 'nomad_certs'
+
+  run_once: true
+
+- name: 'Create Nomad certificates directory.'
+  ansible.builtin.file:
+    path: "{{ nomad_certs_path }}"
+    state: 'directory'
+    owner: 'nomad'
+    group: 'nomad'
+    mode: '0700'
+
+- name: 'Write the Nomad certificates to disk.'
+  ansible.builtin.copy:
+    dest: "{{ lookup('ansible.builtin.vars', cert.cert.path_var) }}"
+    content: "{{ cert.content | b64decode }}"
+    owner: 'nomad'
+    group: 'nomad'
+    mode: '0600'
+  loop: "{{ nomad_certs.results }}"
+  loop_control:
+    loop_var: 'cert'
+  notify:
+    - 'Restart Nomad service.'

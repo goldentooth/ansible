@@ -1,0 +1,53 @@
+datacenter = "{{ nomad_datacenter }}"
+data_dir  = "{{ nomad_data_path }}"
+bind_addr = "{{ ipv4_address }}"
+
+{% if clean_hostname in groups['nomad_server'] -%}
+server {
+  enabled          = true
+  bootstrap_expect = {{ groups['nomad_server'] | length }}
+  encrypt = "{{ nomad_gossip_key.stdout }}"
+  heartbeat_grace = "1h"
+  server_join {
+    retry_join     = {{ groups['nomad_server'] | map('extract', hostvars, 'ipv4_address') | ansible.builtin.to_json }}
+    retry_max      = 3
+    retry_interval = "15s"
+  }
+}
+{% endif %}
+
+consul {
+  ssl = true
+  address = "{{ ipv4_address }}:8500"
+  auto_advertise      = false
+  server_auto_join    = false
+  client_auto_join    = false
+}
+
+{% if clean_hostname in groups['nomad_client'] -%}
+client {
+  enabled = true
+  server_join {
+    retry_join     = {{ groups['nomad_server'] | map('extract', hostvars, 'ipv4_address') | ansible.builtin.to_json }}
+    retry_max      = 3
+    retry_interval = "15s"
+  }
+}
+{% endif %}
+
+tls {
+  http = true
+  rpc  = true
+
+  ca_file   = "{{ nomad_ca_cert_path }}"
+  {% if clean_hostname in groups['nomad_server'] -%}
+  cert_file = "{{ nomad_server_cert_path }}"
+  key_file  = "{{ nomad_server_key_path }}"
+  {% else -%}
+  cert_file = "{{ nomad_client_cert_path }}"
+  key_file  = "{{ nomad_client_key_path }}"
+  {% endif %}
+
+  verify_server_hostname = true
+  verify_https_client    = true
+}

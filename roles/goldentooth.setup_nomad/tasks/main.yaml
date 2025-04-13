@@ -1,0 +1,74 @@
+---
+- name: 'Set facts for the Nomad service user and group.'
+  ansible.builtin.set_fact:
+    nomad_service_user: 'nomad'
+    nomad_service_group: 'nomad'
+  when: "clean_hostname in groups['nomad_server']"
+
+- name: 'Set facts for the Nomad service user and group.'
+  ansible.builtin.set_fact:
+    nomad_service_user: 'root'
+    nomad_service_group: 'root'
+  when: "clean_hostname in groups['nomad_client']"
+
+- name: 'Copy Nomad service configuration into place on all nodes.'
+  ansible.builtin.template:
+    src: 'nomad.service.j2'
+    dest: "{{ nomad_service_path }}"
+    owner: 'nomad'
+    group: 'nomad'
+    mode: '0644'
+  notify:
+    - 'Trigger systemd daemon-reload.'
+    - 'Restart Nomad service.'
+
+- name: 'Generate the gossip encryption key.'
+  ansible.builtin.command:
+    cmd: 'nomad operator gossip keyring generate'
+  no_log: true
+  run_once: true
+  register: 'nomad_gossip_key'
+
+- name: 'Copy Nomad configuration into place on all nodes.'
+  ansible.builtin.template:
+    src: "{{ file.src }}"
+    dest: "{{ file.dest }}"
+    owner: 'nomad'
+    group: 'nomad'
+    mode: '0600'
+  loop:
+    - src: 'nomad.hcl.j2'
+      dest: "{{ nomad_hcl_path }}"
+    - src: 'nomad.env.j2'
+      dest: "{{ nomad_env_path }}"
+  loop_control:
+    loop_var: 'file'
+  notify:
+    - 'Restart Nomad service.'
+
+- name: 'Set Nomad environment variables in ~/.bashrc.'
+  ansible.builtin.lineinfile:
+    path: '~/.bashrc'
+    regexp: "^export {{ variable.name }}"
+    line: "export {{ variable.name }}={{ variable.value}}"
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+  loop:
+    - name: 'NOMAD_ADDR'
+      value: "https://{{ groups['nomad_server'] | first }}:4646"
+    - name: 'NOMAD_CACERT'
+      value: "{{ nomad_ca_cert_path }}"
+    - name: 'NOMAD_CLIENT_CERT'
+      value: "{{ nomad_cli_cert_path }}"
+    - name: 'NOMAD_CLIENT_KEY'
+      value: "{{ nomad_cli_key_path }}"
+  loop_control:
+    loop_var: 'variable'
+
+- name: 'Add Nomad-relevant line in ~/.bashrc.'
+  ansible.builtin.lineinfile:
+    path: '~/.bashrc'
+    line: 'complete -C /usr/bin/nomad nomad'
+    regexp: '^complete -C \/usr\/bin\/nomad nomad'
+    state: 'present'

@@ -1,0 +1,14 @@
+# Description: Rotate Nomad TLS certificates.
+
+- name: 'Rotate Nomad TLS certificates.'
+  hosts: 'nomad'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.rotate_nomad_certs' }
+  handlers:
+
+    - name: 'Restart Nomad service.'
+      ansible.builtin.systemd:
+        name: 'nomad'
+        state: 'restarted'
+        enabled: true

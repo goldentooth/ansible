@@ -1,0 +1,12 @@
+nomad_path: '/opt/nomad'
+
+nomad_certs_path: "{{ nomad_path }}/certs"
+
+nomad_ca_cert_path: "{{ nomad_certs_path }}/nomad-ca-cert.pem"
+nomad_ca_key_path: "{{ nomad_certs_path }}/nomad-ca-key.pem"
+nomad_server_cert_path: "{{ nomad_certs_path }}/nomad-server-cert.pem"
+nomad_server_key_path: "{{ nomad_certs_path }}/nomad-server-key.pem"
+nomad_client_cert_path: "{{ nomad_certs_path }}/nomad-client-cert.pem"
+nomad_client_key_path: "{{ nomad_certs_path }}/nomad-client-key.pem"
+nomad_cli_cert_path: "{{ nomad_certs_path }}/nomad-cli-cert.pem"
+nomad_cli_key_path: "{{ nomad_certs_path }}/nomad-cli-key.pem"

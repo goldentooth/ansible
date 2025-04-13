@@ -183,7 +183,7 @@
 
     - name: 'Add the client node token.'
       ansible.builtin.lineinfile:
-        path: "{{ consul_conf_path }}"
+        path: "{{ consul_hcl_path }}"
         line: "    agent = \"{{consul_client_node_token}}\""
         regex: '^\s+agent = .*'
         state: 'present'

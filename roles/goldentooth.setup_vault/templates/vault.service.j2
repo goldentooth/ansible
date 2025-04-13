@@ -1,7 +1,7 @@
 [Unit]
 Description="HashiCorp Vault"
 Documentation="https://developer.hashicorp.com/vault/docs"
-ConditionFileNotEmpty={{ vault_conf_path }}
+ConditionFileNotEmpty={{ vault_hcl_path }}
 
 [Service]
 User=vault
