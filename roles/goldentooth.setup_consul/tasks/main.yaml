@@ -1,17 +1,4 @@
 ---
-- name: 'Copy Consul service configuration into place on all nodes.'
-  ansible.builtin.template:
-    src: 'consul.service.j2'
-    dest: "{{ consul_service_path }}"
-    owner: 'consul'
-    group: 'consul'
-    mode: '0600'
-  notify:
-    - 'Trigger systemd daemon-reload.'
-    - 'Restart Consul service.'
-
-- name: 'Flush handlers.'
-  ansible.builtin.meta: 'flush_handlers'
 
 - name: 'Remove any existing gossip key.'
   ansible.builtin.file:
@@ -25,30 +12,61 @@
   run_once: true
   register: 'gossip_key'
 
-- name: 'Copy Consul configuration into place on all nodes.'
-  ansible.builtin.template:
-    src: "{{ file.src }}"
-    dest: "{{ file.dest }}"
-    owner: 'consul'
-    group: 'consul'
-    mode: '0600'
-  loop:
-    - src: 'consul.env.j2'
-      dest: "{{ consul_env_path }}"
-    - src: 'consul.hcl.j2'
-      dest: "{{ consul_hcl_path }}"
-  loop_control:
-    loop_var: 'file'
-  notify:
-    - 'Restart Consul service.'
+- name: 'Set a fact for the Consul maybe-leader.'
+  ansible.builtin.set_fact:
+    consul_maybe_leader: "{{ groups['consul_server'] | first }}"
+  run_once: true
 
-- name: 'Validate Consul configuration.'
-  ansible.builtin.command:
-    cmd: "consul validate {{ consul_config_path }}"
-  changed_when: false
+- name: 'Setup Consul on server nodes.'
+  block:
 
-- name: 'Flush handlers.'
-  ansible.builtin.meta: 'flush_handlers'
+    - name: 'Set fact for the Consul agent token on server nodes.'
+      ansible.builtin.set_fact:
+        consul_agent_token: "{{ vault.consul.mgmt_token }}"
+
+    - name: 'Update configuration for server nodes.'
+      ansible.builtin.include_tasks: 'update_config.yaml'
+
+  when: "clean_hostname in groups['consul_server']"
+
+- name: 'Setup Consul on client nodes.'
+  block:
+
+    - name: 'Create a Consul agent policy for each node.'
+      community.general.consul_policy:
+        host: "{{ consul_maybe_leader }}"
+        scheme: 'http'
+        port: 8500
+        validate_certs: false
+        token: "{{ vault.consul.mgmt_token }}"
+        ca_path: "{{ consul_agent_ca_path }}"
+        name: "{{ consul_agent_policy_name }}"
+        description: "Consul agent policy for {{ clean_hostname }}"
+        rules: "{{ lookup('ansible.builtin.template', 'consul.agent.policy.hcl.j2') }}"
+      register: 'consul_policy'
+      until: 'consul_policy is not failed'
+
+    - name: 'Create Consul agent tokens.'
+      community.general.consul_token:
+        host: "{{ consul_maybe_leader }}"
+        scheme: 'http'
+        port: 8500
+        validate_certs: false
+        token: "{{ vault.consul.mgmt_token }}"
+        description: "Consul agent token"
+        policies:
+          - name: "{{ consul_agent_policy_name }}"
+      register: 'consul_agent_token_object'
+      until: 'consul_agent_token_object is not failed'
+
+    - name: 'Set fact for the Consul agent token on client nodes.'
+      ansible.builtin.set_fact:
+        consul_agent_token: "{{ consul_agent_token_object.token.SecretID}}"
+
+  when: "clean_hostname in groups['consul_client']"
+
+- name: 'Update configuration for all nodes.'
+  ansible.builtin.include_tasks: 'update_config.yaml'
 
 - name: 'Set Consul environment variables in ~/.bashrc.'
   ansible.builtin.lineinfile:

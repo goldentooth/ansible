@@ -1,0 +1,34 @@
+operator = "read"
+peering = "read"
+
+node_prefix "" {
+  policy = "read"
+}
+
+node "{{ clean_hostname }}" {
+  policy = "write"
+}
+
+service_prefix "" {
+  policy = "read"
+}
+
+agent_prefix "" {
+  policy = "read"
+}
+
+agent "{{ clean_hostname }}" {
+  policy = "write"
+}
+
+connect {
+  policy = "read"
+}
+
+key_prefix "" {
+  policy = "read"
+}
+
+session_prefix "" {
+  policy = "read"
+}

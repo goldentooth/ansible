@@ -1,0 +1,39 @@
+---
+- name: 'Copy Consul service configuration into place on all nodes.'
+  ansible.builtin.template:
+    src: 'consul.service.j2'
+    dest: "{{ consul_service_path }}"
+    owner: 'consul'
+    group: 'consul'
+    mode: '0600'
+  notify:
+    - 'Trigger systemd daemon-reload.'
+    - 'Restart Consul service.'
+
+- name: 'Flush handlers.'
+  ansible.builtin.meta: 'flush_handlers'
+
+- name: 'Copy Consul configuration into place on all nodes.'
+  ansible.builtin.template:
+    src: "{{ file.src }}"
+    dest: "{{ file.dest }}"
+    owner: 'consul'
+    group: 'consul'
+    mode: '0600'
+  loop:
+    - src: 'consul.env.j2'
+      dest: "{{ consul_env_path }}"
+    - src: 'consul.hcl.j2'
+      dest: "{{ consul_hcl_path }}"
+  loop_control:
+    loop_var: 'file'
+  notify:
+    - 'Restart Consul service.'
+
+- name: 'Validate Consul configuration.'
+  ansible.builtin.command:
+    cmd: "consul validate {{ consul_config_path }}"
+  changed_when: false
+
+- name: 'Flush handlers.'
+  ansible.builtin.meta: 'flush_handlers'

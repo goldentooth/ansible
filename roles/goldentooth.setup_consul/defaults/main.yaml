@@ -13,3 +13,5 @@ consul_agent_ca_path: "{{ consul_certs_path }}/consul-agent-ca.pem"
 consul_agent_ca_key_path: "{{ consul_certs_path }}/consul-agent-ca-key.pem"
 consul_agent_server_path: "{{ consul_certs_path }}/dc1-server-consul-0.pem"
 consul_agent_server_key_path: "{{ consul_certs_path }}/dc1-server-consul-0-key.pem"
+
+consul_agent_policy_name: "consul-agent-{{ clean_hostname }}"

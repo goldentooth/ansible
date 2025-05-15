@@ -34,7 +34,7 @@ acl {
   enable_token_persistence = true
   {% if clean_hostname in groups['consul_client'] %}
   tokens {
-    agent = "some-fake-token"
+    agent = "{{ consul_agent_token }}"
   }
   {% endif %}
 }
@@ -64,6 +64,9 @@ addresses {
   grpc = "{{ ipv4_address }}"
 }
 ports {
-  grpc_tls = 8502
+  http      = 8500
+  https     = 8501
+  grpc      = 8502
+  grpc_tls  = 8503
 }
 {% endif %}
