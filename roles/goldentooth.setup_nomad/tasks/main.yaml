@@ -1,4 +1,49 @@
 ---
+
+- name: 'Update the policies.'
+  community.general.consul_policy:
+    host: "{{ groups['consul_server'][0] }}"
+    token: "{{ vault.consul.mgmt_token }}"
+    name: "{{ policy.name }}"
+    description: "{{ policy.description }}"
+    rules: "{{ policy.rules }}"
+  loop:
+    - name: 'nomad-client'
+      description: 'Nomad client policy'
+      rules: "{{ lookup('ansible.builtin.file', role_path ~ '/files/nomad.client.policy.hcl') }}"
+    - name: 'nomad-server'
+      description: 'Nomad server policy'
+      rules: "{{ lookup('ansible.builtin.file', role_path ~ '/files/nomad.server.policy.hcl') }}"
+  loop_control:
+    loop_var: 'policy'
+  run_once: true
+
+- name: 'Create Consul client tokens.'
+  community.general.consul_token:
+    host: "{{ groups['consul_server'][0] }}"
+    scheme: 'https'
+    validate_certs: false
+    port: 8500
+    token: "{{ vault.consul.mgmt_token }}"
+    description: "Nomad client token"
+    policies:
+      - name: 'nomad-client'
+  when: "clean_hostname in groups['nomad_client']"
+  register: 'nomad_consul_token'
+
+- name: 'Create Consul server tokens.'
+  community.general.consul_token:
+    host: "{{ groups['consul_server'][0] }}"
+    scheme: 'https'
+    validate_certs: false
+    port: 8500
+    token: "{{ vault.consul.mgmt_token }}"
+    description: "Nomad server token"
+    policies:
+      - name: 'nomad-server'
+  when: "clean_hostname in groups['nomad_server']"
+  register: 'nomad_consul_token'
+
 - name: 'Set facts for the Nomad service user and group.'
   ansible.builtin.set_fact:
     nomad_service_user: 'nomad'
