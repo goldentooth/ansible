@@ -21,7 +21,7 @@
 - name: 'Create Consul client tokens.'
   community.general.consul_token:
     host: "{{ groups['consul_server'][0] }}"
-    scheme: 'https'
+    scheme: 'http'
     validate_certs: false
     port: 8500
     token: "{{ vault.consul.mgmt_token }}"
@@ -34,7 +34,7 @@
 - name: 'Create Consul server tokens.'
   community.general.consul_token:
     host: "{{ groups['consul_server'][0] }}"
-    scheme: 'https'
+    scheme: 'http'
     validate_certs: false
     port: 8500
     token: "{{ vault.consul.mgmt_token }}"

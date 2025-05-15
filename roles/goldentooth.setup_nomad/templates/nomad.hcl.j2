@@ -18,7 +18,7 @@ server {
 
 consul {
   address             = "{{ ipv4_address }}:8500"
-  token               = "{{ nomad_consul_token['SecretID'] }}"
+  token               = "{{ nomad_consul_token }}"
   grpc_address        = "{{ ipv4_address }}:8502"
 
   ssl                 = true
