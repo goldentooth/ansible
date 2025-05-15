@@ -36,9 +36,16 @@ my:
 # vault:
 #   easy_password: <string>
 #   ssh_public_key: <string>
+#   github_token: <string>
 #   aws:
 #     access_key_id: <string>
 #     secret_access_key: <string>
+#   consul:
+#     mgmt_token: <string>
+#   vault:
+#     recovery_keys:
+#       - <string>
+#     initial_root_token: <string>
 
 # #############################################################################
 # Shared variables.
@@ -80,6 +87,9 @@ cluster_name: 'goldentooth'
 cluster:
   name: "{{ cluster_name }}"
   domain: "{{ cluster_name }}.net"
+  host_fqdn: "{{ clean_hostname }}.{{ cluster_name }}.net"
+  node_fqdn: "{{ clean_hostname }}.nodes.{{ cluster_name }}.net"
+  host_ip: "{{ ipv4_address }}"
   cloudfront_distribution_domain: "home-proxy.{{ cluster_name }}.net"
   cloudfront_origin_domain: "clearbrook.{{ cluster_name }}.net"
 
