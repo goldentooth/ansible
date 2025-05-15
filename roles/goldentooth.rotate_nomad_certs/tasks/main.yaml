@@ -60,6 +60,16 @@
         loop_var: 'cert'
       register: 'nomad_certs'
 
+    - name: 'Slurp the Consul Certificate Authority certificate.'
+      ansible.builtin.slurp:
+        src: "{{ consul_ca_cert_path }}"
+      register: 'consul_ca_cert_base64'
+
+    - name: 'Slurp the Consul Certificate Authority private key.'
+      ansible.builtin.slurp:
+        src: "{{ consul_ca_key_path }}"
+      register: 'consul_ca_key_base64'
+
   run_once: true
 
 - name: 'Create Nomad certificates directory.'
@@ -80,5 +90,54 @@
   loop: "{{ nomad_certs.results }}"
   loop_control:
     loop_var: 'cert'
+  notify:
+    - 'Restart Nomad service.'
+
+- name: 'Generate the Nomad Consul communication private key.'
+  community.crypto.openssl_privatekey:
+    path: "{{ nomad_consul_key_path }}"
+    size: 2048
+    type: 'RSA'
+    owner: 'nomad'
+    group: 'nomad'
+    mode: '0600'
+  register: 'nomad_consul_key'
+
+- name: 'Create the Nomad Consul Certificate Signing Request (CSR).'
+  community.crypto.openssl_csr_pipe:
+    privatekey_path: "{{ nomad_consul_key_path }}"
+    common_name: 'Nomad-Consul'
+    extended_key_usage:
+      - 'clientAuth'
+  register: 'nomad_consul_csr'
+
+- name: 'Sign the Nomad Consul certificate with the Consul Certificate Authority.'
+  community.crypto.x509_certificate_pipe:
+    csr_content: "{{ nomad_consul_csr.csr }}"
+    provider: 'ownca'
+    ownca_path: "{{ consul_ca_cert_path }}"
+    ownca_privatekey_path: "{{ consul_ca_key_path }}"
+    ownca_not_after: +365d
+    ownca_not_before: "-1d"
+  delegate_to: "{{ nomad_ca_server }}"
+  register: 'nomad_consul_certificate'
+
+- name: 'Write the Nomad Consul certificate to disk.'
+  ansible.builtin.copy:
+    dest: "{{ nomad_consul_cert_path }}"
+    content: "{{ nomad_consul_certificate.certificate }}"
+    owner: 'nomad'
+    group: 'nomad'
+    mode: '0600'
+  notify:
+    - 'Restart Nomad service.'
+
+- name: 'Write the Consul CA certificate to disk.'
+  ansible.builtin.copy:
+    dest: "{{ nomad_consul_ca_path }}"
+    content: "{{ consul_ca_cert_base64.content | b64decode }}"
+    owner: 'nomad'
+    group: 'nomad'
+    mode: '0600'
   notify:
     - 'Restart Nomad service.'

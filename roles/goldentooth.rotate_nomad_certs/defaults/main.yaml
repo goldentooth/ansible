@@ -10,3 +10,11 @@ nomad_client_cert_path: "{{ nomad_certs_path }}/nomad-client-cert.pem"
 nomad_client_key_path: "{{ nomad_certs_path }}/nomad-client-key.pem"
 nomad_cli_cert_path: "{{ nomad_certs_path }}/nomad-cli-cert.pem"
 nomad_cli_key_path: "{{ nomad_certs_path }}/nomad-cli-key.pem"
+nomad_consul_cert_path: "{{ nomad_certs_path }}/nomad-consul-cert.pem"
+nomad_consul_key_path: "{{ nomad_certs_path }}/nomad-consul-key.pem"
+nomad_consul_ca_path: "{{ nomad_certs_path }}/nomad-consul-ca.pem"
+
+consul_config_path: '/etc/consul.d'
+consul_certs_path: "{{ consul_config_path }}/certs"
+consul_ca_cert_path: "{{ consul_certs_path }}/consul-agent-ca.pem"
+consul_ca_key_path: "{{ consul_certs_path }}/consul-agent-ca-key.pem"
