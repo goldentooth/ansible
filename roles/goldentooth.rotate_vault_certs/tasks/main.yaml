@@ -54,6 +54,9 @@
     path: "{{ vault_certs_path }}/tls.key"
     size: 2048
     type: 'RSA'
+    owner: 'vault'
+    group: 'vault'
+    mode: '0600'
 
 - name: 'Create the Vault Certificate Signing Request (CSR).'
   community.crypto.openssl_csr_pipe:
