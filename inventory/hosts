@@ -16,6 +16,9 @@ all:
     docker:
       children:
         load_balancer:
+    certificate_authority:
+      hosts:
+        jast:
     k8s_cluster:
       children:
         k8s_control_plane:

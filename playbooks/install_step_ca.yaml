@@ -1,0 +1,13 @@
+# Description: Install Smallstep packages.
+
+- name: 'Install Smallstep packages (`step` and `step-ca`).'
+  hosts: 'certificate_authority'
+  remote_user: 'root'
+  tasks:
+
+    - name: 'Install Smallstep packages.'
+      ansible.builtin.apt:
+        pkg:
+          - 'step-ca'
+          - 'step-cli'
+        state: 'present'
