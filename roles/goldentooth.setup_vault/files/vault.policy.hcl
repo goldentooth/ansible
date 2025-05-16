@@ -10,6 +10,6 @@ agent_prefix "" {
   policy = "read"
 }
 
-session_prefix  {
+session_prefix "" {
   policy = "write"
 }
