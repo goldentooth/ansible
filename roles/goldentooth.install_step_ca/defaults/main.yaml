@@ -4,3 +4,4 @@ step_ca_service_path: '/etc/systemd/system/step-ca.service'
 step_ca_config_path_suffix: '/config/ca.json'
 step_ca_config_path: "{{ step_ca_path }}{{ step_ca_config_path_suffix }}"
 step_ca_intermediate_password_path: "{{ step_ca_path }}/.password_intermediate.txt"
+step_ca_executable: 'step-ca'
