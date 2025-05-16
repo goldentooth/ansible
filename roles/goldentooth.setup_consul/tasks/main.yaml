@@ -12,11 +12,6 @@
   run_once: true
   register: 'gossip_key'
 
-- name: 'Set a fact for the Consul maybe-leader.'
-  ansible.builtin.set_fact:
-    consul_maybe_leader: "{{ groups['consul_server'] | first }}"
-  run_once: true
-
 - name: 'Setup Consul on server nodes.'
   block:
 
