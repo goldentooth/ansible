@@ -1,7 +1,7 @@
 # Description: Install Smallstep packages.
 
 - name: 'Install Smallstep packages (`step` and `step-ca`).'
-  hosts: 'certificate_authority'
+  hosts: 'step_ca'
   remote_user: 'root'
   roles:
     - { role: 'goldentooth.install_step_ca' }

@@ -1,7 +1,7 @@
 # Description: Initialize Root and Intermediate CAs.
 
 - name: 'Initialize Root and Intermediate CAs.'
-  hosts: 'certificate_authority'
+  hosts: 'step_ca'
   remote_user: 'root'
   roles:
     - { role: 'goldentooth.init_cluster_ca' }

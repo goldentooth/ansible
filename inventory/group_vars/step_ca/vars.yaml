@@ -12,6 +12,7 @@ step_ca_defaults_config_path: "{{ step_ca_config_path }}/defaults.json"
 
 step_ca_root_password_path: "{{ step_ca_data_path }}/.password_root.txt"
 step_ca_intermediate_password_path: "{{ step_ca_data_path }}/.password_intermediate.txt"
+step_ca_jwk_provisioner_password_path: "{{ step_ca_data_path }}/.password_jwk_provisioner.txt"
 
 step_ca_address: "{{ ipv4_address }}:9443"
 

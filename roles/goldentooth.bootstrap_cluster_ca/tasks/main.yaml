@@ -6,7 +6,7 @@
   ansible.builtin.slurp:
     src: "{{ step_ca_defaults_config_path }}"
   register: 'step_ca_defaults_file_base64'
-  delegate_to: "{{ groups['certificate_authority'][0] }}"
+  delegate_to: "{{ groups['step_ca'][0] }}"
 
 - name: 'Set cluster CA defaults.'
   ansible.builtin.set_fact:
@@ -20,8 +20,11 @@
 - name: 'Bootstrap cluster CA.'
   ansible.builtin.shell:
     cmd: |
-      {{ step_ca_executable }} ca bootstrap \
+      {{ step_ca_executable }} \
+        ca bootstrap \
         --ca-url={{ step_ca_url }} \
         --fingerprint={{ step_ca_fingerprint }} \
         --install \
         --force
+  environment:
+    STEPPATH: "{{ step_ca_data_path }}"

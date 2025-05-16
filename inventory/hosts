@@ -16,7 +16,7 @@ all:
     docker:
       children:
         load_balancer:
-    certificate_authority:
+    step_ca:
       hosts:
         jast:
     k8s_cluster:

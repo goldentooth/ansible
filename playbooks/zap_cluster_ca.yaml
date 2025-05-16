@@ -1,7 +1,7 @@
 # Description: Delete the old cluster Certificate Authority.
 
 - name: 'Zap Certificate Authority.'
-  hosts: 'certificate_authority'
+  hosts: 'step_ca'
   remote_user: 'root'
   tasks:
 

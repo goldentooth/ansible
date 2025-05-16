@@ -35,6 +35,12 @@ my:
 #     secret_access_key: <string>
 #   consul:
 #     mgmt_token: <string>
+#   step_ca:
+#     passwords:
+#       root: <string>
+#       intermediate: <string>
+#       provisioners:
+#         jwk: <string>
 #   vault:
 #     recovery_keys:
 #       - <string>

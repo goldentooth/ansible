@@ -13,8 +13,17 @@
 
 - name: 'Ensure intermediate password file is present.'
   ansible.builtin.copy:
-    content: "{{ vault.certificate_authority.passwords.intermediate }}"
+    content: "{{ vault.step_ca.passwords.intermediate }}"
     dest: "{{ step_ca_intermediate_password_path }}"
+    owner: "{{ step_ca_user }}"
+    group: "{{ step_ca_user }}"
+    mode: 0600
+  no_log: true
+
+- name: 'Ensure JWK provisioner password file is present.'
+  ansible.builtin.copy:
+    content: "{{ vault.step_ca.passwords.provisioners.jwk }}"
+    dest: "{{ step_ca_jwk_provisioner_password_path }}"
     owner: "{{ step_ca_user }}"
     group: "{{ step_ca_user }}"
     mode: 0600
@@ -25,7 +34,7 @@
 
     - name: 'Create root key password file.'
       ansible.builtin.copy:
-        content: "{{ vault.certificate_authority.passwords.root }}"
+        content: "{{ vault.step_ca.passwords.root }}"
         dest: "{{ step_ca_root_password_path }}"
         owner: "{{ step_ca_user }}"
         group: "{{ step_ca_user }}"
@@ -45,7 +54,7 @@
             --address={{ step_ca_address }} \
             --provisioner={{ step_ca_provisioner }} \
             --password-file={{ step_ca_root_password_path }} \
-            --provisioner-password-file={{ step_ca_intermediate_password_path }}
+            --provisioner-password-file={{ step_ca_jwk_provisioner_password_path }}
       environment:
         STEPPATH: "{{ step_ca_data_path }}"
       become: true
