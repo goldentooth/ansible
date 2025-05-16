@@ -1,0 +1,48 @@
+---
+- name: 'Install Smallstep packages.'
+  ansible.builtin.apt:
+    pkg:
+      - 'step-ca'
+      - 'step-cli'
+    state: 'present'
+
+- name: 'Create Smallstep CA user.'
+  ansible.builtin.user:
+    name: "{{ step_ca_user }}"
+    password: "*"
+    home: "{{ step_ca_path }}"
+    shell: /usr/sbin/nologin
+    system: true
+  no_log: true
+
+- name: 'Paths are present'
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ step_ca_user }}"
+    group: "{{ step_ca_user }}"
+    mode: 0700
+  loop:
+    - "{{ step_ca_path }}"
+    - "{{ step_ca_path }}/db"
+
+- name: '.step symlink is present'
+  ansible.builtin.file:
+    src: "{{ step_ca_path }}"
+    dest: "{{ step_ca_path }}/.step"
+    state: 'link'
+    owner: "{{ step_ca_user }}"
+    group: "{{ step_ca_user }}"
+    mode: 0700
+  notify:
+    - 'Restart step-ca service.'
+
+- name: 'Create Smallstep CA service file.'
+  ansible.builtin.template:
+    src: 'step-ca.service.j2'
+    dest: "{{ step_ca_service_path }}"
+    owner: 'root'
+    group: 'root'
+    mode: 0644
+  notify:
+    - 'Restart step-ca service.'
