@@ -2,6 +2,10 @@
 # This file was inspired by Max Hoesel's Ansible collection for Smallstep.
 # See https://github.com/maxhoesel-ansible/ansible-collection-smallstep
 
+- name: 'Install step-ca package and service.'
+  ansible.builtin.include_role:
+    name: 'goldentooth.install_step_ca'
+
 - name: 'Look for existing configuration.'
   ansible.builtin.stat:
     path: "{{ step_ca_config_path }}"
@@ -31,13 +35,14 @@
     - name: 'Initialize Certificate Authority.'
       ansible.builtin.shell:
         cmd: |
-          {{ step_ca_executable }} ca init \
+          {{ step_ca_executable }} \
+            ca init \
             --ssh \
             --name={{ step_ca_name }} \
             --deployment-type=standalone \
             --dns={{ step_ca_dns }} \
             --address={{ step_ca_address }} \
-            --provisioner={{ step_ca_first_provisioner }} \
+            --provisioner={{ step_ca_temporary_provisioner }} \
             --password-file={{ step_ca_root_password_path }} \
             --provisioner-password-file={{ step_ca_root_password_path }}
       environment:
@@ -50,7 +55,8 @@
     - name: 'Change password for intermediate and ssh keys.'
       ansible.builtin.shell:
         cmd: |
-          {{ step_ca_executable }} crypto change-pass {{ step_ca_data_path }}/secrets/{{ item }} \
+          {{ step_ca_executable }} \
+            crypto change-pass {{ step_ca_data_path }}/secrets/{{ item }} \
             --force \
             --password-file={{ step_ca_root_password_path }} \
             --new-password-file={{ step_ca_intermediate_password_path }}
