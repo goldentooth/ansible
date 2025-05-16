@@ -1,0 +1,12 @@
+# Description: Install Smallstep CLI package.
+
+- name: 'Install Smallstep CLI package (`step`).'
+  hosts: 'all'
+  remote_user: 'root'
+  tasks:
+
+    - name: 'Install Smallstep packages.'
+      ansible.builtin.apt:
+        pkg:
+          - 'step-cli'
+        state: 'present'
