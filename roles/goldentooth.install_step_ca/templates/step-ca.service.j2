@@ -15,7 +15,7 @@ User={{ step_ca_user }}
 Group={{ step_ca_user }}
 Environment=STEPPATH={{ step_ca_path }}
 WorkingDirectory={{ step_ca_path }}
-ExecStart={{ step_ca_executable }} {{ step_ca_config_path_suffix }} --password-file {{ step_ca_intermediate_password_path }}
+ExecStart=step-ca {{ step_ca_config_path_suffix }} --password-file {{ step_ca_intermediate_password_path }}
 ExecReload=/bin/kill --signal HUP $MAINPID
 Restart=on-failure
 RestartSec=5

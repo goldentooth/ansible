@@ -1,0 +1,15 @@
+# Description: Initialize Root and Intermediate CAs.
+
+- name: 'Initialize Root and Intermediate CAs.'
+  hosts: 'certificate_authority'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.init_ca' }
+  handlers:
+
+    - name: 'Restart step-ca service.'
+      ansible.builtin.systemd_service:
+        name: 'step-ca'
+        state: 'restarted'
+        daemon_reload: true
+        enabled: true

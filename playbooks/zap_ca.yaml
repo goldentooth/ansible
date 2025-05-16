@@ -1,0 +1,21 @@
+# Description: Delete the old Certificate Authority.
+
+- name: 'Zap Certificate Authority.'
+  hosts: 'certificate_authority'
+  remote_user: 'root'
+  tasks:
+
+    - name: 'Zap Certificate Authority.'
+      ansible.builtin.file:
+        path: "{{ step_ca_path }}"
+        state: 'absent'
+        force: true
+
+  handlers:
+
+    - name: 'Restart step-ca service.'
+      ansible.builtin.systemd_service:
+        name: 'step-ca'
+        state: 'restarted'
+        daemon_reload: true
+        enabled: true

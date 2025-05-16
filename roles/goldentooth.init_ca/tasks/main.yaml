@@ -1,0 +1,69 @@
+---
+- name: 'Look for existing configuration.'
+  ansible.builtin.stat:
+    path: "{{ step_ca_config_path }}"
+  register: 'step_ca_config'
+
+- name: 'Ensure intermediate password file is present.'
+  ansible.builtin.copy:
+    content: "{{ vault.certificate_authority.passwords.intermediate }}"
+    dest: "{{ step_ca_intermediate_password_path }}"
+    owner: "{{ step_ca_user }}"
+    group: "{{ step_ca_user }}"
+    mode: 0600
+  no_log: true
+
+- name: 'Initialize certificate authority.'
+  block:
+
+    - name: 'Create root key password file.'
+      ansible.builtin.copy:
+        content: "{{ vault.certificate_authority.passwords.root }}"
+        dest: "{{ step_ca_root_password_path }}"
+        owner: "{{ step_ca_user }}"
+        group: "{{ step_ca_user }}"
+        mode: 0600
+      no_log: true
+
+    - name: 'Initialize Certificate Authority.'
+      ansible.builtin.shell:
+        cmd: |
+          {{ step_ca_executable }} ca init \
+            --ssh \
+            --name={{ step_ca_name }} \
+            --dns={{ step_ca_dns }} \
+            --address={{ step_ca_address }} \
+            --provisioner={{ step_ca_temporary_provisioner }} \
+            --password-file={{ step_ca_root_password_path }} \
+            --provisioner-password-file={{ step_ca_root_password_path }}
+      environment:
+        STEPPATH: "{{ step_ca_path }}"
+      become: true
+      become_user: "{{ step_ca_user }}"
+      notify:
+        - 'Restart step-ca service.'
+
+    - name: 'Change password for intermediate and ssh keys.'
+      ansible.builtin.shell:
+        cmd: |
+          {{ step_ca_executable }} crypto change-pass {{ step_ca_path }}/secrets/{{ item }} \
+            --force \
+            --password-file={{ step_ca_root_password_path }} \
+            --new-password-file={{ step_ca_intermediate_password_path }}
+      loop:
+        - 'intermediate_ca_key'
+        - 'ssh_host_ca_key'
+        - 'ssh_user_ca_key'
+      loop_control:
+        loop_var: 'item'
+      become: true
+      become_user: "{{ step_ca_user }}"
+
+  always:
+
+    - name: 'Ensure root password file is absent.'
+      ansible.builtin.file:
+        path: "{{ step_ca_root_password_path }}"
+        state: 'absent'
+
+  when: 'not step_ca_config.stat.exists'
