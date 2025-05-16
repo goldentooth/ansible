@@ -2,7 +2,7 @@
 
 - name: 'Update the policies.'
   community.general.consul_policy:
-    host: "{{ groups['consul_server'][0] }}"
+    host: "{{ consul_maybe_leader }}"
     token: "{{ vault.consul.mgmt_token }}"
     name: "{{ policy.name }}"
     description: "{{ policy.description }}"
@@ -18,43 +18,17 @@
     loop_var: 'policy'
   run_once: true
 
-- name: 'Create Consul client tokens.'
+- name: 'Create Consul tokens.'
   community.general.consul_token:
-    host: "{{ groups['consul_server'][0] }}"
+    host: "{{ consul_maybe_leader }}"
     scheme: 'http'
     validate_certs: false
     port: 8500
     token: "{{ vault.consul.mgmt_token }}"
-    description: "Nomad client token"
+    description: "Nomad {{ nomad_role }} token"
     policies:
-      - name: 'nomad-client'
-  when: "clean_hostname in groups['nomad_client']"
+      - name: 'nomad-{{ nomad_role }}'
   register: 'nomad_consul_token'
-
-- name: 'Create Consul server tokens.'
-  community.general.consul_token:
-    host: "{{ groups['consul_server'][0] }}"
-    scheme: 'http'
-    validate_certs: false
-    port: 8500
-    token: "{{ vault.consul.mgmt_token }}"
-    description: "Nomad server token"
-    policies:
-      - name: 'nomad-server'
-  when: "clean_hostname in groups['nomad_server']"
-  register: 'nomad_consul_token'
-
-- name: 'Set facts for the Nomad service user and group.'
-  ansible.builtin.set_fact:
-    nomad_service_user: 'nomad'
-    nomad_service_group: 'nomad'
-  when: "clean_hostname in groups['nomad_server']"
-
-- name: 'Set facts for the Nomad service user and group.'
-  ansible.builtin.set_fact:
-    nomad_service_user: 'root'
-    nomad_service_group: 'root'
-  when: "clean_hostname in groups['nomad_client']"
 
 - name: 'Copy Nomad service configuration into place on all nodes.'
   ansible.builtin.template:

@@ -1,3 +1,6 @@
+acl  = "write"
+mesh = "write"
+
 agent_prefix "" {
   policy = "read"
 }
@@ -10,10 +13,7 @@ service_prefix "" {
   policy = "write"
 }
 
-acl  = "write"
-mesh = "write"
-
-namespace "nomad" {
+namespace "default" {
   acl = "write"
 
   key_prefix "" {

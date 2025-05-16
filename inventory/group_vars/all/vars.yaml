@@ -21,16 +21,9 @@ my:
     lower: 'nathan'
     full: 'Nathan Douglas'
   email:
-    github: 'github@darkdell.net'
+    github: 'github@goldentooth.net'
   local:
     timezone: 'America/New_York'
-  domain:
-    # Personal domain, e.g. blog, email, etc.
-    personal: 'darkdell.net'
-    # Private-facing domain, i.e. internal services.
-    private: 'hellholt.net'
-    # Public-facing domain, i.e. public services.
-    public: 'bitterbridge.net'
 
 # Data structure of the vault.
 # vault:
@@ -132,6 +125,12 @@ python_versions:
   - '3.12'
   - '3.13'
 
+consul_maybe_leader: "{{ groups['consul_server'] | first }}"
+consul_role: "{{ 'server' if 'consul_server' in group_names else 'client' }}"
+nomad_role: "{{ 'server' if 'nomad_server' in group_names else 'client' }}"
+nomad_service_user: "{{ 'nomad' if nomad_role == 'server' else 'root' }}"
+nomad_service_group: "{{ 'nomad' if nomad_role == 'server' else 'root' }}"
+
 # #############################################################################
 # Variables for vendored roles.
 # #############################################################################
@@ -170,7 +169,7 @@ security_autoupdate_reboot: true
 security_autoupdate_reboot_time: "0{{ host_index }}:00"
 
 # Send an email to this address when updates are installed.
-security_autoupdate_mail_to: "{{ clean_hostname }}@{{ my.domain.private }}"
+security_autoupdate_mail_to: "{{ clean_hostname }}@{{ cluster.domain }}"
 
 # Send an email to this address if there's an error.
 security_autoupdate_mail_on_error: true

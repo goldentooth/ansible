@@ -10,7 +10,7 @@ service_prefix "" {
   policy = "write"
 }
 
-namespace "nomad" {
+namespace "default" {
   acl = "read"
 
   key_prefix "" {
