@@ -1,4 +1,7 @@
 ---
+# This file was inspired by Max Hoesel's Ansible collection for Smallstep.
+# See https://github.com/maxhoesel-ansible/ansible-collection-smallstep
+
 - name: 'Look for existing configuration.'
   ansible.builtin.stat:
     path: "{{ step_ca_config_path }}"
