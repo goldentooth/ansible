@@ -45,7 +45,7 @@
             --address={{ step_ca_address }} \
             --provisioner={{ step_ca_provisioner }} \
             --password-file={{ step_ca_root_password_path }} \
-            --provisioner-password-file={{ step_ca_root_password_path }}
+            --provisioner-password-file={{ step_ca_intermediate_password_path }}
       environment:
         STEPPATH: "{{ step_ca_data_path }}"
       become: true
