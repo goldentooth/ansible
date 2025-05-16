@@ -37,12 +37,13 @@
         cmd: |
           {{ step_ca_executable }} \
             ca init \
+            --acme \
             --ssh \
             --name={{ step_ca_name }} \
             --deployment-type=standalone \
             --dns={{ step_ca_dns }} \
             --address={{ step_ca_address }} \
-            --provisioner={{ step_ca_temporary_provisioner }} \
+            --provisioner={{ step_ca_provisioner }} \
             --password-file={{ step_ca_root_password_path }} \
             --provisioner-password-file={{ step_ca_root_password_path }}
       environment:

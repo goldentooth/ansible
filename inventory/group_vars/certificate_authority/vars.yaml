@@ -15,4 +15,4 @@ step_ca_intermediate_password_path: "{{ step_ca_data_path }}/.password_intermedi
 
 step_ca_address: "{{ ipv4_address }}:9443"
 
-step_ca_temporary_provisioner: "temporary-provisioner"
+step_ca_provisioner: 'default'
