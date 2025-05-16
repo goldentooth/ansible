@@ -6,4 +6,4 @@ step_ca_name: "{{ cluster.name }}"
 step_ca_dns: "{{ cluster.host_fqdn }},{{ cluster.node_fqdn }},{{ ipv4_address }}"
 step_ca_address: "{{ ipv4_address }}:9443"
 step_ca_executable: 'step'
-step_ca_temporary_provisioner: "step-ca@{{ cluster.domain }}"
+step_ca_first_provisioner: "sshpop"
