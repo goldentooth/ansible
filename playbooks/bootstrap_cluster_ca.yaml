@@ -1,0 +1,13 @@
+# Description: Bootstrap cluster Certificate Authority (CA).
+
+- name: 'Bootstrap cluster Certificate Authority (CA).'
+  hosts: 'all'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.bootstrap_cluster_ca' }
+  handlers:
+    - name: 'Restart Consul service.'
+      ansible.builtin.systemd:
+        name: 'consul'
+        state: 'restarted'
+        enabled: true

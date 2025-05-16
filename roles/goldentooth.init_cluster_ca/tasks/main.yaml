@@ -40,7 +40,7 @@
             --password-file={{ step_ca_root_password_path }} \
             --provisioner-password-file={{ step_ca_root_password_path }}
       environment:
-        STEPPATH: "{{ step_ca_path }}"
+        STEPPATH: "{{ step_ca_data_path }}"
       become: true
       become_user: "{{ step_ca_user }}"
       notify:
@@ -49,7 +49,7 @@
     - name: 'Change password for intermediate and ssh keys.'
       ansible.builtin.shell:
         cmd: |
-          {{ step_ca_executable }} crypto change-pass {{ step_ca_path }}/secrets/{{ item }} \
+          {{ step_ca_executable }} crypto change-pass {{ step_ca_data_path }}/secrets/{{ item }} \
             --force \
             --password-file={{ step_ca_root_password_path }} \
             --new-password-file={{ step_ca_intermediate_password_path }}

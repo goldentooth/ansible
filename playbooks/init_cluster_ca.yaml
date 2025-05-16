@@ -4,7 +4,7 @@
   hosts: 'certificate_authority'
   remote_user: 'root'
   roles:
-    - { role: 'goldentooth.init_ca' }
+    - { role: 'goldentooth.init_cluster_ca' }
   handlers:
 
     - name: 'Restart step-ca service.'

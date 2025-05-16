@@ -1,0 +1,28 @@
+---
+# This file was inspired by Max Hoesel's Ansible collection for Smallstep.
+# See https://github.com/maxhoesel-ansible/ansible-collection-smallstep
+
+- name: 'Retrieve current cluster CA information from CA server.'
+  ansible.builtin.slurp:
+    src: "{{ step_ca_defaults_config_path }}"
+  register: 'step_ca_defaults_file_base64'
+  delegate_to: "{{ groups['certificate_authority'][0] }}"
+
+- name: 'Set cluster CA defaults.'
+  ansible.builtin.set_fact:
+    step_ca_defaults: "{{ step_ca_defaults_file_base64.content | b64decode | from_json }}"
+
+- name: 'Set cluster CA information.'
+  ansible.builtin.set_fact:
+    step_ca_url: "{{ step_ca_defaults['ca-url'] }}"
+    step_ca_fingerprint: "{{ step_ca_defaults['fingerprint'] }}"
+
+- name: 'Bootstrap cluster CA.'
+  ansible.builtin.shell:
+    cmd: |
+      {{ step_ca_executable }} ca bootstrap \
+        --ca-url={{ step_ca_url }} \
+        --fingerprint={{ step_ca_fingerprint }} \
+        --install \
+        --force
+    creates: '~/.step/certs/root_ca.crt'

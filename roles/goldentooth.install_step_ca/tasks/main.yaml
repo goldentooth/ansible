@@ -10,7 +10,7 @@
   ansible.builtin.user:
     name: "{{ step_ca_user }}"
     password: "*"
-    home: "{{ step_ca_path }}"
+    home: "{{ step_ca_data_path }}"
     shell: /usr/sbin/nologin
     system: true
   no_log: true
@@ -23,13 +23,13 @@
     group: "{{ step_ca_user }}"
     mode: 0700
   loop:
-    - "{{ step_ca_path }}"
-    - "{{ step_ca_path }}/db"
+    - "{{ step_ca_data_path }}"
+    - "{{ step_ca_data_path }}/db"
 
 - name: '.step symlink is present'
   ansible.builtin.file:
-    src: "{{ step_ca_path }}"
-    dest: "{{ step_ca_path }}/.step"
+    src: "{{ step_ca_data_path }}"
+    dest: "{{ step_ca_data_path }}/.step"
     state: 'link'
     owner: "{{ step_ca_user }}"
     group: "{{ step_ca_user }}"

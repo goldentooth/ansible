@@ -1,4 +1,4 @@
-# Description: Delete the old Certificate Authority.
+# Description: Delete the old cluster Certificate Authority.
 
 - name: 'Zap Certificate Authority.'
   hosts: 'certificate_authority'
@@ -7,7 +7,7 @@
 
     - name: 'Zap Certificate Authority.'
       ansible.builtin.file:
-        path: "{{ step_ca_path }}"
+        path: "{{ step_ca_data_path }}"
         state: 'absent'
         force: true
 
