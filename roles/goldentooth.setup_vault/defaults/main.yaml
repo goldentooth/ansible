@@ -11,3 +11,4 @@ vault_hcl_path: "{{ vault_config_path }}/vault.hcl"
 vault_env_path: "{{ vault_config_path }}/vault.env"
 
 vault_seal_kms_key_alias: "alias/goldentooth/vault-seal"
+vault_consul_policy_name: "vault"

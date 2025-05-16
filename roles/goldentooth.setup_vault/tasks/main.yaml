@@ -1,4 +1,26 @@
 ---
+- name: 'Create/update the Vault Consul Policy.'
+  community.general.consul_policy:
+    host: "{{ groups['consul_server'][0] }}"
+    token: "{{ vault.consul.mgmt_token }}"
+    name: "{{ vault_consul_policy_name }}"
+    description: 'Vault policy'
+    rules: "{{ lookup('ansible.builtin.file', role_path ~ '/files/vault.policy.hcl') }}"
+  run_once: true
+
+- name: 'Create Consul client tokens.'
+  community.general.consul_token:
+    host: "{{ groups['consul_server'][0] }}"
+    scheme: 'http'
+    validate_certs: false
+    port: 8500
+    token: "{{ vault.consul.mgmt_token }}"
+    description: "Vault token"
+    policies:
+      - name: "{{ vault_consul_policy_name }}"
+  when: "clean_hostname in groups['vault']"
+  register: 'vault_consul_token'
+
 - name: 'Copy Vault service configuration into place on all nodes.'
   ansible.builtin.template:
     src: 'vault.service.j2'
@@ -26,14 +48,6 @@
     loop_var: 'file'
   notify:
     - 'Restart Vault service.'
-
-- name: 'Ensure Raft directory exists.'
-  ansible.builtin.file:
-    path: "{{ vault_raft_path }}"
-    state: 'directory'
-    owner: 'vault'
-    group: 'vault'
-    mode: '0744'
 
 - name: 'Set Vault environment variables in ~/.bashrc.'
   ansible.builtin.lineinfile:
