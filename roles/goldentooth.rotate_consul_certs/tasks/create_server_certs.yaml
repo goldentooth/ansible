@@ -18,6 +18,8 @@
         -key={{ consul_agent_ca_key_path }} \
         -node={{ clean_hostname }}
     chdir: "{{ temp_cert_dir.path }}"
+  notify:
+    - 'Restart Consul service.'
 
 - name: 'Copy certificates into place.'
   ansible.builtin.copy:
@@ -34,4 +36,5 @@
       dest: "{{ consul_agent_server_key_path }}"
   loop_control:
     loop_var: 'file'
-  no_log: true
+  notify:
+    - 'Restart Consul service.'

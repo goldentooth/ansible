@@ -5,3 +5,10 @@
   remote_user: 'root'
   roles:
     - { role: 'goldentooth.rotate_consul_certs' }
+  handlers:
+
+    - name: 'Restart Consul service.'
+      ansible.builtin.systemd:
+        name: 'consul'
+        state: 'restarted'
+        enabled: true

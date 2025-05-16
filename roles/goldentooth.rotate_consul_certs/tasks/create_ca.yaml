@@ -13,6 +13,8 @@
           consul tls ca create \
             -domain={{ consul_domain }}
         chdir: "{{ temp_cert_dir.path }}"
+      notify:
+        - 'Restart Consul service.'
 
     - name: 'Slurp the CA cert.'
       ansible.builtin.slurp:
@@ -35,6 +37,8 @@
     group: 'consul'
     mode: '0600'
   when: "inventory_hostname in groups['consul_server']"
+  notify:
+    - 'Restart Consul service.'
 
 - name: 'Copy CA certificate to all nodes.'
   ansible.builtin.copy:
@@ -43,3 +47,5 @@
     owner: 'consul'
     group: 'consul'
     mode: '0600'
+  notify:
+    - 'Restart Consul service.'
