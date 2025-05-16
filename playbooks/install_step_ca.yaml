@@ -3,11 +3,13 @@
 - name: 'Install Smallstep packages (`step` and `step-ca`).'
   hosts: 'certificate_authority'
   remote_user: 'root'
-  tasks:
+  roles:
+    - { role: 'goldentooth.install_step_ca' }
+  handlers:
 
-    - name: 'Install Smallstep packages.'
-      ansible.builtin.apt:
-        pkg:
-          - 'step-ca'
-          - 'step-cli'
-        state: 'present'
+    - name: 'Restart step-ca service.'
+      ansible.builtin.systemd_service:
+        name: 'step-ca'
+        state: 'restarted'
+        daemon_reload: true
+        enabled: true
