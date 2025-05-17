@@ -43,7 +43,7 @@
   community.general.htpasswd:
     path: '/etc/nginx/.htpasswd'
     name: "{{ my.name.lower }}"
-    password: "{{ vault.easy_password }}"
+    password: "{{ secret_vault.easy_password }}"
     owner: "{{ nginx_user }}"
     group: "{{ nginx_group }}"
     mode: 0640

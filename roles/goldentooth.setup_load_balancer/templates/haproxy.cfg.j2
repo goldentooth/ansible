@@ -38,7 +38,7 @@ frontend stats-frontend
   # Set the realm to access the stats page.
   stats realm HAProxy\ Statistics
   # Set the username and password to access the stats page.
-  stats auth {{ my.name.lower }}:{{ vault.easy_password }}
+  stats auth {{ my.name.lower }}:{{ secret_vault.easy_password }}
   # Sets the maximum inactivity time on the client side.
   timeout client 3600s
   # Hide HAProxy version to improve security.
