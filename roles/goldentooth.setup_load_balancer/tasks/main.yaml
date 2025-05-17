@@ -44,16 +44,16 @@
     path: '/etc/nginx/.htpasswd'
     name: "{{ my.name.lower }}"
     password: "{{ secret_vault.easy_password }}"
-    owner: "{{ nginx_user }}"
-    group: "{{ nginx_group }}"
+    owner: "{{ load_balancer.nginx.user }}"
+    group: "{{ load_balancer.nginx.group }}"
     mode: 0640
 
 - name: 'Configure Nginx.'
   ansible.builtin.template:
     src: "nginx.{{ template }}.conf.j2"
     dest: "/etc/nginx/sites-enabled/{{ template }}.conf"
-    owner: "{{ nginx_user }}"
-    group: "{{ nginx_group }}"
+    owner: "{{ load_balancer.nginx.user }}"
+    group: "{{ load_balancer.nginx.group }}"
     mode: '0644'
   loop:
     - 'basic_auth_gateway'
