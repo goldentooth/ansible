@@ -3,7 +3,7 @@
 - name: 'Configure the hosts in the cluster.'
   hosts: 'all'
   roles:
-    - { role: 'goldentooth.configure' }
+    - { role: 'goldentooth.pi_config' }
     - { role: 'goldentooth.set_hostname' }
     - { role: 'goldentooth.set_motd' }
     - { role: 'goldentooth.set_bash_prompt' }
