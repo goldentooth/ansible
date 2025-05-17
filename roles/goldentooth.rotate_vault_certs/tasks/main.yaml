@@ -7,8 +7,8 @@
         vault.service.consul \
         "{{ vault.cert_path }}" \
         "{{ vault.key_path }}" \
-        --provisioner="{{ step_ca.provisioner }}" \
-        --password-file="{{ step_ca.provisioner_password_path }}" \
+        --provisioner="{{ step_ca.default_provisioner.name }}" \
+        --password-file="{{ step_ca.default_provisioner.password_path }}" \
         --san='vault.service.consul' \
         --san='localhost' \
         --san="{{ clean_hostname }}" \

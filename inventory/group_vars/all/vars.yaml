@@ -231,27 +231,29 @@ nomad:
 
 # Step-CA data:
 step_ca:
-  bind_address: "{{ ipv4_address }}:9443"
-  ca_config_path: '/etc/step-ca/config/ca.json'
-  ca_etc_cert_path: '/etc/step-ca/certs/root_ca.crt'
-  ca_executable: 'step-ca'
-  ca_installed_cert_path: '/root/.step/certs/root_ca.crt'
-  ca_ref_cert_path: "/etc/ssl/certs/{{ cluster.name }}.pem"
-  ca_shared_cert_path: "/usr/local/share/ca-certificates/{{ cluster.name }}.crt"
-  ca_name: "{{ cluster.name }}"
-  ca_sans: "{{ host.fqdn }},{{ node.fqdn }},{{ ipv4_address }}"
-  config_path: '/etc/step-ca/config'
-  defaults_config_path: '/etc/step-ca/config/defaults.json'
-  etc_path: '/etc/step-ca'
-  executable: 'step'
-  intermediate_password_path: "/etc/step-ca/.password_intermediate.txt"
-  provisioner: 'default'
-  provisioner_etc_password_path: '/etc/step-ca/.password_jwk_provisioner.txt'
-  provisioner_password_path: '/root/.step/jwk_provisioner_password.txt'
-  provisioner_password:  "{{ secret_vault.step_ca.passwords.provisioners.jwk }}"
-  root_password_path: "/etc/step-ca/.password_root.txt"
   server: "{{ groups['step_ca'] | first }}"
-  user: 'step'
+  ca:
+    bind_address: "{{ ipv4_address }}:9443"
+    ca_config_file_path: '/etc/step-ca/config/ca.json'
+    config_path: '/etc/step-ca/config'
+    defaults_config_file_path: '/etc/step-ca/config/defaults.json'
+    etc_path: '/etc/step-ca'
+    executable: 'step-ca'
+    password_file_paths:
+      default_provisioner: '/etc/step-ca/.password_jwk_provisioner.txt'
+      intermediate: "/etc/step-ca/.password_intermediate.txt"
+      root: "/etc/step-ca/.password_root.txt"
+    name: "{{ cluster.name }}"
+    root_cert_path: '/etc/step-ca/certs/root_ca.crt'
+    sans: "{{ host.fqdn }},{{ node.fqdn }},{{ ipv4_address }}"
+    user: 'step'
+  executable: 'step'
+  root_cert_path: "/etc/ssl/certs/{{ cluster.name }}.pem"
+  shared_cert_path: "/usr/local/share/ca-certificates/{{ cluster.name }}.crt"
+  default_provisioner:
+    name: 'default'
+    password_path: '/root/.step/jwk_default_provisioner.password.txt'
+    password:  "{{ secret_vault.step_ca.passwords.provisioners.jwk }}"
 
 # Node Homepage data:
 node_homepage:

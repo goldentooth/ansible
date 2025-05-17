@@ -8,9 +8,9 @@
 
 - name: 'Create Smallstep CA user.'
   ansible.builtin.user:
-    name: "{{ step_ca.user }}"
+    name: "{{ step_ca.ca.user }}"
     password: "*"
-    home: "{{ step_ca.etc_path }}"
+    home: "{{ step_ca.ca.etc_path }}"
     shell: /usr/sbin/nologin
     system: true
   no_log: true
@@ -19,20 +19,20 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    owner: "{{ step_ca.user }}"
-    group: "{{ step_ca.user }}"
+    owner: "{{ step_ca.ca.user }}"
+    group: "{{ step_ca.ca.user }}"
     mode: 0700
   loop:
-    - "{{ step_ca.etc_path }}"
-    - "{{ step_ca.etc_path }}/db"
+    - "{{ step_ca.ca.etc_path }}"
+    - "{{ step_ca.ca.etc_path }}/db"
 
 - name: '.step symlink is present'
   ansible.builtin.file:
-    src: "{{ step_ca.etc_path }}"
-    dest: "{{ step_ca.etc_path }}/.step"
+    src: "{{ step_ca.ca.etc_path }}"
+    dest: "{{ step_ca.ca.etc_path }}/.step"
     state: 'link'
-    owner: "{{ step_ca.user }}"
-    group: "{{ step_ca.user }}"
+    owner: "{{ step_ca.ca.user }}"
+    group: "{{ step_ca.ca.user }}"
     mode: 0700
   notify:
     - 'Restart step-ca service.'

@@ -33,7 +33,7 @@
         port: 8500
         validate_certs: false
         token: "{{ secret_vault.consul.mgmt_token }}"
-        ca_path: "{{ step_ca.ca_ref_cert_path }}"
+        ca_path: "{{ step_ca.root_cert_path }}"
         name: "{{ consul.agent_policy_name }}"
         description: "Consul agent policy for {{ clean_hostname }}"
         rules: "{{ lookup('ansible.builtin.template', 'consul.agent.policy.hcl.j2') }}"

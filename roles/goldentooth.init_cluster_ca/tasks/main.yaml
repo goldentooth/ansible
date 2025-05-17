@@ -8,24 +8,24 @@
 
 - name: 'Look for existing configuration.'
   ansible.builtin.stat:
-    path: "{{ step_ca.config_path }}"
+    path: "{{ step_ca.ca.config_path }}"
   register: 'step_ca_config'
 
 - name: 'Ensure intermediate password file is present.'
   ansible.builtin.copy:
     content: "{{ secret_vault.step_ca.passwords.intermediate }}"
-    dest: "{{ step_ca.intermediate_password_path }}"
-    owner: "{{ step_ca.user }}"
-    group: "{{ step_ca.user }}"
+    dest: "{{ step_ca.ca.password_file_paths.intermediate }}"
+    owner: "{{ step_ca.ca.user }}"
+    group: "{{ step_ca.ca.user }}"
     mode: 0600
   no_log: true
 
 - name: 'Ensure JWK provisioner password file is present.'
   ansible.builtin.copy:
     content: "{{ secret_vault.step_ca.passwords.provisioners.jwk }}"
-    dest: "{{ step_ca.provisioner_etc_password_path }}"
-    owner: "{{ step_ca.user }}"
-    group: "{{ step_ca.user }}"
+    dest: "{{ step_ca.ca.password_file_paths.default_provisioner }}"
+    owner: "{{ step_ca.ca.user }}"
+    group: "{{ step_ca.ca.user }}"
     mode: 0600
   no_log: true
 
@@ -35,9 +35,9 @@
     - name: 'Create root key password file.'
       ansible.builtin.copy:
         content: "{{ secret_vault.step_ca.passwords.root }}"
-        dest: "{{ step_ca.root_password_path }}"
-        owner: "{{ step_ca.user }}"
-        group: "{{ step_ca.user }}"
+        dest: "{{ step_ca.ca.password_file_paths.root }}"
+        owner: "{{ step_ca.ca.user }}"
+        group: "{{ step_ca.ca.user }}"
         mode: 0600
       no_log: true
 
@@ -48,17 +48,17 @@
             ca init \
             --acme \
             --ssh \
-            --name={{ step_ca.ca_name }} \
+            --name={{ step_ca.ca.name }} \
             --deployment-type=standalone \
-            --dns={{ step_ca.ca_sans }} \
-            --address={{ step_ca.bind_address }} \
-            --provisioner={{ step_ca.provisioner }} \
-            --password-file={{ step_ca.root_password_path }} \
-            --provisioner-password-file={{ step_ca.provisioner_etc_password_path }}
+            --dns={{ step_ca.ca.sans }} \
+            --address={{ step_ca.ca.bind_address }} \
+            --provisioner={{ step_ca.default_provisioner.name }} \
+            --password-file={{ step_ca.ca.password_file_paths.root }} \
+            --provisioner-password-file={{ step_ca.ca.password_file_paths.default_provisioner }}
       environment:
-        STEPPATH: "{{ step_ca.etc_path }}"
+        STEPPATH: "{{ step_ca.ca.etc_path }}"
       become: true
-      become_user: "{{ step_ca.user }}"
+      become_user: "{{ step_ca.ca.user }}"
       notify:
         - 'Restart step-ca service.'
 
@@ -66,10 +66,10 @@
       ansible.builtin.shell:
         cmd: |
           {{ step_ca.executable }} \
-            crypto change-pass {{ step_ca.etc_path }}/secrets/{{ item }} \
+            crypto change-pass {{ step_ca.ca.etc_path }}/secrets/{{ item }} \
             --force \
-            --password-file={{ step_ca.root_password_path }} \
-            --new-password-file={{ step_ca.intermediate_password_path }}
+            --password-file={{ step_ca.ca.password_file_paths.root }} \
+            --new-password-file={{ step_ca.ca.password_file_paths.intermediate }}
       loop:
         - 'intermediate_ca_key'
         - 'ssh_host_ca_key'
@@ -77,13 +77,13 @@
       loop_control:
         loop_var: 'item'
       become: true
-      become_user: "{{ step_ca.user }}"
+      become_user: "{{ step_ca.ca.user }}"
 
   always:
 
     - name: 'Ensure root password file is absent.'
       ansible.builtin.file:
-        path: "{{ step_ca.root_password_path }}"
+        path: "{{ step_ca.ca.password_file_paths.root }}"
         state: 'absent'
 
   when: 'not step_ca_config.stat.exists'

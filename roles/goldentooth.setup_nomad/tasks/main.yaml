@@ -76,7 +76,7 @@
     - name: 'NOMAD_ADDR'
       value: "https://{{ groups['nomad_server'] | first }}:4646"
     - name: 'NOMAD_CACERT'
-      value: "{{ step_ca.ca_ref_cert_path }}"
+      value: "{{ step_ca.root_cert_path }}"
     - name: 'NOMAD_CLIENT_CERT'
       value: "{{ nomad.cli_cert_path }}"
     - name: 'NOMAD_CLIENT_KEY'

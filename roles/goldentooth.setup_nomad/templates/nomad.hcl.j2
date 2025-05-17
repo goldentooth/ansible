@@ -17,7 +17,7 @@ consul {
   grpc_address        = "{{ ipv4_address }}:8503"
 
   ssl                 = true
-  ca_file             = "{{ step_ca.ca_ref_cert_path }}"
+  ca_file             = "{{ step_ca.root_cert_path }}"
   cert_file           = "{{ nomad.cert_path }}"
   key_file            = "{{ nomad.key_path }}"
   verify_ssl          = true
@@ -38,7 +38,7 @@ client {
 tls {
   http                    = true
   rpc                     = true
-  ca_file                 = "{{ step_ca.ca_ref_cert_path }}"
+  ca_file                 = "{{ step_ca.root_cert_path }}"
   cert_file               = "{{ nomad.cert_path }}"
   key_file                = "{{ nomad.key_path }}"
   verify_server_hostname  = true

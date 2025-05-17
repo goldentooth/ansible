@@ -4,7 +4,7 @@
 
 - name: 'Retrieve current cluster CA information from CA server.'
   ansible.builtin.slurp:
-    src: "{{ step_ca.defaults_config_path }}"
+    src: "{{ step_ca.ca.defaults_config_file_path }}"
   register: 'step_ca_defaults_file_base64'
   delegate_to: "{{ step_ca.server }}"
 
@@ -30,8 +30,8 @@
 
 - name: 'Ensure JWK provisioner password file is present.'
   ansible.builtin.copy:
-    content: "{{ step_ca.provisioner_password }}"
-    dest: "{{ step_ca.provisioner_password_path }}"
+    content: "{{ step_ca.default_provisioner.password }}"
+    dest: "{{ step_ca.default_provisioner.password_path }}"
     owner: 'root'
     group: 'root'
     mode: 0600
@@ -39,14 +39,14 @@
 
 - name: 'Retrieve current Step-CA certificate.'
   ansible.builtin.slurp:
-    src: "{{ step_ca.ca_etc_cert_path }}"
+    src: "{{ step_ca.ca.root_cert_path }}"
   register: 'step_ca_cert_file_base64'
   delegate_to: "{{ step_ca.server }}"
 
 - name: 'Write Step-CA certificate to shared certificates path.'
   ansible.builtin.copy:
     content: "{{ step_ca_cert_file_base64.content | b64decode }}"
-    dest: "{{ step_ca.ca_shared_cert_path }}"
+    dest: "{{ step_ca.shared_cert_path }}"
     owner: 'root'
     group: 'root'
     mode: '0644'

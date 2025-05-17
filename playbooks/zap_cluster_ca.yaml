@@ -7,7 +7,7 @@
 
     - name: 'Zap Certificate Authority.'
       ansible.builtin.file:
-        path: "{{ step_ca.etc_path }}"
+        path: "{{ step_ca.ca.etc_path }}"
         state: 'absent'
         force: true
 

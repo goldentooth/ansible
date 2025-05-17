@@ -7,8 +7,8 @@
         "{{ clean_hostname }}.server.{{ consul.datacenter }}.{{ consul.domain }}" \
         "{{ consul.cert_path }}" \
         "{{ consul.key_path }}" \
-        --provisioner="{{ step_ca.provisioner }}" \
-        --password-file="{{ step_ca.provisioner_password_path }}" \
+        --provisioner="{{ step_ca.default_provisioner.name }}" \
+        --password-file="{{ step_ca.default_provisioner.password_path }}" \
         --san="{{ clean_hostname }}" \
         --san="{{ clean_hostname }}.server.{{ consul.datacenter }}.{{ consul.domain }}" \
         --san="server.{{ consul.datacenter }}.{{ consul.domain }}" \
