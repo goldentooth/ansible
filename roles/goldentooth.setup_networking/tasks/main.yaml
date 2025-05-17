@@ -1,33 +1,33 @@
 ---
-- name: 'Autodetect interface connected to 10.4.0.0/24.'
+- name: 'Autodetect interface connected primary network.'
   ansible.builtin.command:
-    cmd: 'ip route show 10.4.0.0/24'
+    cmd: "ip route show {{ network.infrastructure.cidr }}"
   register: 'route_info_0'
-  when: 'route_interface == ""'
+  when: 'network.metallb.interface == ""'
 
 - name: 'Determine if route already exists.'
   ansible.builtin.command:
-    cmd: 'ip route show 10.4.11.0/24'
+    cmd: "ip route show {{ network.metallb.cidr }}"
   changed_when: false
   register: 'route_info_11'
 
 - name: 'Set autodetected route interface.'
   ansible.builtin.set_fact:
-    route_interface: "{{ route_info_0.stdout.split()[2] }}"
-  when: 'route_interface == ""'
+    network.metallb.interface: "{{ route_info_0.stdout.split()[2] }}"
+  when: 'network.metallb.interface == ""'
 
 - name: 'Ensure static route is added.'
   ansible.builtin.command:
     cmd: |
-      ip route add {{ route_network }}/24 dev {{ route_interface }}
+      ip route add {{ network.metallb.cidr }} dev {{ network.metallb.interface }}
   register: 'route_result'
   when: 'route_info_11.stdout.split() | length == 0'
   failed_when: 'route_result.rc != 0 and "File exists" not in route_result.stderr'
 
 - name: 'Persist the route.'
   ansible.builtin.lineinfile:
-    path: "/etc/network/interfaces.d/{{ route_interface }}.cfg"
+    path: "/etc/network/interfaces.d/{{ network.metallb.interface }}.cfg"
     create: true
-    line: 'up route add -net {{ route_network }} netmask {{ route_netmask }} dev {{ route_interface }}'
+    line: 'up route add -net {{ network.metallb.network }} netmask {{ network.metallb.netmask }} dev {{ network.metallb.interface }}'
   notify:
     - 'Restart networking service.'

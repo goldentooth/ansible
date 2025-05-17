@@ -1,3 +1,0 @@
-route_network: "10.4.11.0"
-route_netmask: "255.255.255.0"
-route_interface: "eth0"

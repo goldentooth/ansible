@@ -1,14 +1,14 @@
 ---
 - name: 'Set timezone.'
   community.general.timezone:
-    name: "{{ pi_timezone }}"
+    name: "{{ pi.timezone }}"
   notify: 'Reboot.'
 
 - name: 'Set the keyboard layout.'
   ansible.builtin.lineinfile:
     path: '/etc/default/keyboard'
     regexp: '^XKBLAYOUT='
-    line: 'XKBLAYOUT="{{ pi_keyboard }}"'
+    line: 'XKBLAYOUT="{{ pi.keyboard }}"'
     state: 'present'
   become: true
   notify: 'Reboot.'
@@ -17,7 +17,7 @@
   ansible.builtin.lineinfile:
     path: '/boot/config.txt'
     regexp: '^#?dtoverlay=gpio-fan'
-    line: "dtoverlay=gpio-fan,gpiopin={{ pi_fan_gpio }},temp={{ pi_fan_temp }}"
+    line: "dtoverlay=gpio-fan,gpiopin={{ pi.fan_gpio }},temp={{ pi.fan_temp }}"
     state: 'present'
   become: true
   notify: 'Reboot.'
@@ -33,9 +33,9 @@
     - prefix: 'arm_boost'
       line: 'arm_boost=1'
     - prefix: 'arm_freq'
-      line: 'arm_freq={{ pi_overclock_freq }}'
+      line: 'arm_freq={{ pi.overclock_freq }}'
     - prefix: 'over_voltage'
-      line: 'over_voltage={{ pi_overclock_voltage }}'
+      line: 'over_voltage={{ pi.overclock_voltage }}'
   loop_control:
     loop_var: 'line'
   notify: 'Reboot.'
@@ -82,7 +82,7 @@
   ansible.builtin.lineinfile:
     path: '~/.selected_editor'
     regexp: '^SELECTED_EDITOR'
-    line: 'SELECTED_EDITOR="/bin/nano"'
+    line: "SELECTED_EDITOR={{ pi.editor }}"
     create: true
     state: 'present'
     mode: '0644'

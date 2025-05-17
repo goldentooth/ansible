@@ -4,5 +4,5 @@
   hosts: 'k8s_control_plane'
   remote_user: 'root'
   roles:
-    - { role: 'goldentooth.install_argocd' }
+    - { role: 'goldentooth.install_argo_cd' }
   handlers:

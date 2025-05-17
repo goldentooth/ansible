@@ -1,3 +1,0 @@
-# The version of Kubernetes we're rolling with.
-kubernetes.version_clean: '1.32'
-kubernetes.version: "v{{ kubernetes.version_clean }}"

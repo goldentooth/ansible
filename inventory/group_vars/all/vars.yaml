@@ -30,6 +30,7 @@ my:
     github: 'github@goldentooth.net'
   local:
     timezone: 'America/New_York'
+  editor: 'nano'
 
 # #############################################################################
 # Data structure for the Ansible secret vault.
@@ -62,10 +63,23 @@ my:
 # Load balancer data:
 load_balancer:
   hostname: "{{ groups['load_balancer'] | first }}"
+  domain_name: 'lb-apiserver.kubernetes.local'
   ipv4_address: "{{ hostvars[groups['load_balancer'] | first]['ipv4_address'] }}"
   nginx:
     user: 'www-data'
     group: 'www-data'
+  # List of dicts defining additionally enabled collectors and their configuration.
+  # It adds collectors to those enabled by default.
+  #
+  # Default:
+  #   - 'systemd'
+  #   - textfile:
+  #       directory": "{{ node_exporter_textfile_dir }}"
+  node_exporter:
+    enabled_collectors:
+      - 'systemd'
+      - textfile:
+          directory": "{{ node_exporter_textfile_dir }}"
 
 # Network data:
 network:
@@ -75,6 +89,11 @@ network:
     cidr: '172.16.0.0/20'
   pod:
     cidr: '192.168.0.0/16'
+  metallb:
+    network: '10.4.11.0'
+    cidr: '10.4.11.0/24'
+    netmask: '255.255.255.0'
+    interface: 'eth0'
 
 # Cluster data:
 cluster:
@@ -103,6 +122,59 @@ node:
   fqdn: "{{ clean_hostname }}.{{ cluster.node_domain }}"
   ip: "{{ ipv4_address }}"
 
+# Argo CD data:
+argo_cd:
+  # Argo CD chart version.
+  chart_version: '7.1.5'
+  # Argo CD chart repository URL.
+  chart_repo_url: 'https://argoproj.github.io/argo-helm'
+  # Argo CD release information.
+  release_values:
+    nameOverride: 'argocd'
+    global:
+      domain: "argocd.{{ cluster.domain }}"
+      # Add Prometheus scrape annotations to all metrics services. This can
+      # be used as an alternative to the ServiceMonitors.
+      addPrometheusAnnotations: true
+      # Default network policy rules used by all components
+      networkPolicy:
+        # -- Create NetworkPolicy objects for all components
+        create: false
+        # -- Default deny all ingress traffic
+        defaultDenyIngress: false
+    configs:
+      secret:
+        createSecret: true
+        argocdServerAdminPassword: "{{ argocd_password }}"
+
+    redis-ha:
+      # Enable Redis high availability.
+      enabled: true
+
+    controller:
+      replicas: 1
+
+    server:
+      autoscaling:
+        enabled: true
+        minReplicas: 2
+      extraArgs:
+        - '--insecure'
+      service:
+        annotations:
+          external-dns.alpha.kubernetes.io/hostname: "argocd.{{ cluster.domain }}"
+          external-dns.alpha.kubernetes.io/ttl: "60"
+        type: 'LoadBalancer'
+
+    repoServer:
+      autoscaling:
+        enabled: true
+        minReplicas: 2
+
+    applicationSet:
+      replicas: 2
+  namespace: 'argocd'
+
 # Kubernetes data:
 kubernetes:
   # The first control plane node.
@@ -129,17 +201,20 @@ kubernetes:
   apt_repo_url: "https://pkgs.k8s.io/core:/stable:/{{ kubernetes_version }}/deb/"
 
 # NFS mount information.
-nfs_server: "{{ groups['nfs_server'] }}"
-nfs_mounts:
-  Primary:
-    share: "{{ hostvars[nfs_server[0]].ipv4_address }}:/mnt/usb1"
-    mount: '/mnt/nfs'
-    safe_name: 'mnt-nfs'
-    type: 'nfs'
-    options: {}
+nfs:
+  server: "{{ groups['nfs_server'] | first}}"
+  mounts:
+    primary:
+      share: "{{ hostvars[groups['nfs_server'] | first].ipv4_address }}:/mnt/usb1"
+      mount: '/mnt/nfs'
+      safe_name: 'mnt-nfs'
+      type: 'nfs'
+      options: {}
 
 # Slurm options.
-slurm_nfs_base_path: "{{ nfs_mounts['Primary']['mount'] }}/slurm"
+slurm_nfs_base_path: "{{ nfs.mounts.primary.mount }}/slurm"
+
+# Slurm data:
 slurm:
   lmod:
     source_url: "https://sourceforge.net/projects/lmod/files/Lmod-8.4.tar.bz2"
@@ -259,6 +334,53 @@ node_homepage:
   nginx:
     user: 'www-data'
     group: 'www-data'
+
+# Pi configuration data:
+pi:
+  # Fan
+  #
+  # Set the behaviour of a GPIO connected fan.
+  #
+  # `sudo raspi-config nonint do_fan <0/1> [gpio] [onTemp]`
+  # - 0 - Enable fan
+  # - 1 - Disable fan
+  #
+  # `gpio` defaults to 14.
+  #
+  # `onTemp` defaults to 80 °C.
+  #
+  fan_gpio: 14
+  fan_temp: 60
+
+  # Locale
+  #
+  # Select a locale, for example `en_US.UTF-8 UTF-8`.
+  locale: 'en.US-UTF-8'
+
+  # Time Zone
+  #
+  # Select a time zone, for example `America/New_York`.
+  timezone: "{{ my.local.timezone }}"
+
+  # Keyboard
+  #
+  # Select a keyboard layout, for example `us`.
+  keyboard: 'us'
+
+  # WLAN Country
+  #
+  # Select a WLAN country, for example `US`.
+  wlan_country: 'US'
+
+  # Overclock Frequency
+  #
+  # Set the overclocking frequency.
+  overclock_freq: '2000'
+
+  # Overclock Voltage
+  #
+  # Set the overclocking voltage.
+  overclock_voltage: '6'
 
 # #############################################################################
 # Variables for vendored roles.

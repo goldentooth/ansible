@@ -8,11 +8,11 @@
       metadata:
         name: 'gitops-repo'
         # Argo CD resources need to deploy into the Argo CD namespace.
-        namespace: 'argocd'
+        namespace: "{{ argo_cd.namespace }}"
         finalizers:
           - 'resources-finalizer.argocd.argoproj.io'
       spec:
-        description: 'GoldenTooth GitOps-Repo project'
+        description: 'Goldentooth GitOps-Repo project'
         # Allow manifests to deploy from any Git repository.
         # This is an acceptable security risk because this is a lab environment
         # and I am the only user.

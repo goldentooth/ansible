@@ -1,2 +1,0 @@
-# The Kubernetes config file path.
-kubernetes.admin_conf_path: '/etc/kubernetes/admin.conf'

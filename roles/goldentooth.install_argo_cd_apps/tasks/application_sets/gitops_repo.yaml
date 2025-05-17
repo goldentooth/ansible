@@ -7,7 +7,7 @@
       kind: 'ApplicationSet'
       metadata:
         name: 'gitops-repo'
-        namespace: 'argocd'
+        namespace: "{{ argo_cd.namespace }}"
       spec:
         goTemplate: true
         goTemplateOptions: ["missingkey=error"]

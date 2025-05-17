@@ -1,5 +1,0 @@
-# The Kubernetes packages to install.
-kubernetes.apt_packages:
-  - 'kubeadm'
-  - 'kubectl'
-  - 'kubelet'

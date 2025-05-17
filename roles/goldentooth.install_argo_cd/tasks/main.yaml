@@ -6,7 +6,7 @@
 - name: 'Add Argo Helm chart repository.'
   kubernetes.core.helm_repository:
     name: 'argo'
-    repo_url: "{{ argocd_chart_repo_url }}"
+    repo_url: "{{ argo_cd.chart_repo_url }}"
 
 - name: 'Install the Argo CD command-line interface.'
   ansible.builtin.get_url:
@@ -21,7 +21,7 @@
       apiVersion: 'v1'
       kind: 'Namespace'
       metadata:
-        name: 'argocd'
+        name: "{{ argo_cd.namespace }}"
   run_once: true
 
 - name: 'Create a Kubernetes secret for the GitHub token.'
@@ -32,7 +32,7 @@
       kind: 'Secret'
       metadata:
         name: 'github-token'
-        namespace: 'argocd'
+        namespace: "{{ argo_cd.namespace }}"
       type: 'Opaque'
       data:
         token: "{{ secret_vault.github_token | b64encode }}"
@@ -42,11 +42,11 @@
   kubernetes.core.helm:
     atomic: false
     chart_ref: 'argo/argo-cd'
-    chart_version: "{{ argocd_chart_version }}"
+    chart_version: "{{ argo_cd.chart_version }}"
     create_namespace: true
     release_name: 'argocd'
-    release_namespace: 'argocd'
-    release_values: "{{ argocd_release_values }}"
+    release_namespace: "{{ argo_cd.namespace }}"
+    release_values: "{{ argo_cd.release_values }}"
     update_repo_cache: true
     wait: false
   run_once: true
