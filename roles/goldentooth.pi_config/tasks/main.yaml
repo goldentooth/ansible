@@ -130,5 +130,5 @@
   ansible.posix.authorized_key:
     user: 'root'
     state: 'present'
-    key: "{{ vault.ssh_public_key }}"
+    key: "{{ secret_vault.ssh_public_key }}"
   become: true
