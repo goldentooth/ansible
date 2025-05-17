@@ -2,14 +2,14 @@
 - name: 'Generate certificate for Nomad from step-ca.'
   ansible.builtin.shell:
     cmd: |
-      {{ step_ca_executable }} \
+      {{ step_ca.executable }} \
         ca certificate \
         "{{ clean_hostname }}.global.nomad" \
-        "{{ nomad_cert_path }}" \
-        "{{ nomad_key_path }}" \
-        --provisioner="{{ step_ca_provisioner }}" \
-        --password-file="{{ step_ca_provisioner_password_path }}" \
-        --san="{{ nomad_role }}.global.nomad" \
+        "{{ nomad.cert_path }}" \
+        "{{ nomad.key_path }}" \
+        --provisioner="{{ step_ca.provisioner }}" \
+        --password-file="{{ step_ca.provisioner_password_path }}" \
+        --san="{{ nomad.role }}.global.nomad" \
         --san='localhost' \
         --san="{{ clean_hostname }}" \
         --san="{{ ipv4_address }}" \
@@ -20,13 +20,13 @@
 - name: 'Generate certificate for Nomad CLI from step-ca.'
   ansible.builtin.shell:
     cmd: |
-      {{ step_ca_executable }} \
+      {{ step_ca.executable }} \
         ca certificate \
         "{{ clean_hostname }}.cli.global.nomad" \
-        "{{ nomad_cli_cert_path }}" \
-        "{{ nomad_cli_key_path }}" \
-        --provisioner="{{ step_ca_provisioner }}" \
-        --password-file="{{ step_ca_provisioner_password_path }}" \
+        "{{ nomad.cli_cert_path }}" \
+        "{{ nomad.cli_key_path }}" \
+        --provisioner="{{ step_ca.provisioner }}" \
+        --password-file="{{ step_ca.provisioner_password_path }}" \
         --san='cli.global.nomad' \
         --san='localhost' \
         --san="{{ clean_hostname }}" \
@@ -43,9 +43,9 @@
     group: 'nomad'
     mode: '0600'
   loop:
-    - "{{ nomad_cert_path }}"
-    - "{{ nomad_key_path }}"
-    - "{{ nomad_cli_cert_path }}"
-    - "{{ nomad_cli_key_path }}"
+    - "{{ nomad.cert_path }}"
+    - "{{ nomad.key_path }}"
+    - "{{ nomad.cli_cert_path }}"
+    - "{{ nomad.cli_key_path }}"
   loop_control:
     loop_var: 'item'
