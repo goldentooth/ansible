@@ -11,6 +11,9 @@ clean_hostname: "{{ inventory_hostname | splitext | first | lower }}"
 # Calculated IPv4 address for the current host.  Doesn't always work, usually does.
 ipv4_address: "{{ ansible_default_ipv4.address | default(ansible_all_ipv4_addresses[0]) }}"
 
+# Cluster name.
+cluster_name: 'goldentooth'
+
 # #############################################################################
 # Data structure for my personal preferences.
 # #############################################################################
@@ -25,8 +28,11 @@ my:
   local:
     timezone: 'America/New_York'
 
-# Data structure of the vault.
-# vault:
+# #############################################################################
+# Data structure for the Ansible secret vault.
+# #############################################################################
+
+# secret_vault:
 #   easy_password: <string>
 #   ssh_public_key: <string>
 #   github_token: <string>
@@ -82,15 +88,31 @@ network:
     cidr: '192.168.0.0/16'
 
 # Cluster data:
-cluster_name: 'goldentooth'
 cluster:
   name: "{{ cluster_name }}"
   domain: "{{ cluster_name }}.net"
-  host_fqdn: "{{ clean_hostname }}.{{ cluster_name }}.net"
-  node_fqdn: "{{ clean_hostname }}.nodes.{{ cluster_name }}.net"
-  host_ip: "{{ ipv4_address }}"
+  node_domain: "nodes.{{ cluster_name }}.net"
   cloudfront_distribution_domain: "home-proxy.{{ cluster_name }}.net"
   cloudfront_origin_domain: "clearbrook.{{ cluster_name }}.net"
+  ca_cert_path: "/etc/ssl/certs/{{ cluster_name }}.pem"
+
+# Host data:
+# Here, "host" means that we're referring to a physical Raspberry Pi.
+# This should reflect the existing network layout, which is configured
+# within my router, etc. I'm working to evolve how this is configured,
+# which is why there is some redundancy at present.
+host:
+  fqdn: "{{ clean_hostname }}.{{ cluster.domain }}"
+  ip: "{{ ipv4_address }}"
+
+# Node data:
+# Here, "node" means that we're referring to a cluster entity.
+# Why duplicate the "host" data above? I want to migrate the hosts to
+# be <name>.nodes.goldentooth.net, to separate from a virtual services
+# layer, etc, but that's a WIP.
+node:
+  fqdn: "{{ clean_hostname }}.{{ cluster.node_domain }}"
+  ip: "{{ ipv4_address }}"
 
 # The version of Kubernetes we're rolling with.
 k8s_version_clean: '1.32'
@@ -131,17 +153,88 @@ python_versions:
   - '3.12'
   - '3.13'
 
-consul_maybe_leader: "{{ groups['consul_server'] | first }}"
-consul_role: "{{ 'server' if 'consul_server' in group_names else 'client' }}"
-nomad_role: "{{ 'server' if 'nomad_server' in group_names else 'client' }}"
-nomad_service_user: "{{ 'nomad' if nomad_role == 'server' else 'root' }}"
-nomad_service_group: "{{ 'nomad' if nomad_role == 'server' else 'root' }}"
+# (HashiCorp) Vault data:
+vault:
+  maybe_leader: "{{ groups['vault'] | first }}"
+  aws:
+    access_key_id: "{{ secret_vault.aws.access_key_id }}"
+    secret_access_key: "{{ secret_vault.aws.secret_access_key }}"
+    region: 'us-east-1'
+  certs_path: '/opt/vault/tls'
+  cert_path: '/opt/vault/tls/tls.crt'
+  key_path: '/opt/vault/tls/tls.key'
+  cluster_name: "{{ cluster.name }}"
+  consul:
+    policy_name: 'vault'
+  data_path: '/opt/vault/data'
+  etc_path: '/etc/vault.d'
+  env_config_path: '/etc/vault.d/vault.env'
+  hcl_config_path: '/etc/vault.d/vault.hcl'
+  opt_path: '/opt/vault'
+  raft_path: '/opt/vault/raft'
+  seal_kms_key_alias: 'alias/goldentooth/vault-seal'
 
-ca_cert_system_path: "/etc/ssl/certs/{{ cluster.name }}.pem"
-step_ca_provisioner_password: "{{ vault.step_ca.passwords.provisioners.jwk }}"
+# Consul data:
+consul:
+  acl_bootstrap_reset_path: '/opt/consul/acl-bootstrap-reset'
+  datacenter: 'dc1'
+  domain: 'consul'
+  etc_path: '/etc/consul.d'
+  executable_path: '/usr/bin/consul'
+  opt_path: '/opt/consul'
+  maybe_leader: "{{ groups['consul_server'] | first }}"
+  mgmt_token: "{{ secret_vault.consul.mgmt_token }}"
+  role: "{{ 'server' if 'consul_server' in group_names else 'client' }}"
+  certs_path: '/etc/consul.d/certs'
+  cert_path: '/etc/consul.d/certs/tls.crt'
+  key_path: '/etc/consul.d/certs/tls.key'
+  hcl_config_path: '/etc/consul.d/consul.hcl'
+  env_config_path: '/etc/consul.d/consul.env'
+  agent_policy_name: "consul-agent-{{ clean_hostname }}"
 
-consul_agent_ca_path: "{{ ca_cert_system_path }}"
-nomad_ca_cert_path: "{{ ca_cert_system_path }}"
+# Nomad data:
+nomad:
+  maybe_leader: "{{ groups['nomad_server'] | first }}"
+  role:  "{{ 'server' if 'nomad_server' in group_names else 'client' }}"
+  service_user: "{{ 'nomad' if 'nomad_server' in group_names else 'root' }}"
+  service_group: "{{ 'nomad' if 'nomad_server' in group_names else 'root' }}"
+  datacenter: 'dc1'
+  opt_path: '/opt/nomad'
+  certs_path: '/opt/nomad/certs'
+  cert_path: '/opt/nomad/certs/tls.crt'
+  key_path: '/opt/nomad/certs/tls.key'
+  cli_cert_path: '/opt/nomad/certs/cli.crt'
+  cli_key_path: '/opt/nomad/certs/cli.key'
+  etc_path: '/etc/nomad.d'
+  data_path: '/opt/nomad/data'
+  hcl_config_path: '/etc/nomad.d/nomad.hcl'
+  env_config_path: '/etc/nomad.d/nomad.env'
+  executable_path: '/usr/bin/nomad'
+  is_consul_enabled: true
+
+# Step-CA data:
+step_ca:
+  bind_address: "{{ ipv4_address }}:9443"
+  ca_config_path: '/etc/step-ca/config/ca.json'
+  ca_etc_cert_path: '/etc/step-ca/certs/root_ca.crt'
+  ca_executable: 'step-ca'
+  ca_installed_cert_path: '/root/.step/certs/root_ca.crt'
+  ca_ref_cert_path: "/etc/ssl/certs/{{ cluster.name }}.pem"
+  ca_shared_cert_path: "/usr/local/share/ca-certificates/{{ cluster.name }}.crt"
+  ca_name: "{{ cluster.name }}"
+  ca_sans: "{{ host.fqdn }},{{ node.fqdn }},{{ ipv4_address }}"
+  config_path: '/etc/step-ca/config'
+  defaults_config_path: '/etc/step-ca/config/defaults.json'
+  etc_path: '/etc/step-ca'
+  executable: 'step'
+  intermediate_password_path: "/etc/step-ca/.password_intermediate.txt"
+  provisioner: 'default'
+  provisioner_etc_password_path: '/etc/step-ca/.password_jwk_provisioner.txt'
+  provisioner_password_path: '/root/.step/jwk_provisioner_password.txt'
+  provisioner_password:  "{{ secret_vault.step_ca.passwords.provisioners.jwk }}"
+  root_password_path: "/etc/step-ca/.password_root.txt"
+  server: "{{ groups['step_ca'] | first }}"
+  user: 'step'
 
 # #############################################################################
 # Variables for vendored roles.
