@@ -1,7 +1,7 @@
 ---
 - name: 'Set facts.'
   ansible.builtin.set_fact:
-    argocd_password: "{{ vault.easy_password | password_hash('bcrypt') }}"
+    argocd_password: "{{ secret_vault.easy_password | password_hash('bcrypt') }}"
 
 - name: 'Add Argo Helm chart repository.'
   kubernetes.core.helm_repository:
@@ -35,7 +35,7 @@
         namespace: 'argocd'
       type: 'Opaque'
       data:
-        token: "{{ vault.github_token | b64encode }}"
+        token: "{{ secret_vault.github_token | b64encode }}"
   run_once: true
 
 - name: 'Install Argo CD from Helm chart.'
