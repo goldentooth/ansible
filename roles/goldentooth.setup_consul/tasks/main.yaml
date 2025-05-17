@@ -1,7 +1,7 @@
 ---
 - name: 'Remove any existing gossip key.'
   ansible.builtin.file:
-    path: "{{ consul_data_path }}/serf/local.keyring"
+    path: "{{ consul_opt_path }}/serf/local.keyring"
     state: 'absent'
 
 - name: 'Generate the gossip encryption key.'

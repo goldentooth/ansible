@@ -32,7 +32,7 @@
 
 - name: 'Validate Consul configuration.'
   ansible.builtin.command:
-    cmd: "consul validate {{ consul_config_path }}"
+    cmd: "consul validate {{ consul_etc_path }}"
   changed_when: false
 
 - name: 'Flush handlers.'

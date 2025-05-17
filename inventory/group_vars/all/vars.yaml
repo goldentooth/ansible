@@ -141,7 +141,7 @@ ca_cert_system_path: "/etc/ssl/certs/{{ cluster.name }}.pem"
 step_ca_provisioner_password: "{{ vault.step_ca.passwords.provisioners.jwk }}"
 
 consul_agent_ca_path: "{{ ca_cert_system_path }}"
-
+nomad_ca_cert_path: "{{ ca_cert_system_path }}"
 
 # #############################################################################
 # Variables for vendored roles.

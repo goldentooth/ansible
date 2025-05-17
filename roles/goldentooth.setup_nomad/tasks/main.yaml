@@ -1,6 +1,5 @@
 ---
-
-- name: 'Update the policies.'
+- name: 'Update the Consul policies.'
   community.general.consul_policy:
     host: "{{ consul_maybe_leader }}"
     token: "{{ vault.consul.mgmt_token }}"

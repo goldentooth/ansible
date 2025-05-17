@@ -1,10 +1,12 @@
-nomad_config_path: '/etc/nomad.d'
-nomad_path: '/opt/nomad'
+nomad_etc_path: '/etc/nomad.d'
+nomad_opt_path: '/opt/nomad'
 
-nomad_data_path: "{{ nomad_path }}/data"
-nomad_certs_path: "{{ nomad_path }}/certs"
-nomad_hcl_path: "{{ nomad_config_path }}/nomad.hcl"
-nomad_env_path: "{{ nomad_config_path }}/nomad.env"
+nomad_data_path: "{{ nomad_opt_path }}/data"
+nomad_certs_path: "{{ nomad_opt_path }}/certs"
+
+nomad_hcl_path: "{{ nomad_etc_path }}/nomad.hcl"
+nomad_env_path: "{{ nomad_etc_path }}/nomad.env"
+
 nomad_executable_path: '/usr/bin/nomad'
 nomad_is_consul_enabled: true
 
@@ -12,14 +14,12 @@ nomad_datacenter: "dc1"
 
 nomad_service_path: "/etc/systemd/system/nomad.service"
 
-nomad_ca_cert_path: "{{ nomad_certs_path }}/nomad-ca-cert.pem"
-nomad_ca_key_path: "{{ nomad_certs_path }}/nomad-ca-key.pem"
-nomad_server_cert_path: "{{ nomad_certs_path }}/nomad-server-cert.pem"
-nomad_server_key_path: "{{ nomad_certs_path }}/nomad-server-key.pem"
-nomad_client_cert_path: "{{ nomad_certs_path }}/nomad-client-cert.pem"
-nomad_client_key_path: "{{ nomad_certs_path }}/nomad-client-key.pem"
-nomad_cli_cert_path: "{{ nomad_certs_path }}/nomad-cli-cert.pem"
-nomad_cli_key_path: "{{ nomad_certs_path }}/nomad-cli-key.pem"
-nomad_consul_cert_path: "{{ nomad_certs_path }}/nomad-consul-cert.pem"
-nomad_consul_key_path: "{{ nomad_certs_path }}/nomad-consul-key.pem"
-nomad_consul_ca_path: "{{ nomad_certs_path }}/nomad-consul-ca.pem"
+nomad_ca_cert_path: "{{ nomad_certs_path }}/not-a-real-cert.crt"
+nomad_cert_path: "{{ nomad_certs_path }}/tls.crt"
+nomad_key_path: "{{ nomad_certs_path }}/tls.key"
+nomad_cli_cert_path: "{{ nomad_certs_path }}/cli.crt"
+nomad_cli_key_path: "{{ nomad_certs_path }}/cli.key"
+
+# nomad_consul_cert_path: "{{ nomad_certs_path }}/nomad-consul-cert.pem"
+# nomad_consul_key_path: "{{ nomad_certs_path }}/nomad-consul-key.pem"
+# nomad_consul_ca_path: "{{ nomad_certs_path }}/nomad-consul-ca.pem"

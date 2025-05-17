@@ -1,20 +1,13 @@
-nomad_path: '/opt/nomad'
+nomad_datacenter: "dc1"
 
-nomad_certs_path: "{{ nomad_path }}/certs"
+nomad_opt_path: '/opt/nomad'
+nomad_certs_path: "{{ nomad_opt_path }}/certs"
+nomad_ca_cert_path: "{{ nomad_certs_path }}/not-a-real-cert.crt"
+nomad_cert_path: "{{ nomad_certs_path }}/tls.crt"
+nomad_key_path: "{{ nomad_certs_path }}/tls.key"
+nomad_cli_cert_path: "{{ nomad_certs_path }}/cli.crt"
+nomad_cli_key_path: "{{ nomad_certs_path }}/cli.key"
 
-nomad_ca_cert_path: "{{ nomad_certs_path }}/nomad-ca-cert.pem"
-nomad_ca_key_path: "{{ nomad_certs_path }}/nomad-ca-key.pem"
-nomad_server_cert_path: "{{ nomad_certs_path }}/nomad-server-cert.pem"
-nomad_server_key_path: "{{ nomad_certs_path }}/nomad-server-key.pem"
-nomad_client_cert_path: "{{ nomad_certs_path }}/nomad-client-cert.pem"
-nomad_client_key_path: "{{ nomad_certs_path }}/nomad-client-key.pem"
-nomad_cli_cert_path: "{{ nomad_certs_path }}/nomad-cli-cert.pem"
-nomad_cli_key_path: "{{ nomad_certs_path }}/nomad-cli-key.pem"
-nomad_consul_cert_path: "{{ nomad_certs_path }}/nomad-consul-cert.pem"
-nomad_consul_key_path: "{{ nomad_certs_path }}/nomad-consul-key.pem"
-nomad_consul_ca_path: "{{ nomad_certs_path }}/nomad-consul-ca.pem"
-
-consul_config_path: '/etc/consul.d'
-consul_certs_path: "{{ consul_config_path }}/certs"
-consul_ca_cert_path: "{{ consul_certs_path }}/consul-agent-ca.pem"
-consul_ca_key_path: "{{ consul_certs_path }}/consul-agent-ca-key.pem"
+step_ca_provisioner: 'default'
+step_ca_provisioner_password_path: '/root/.step/jwk_provisioner_password.txt'
+step_ca_executable: 'step'

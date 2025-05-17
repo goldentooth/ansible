@@ -12,14 +12,14 @@ server {
 {% endif %}
 
 consul {
-  address             = "{{ ipv4_address }}:8500"
+  address             = "{{ ipv4_address }}:8501"
   token               = "{{ nomad_consul_token['token']['SecretID'] }}"
-  grpc_address        = "{{ ipv4_address }}:8502"
+  grpc_address        = "{{ ipv4_address }}:8503"
 
   ssl                 = true
-  ca_file             = "{{ nomad_consul_ca_path }}"
-  cert_file           = "{{ nomad_consul_cert_path }}"
-  key_file            = "{{ nomad_consul_key_path }}"
+  ca_file             = "{{ nomad_ca_cert_path }}"
+  cert_file           = "{{ nomad_cert_path }}"
+  key_file            = "{{ nomad_key_path }}"
   verify_ssl          = true
 
   server_service_name = "nomad"
@@ -36,20 +36,13 @@ client {
 {% endif %}
 
 tls {
-  http      = true
-  rpc       = true
-  ca_file   = "{{ nomad_ca_cert_path }}"
-
-  {% if clean_hostname in groups['nomad_server'] -%}
-  cert_file = "{{ nomad_server_cert_path }}"
-  key_file  = "{{ nomad_server_key_path }}"
-  {% else -%}
-  cert_file = "{{ nomad_client_cert_path }}"
-  key_file  = "{{ nomad_client_key_path }}"
-  {% endif %}
-
-  verify_server_hostname = true
-  verify_https_client    = true
+  http                    = true
+  rpc                     = true
+  ca_file                 = "{{ nomad_ca_cert_path }}"
+  cert_file               = "{{ nomad_cert_path }}"
+  key_file                = "{{ nomad_key_path }}"
+  verify_server_hostname  = true
+  verify_https_client     = true
 }
 
 ui {
