@@ -3,7 +3,7 @@ error_log /var/log/nginx/error.log debug;
 server {
   listen 80;
   location / {
-    root /srv/status;
+    root {{ node_homepage.web_root }};
     index index.html;
   }
 }

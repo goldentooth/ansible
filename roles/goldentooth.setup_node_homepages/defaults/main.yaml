@@ -1,4 +1,0 @@
-node_homepage_web_root: '/srv/status'
-
-nginx_user: 'www-data'
-nginx_group: 'www-data'
