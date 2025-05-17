@@ -3,13 +3,13 @@ Description="HashiCorp Consul"
 Documentation=https://www.consul.io/
 Requires=network-online.target
 After=network-online.target
-ConditionFileNotEmpty={{ consul_hcl_path }}
+ConditionFileNotEmpty={{ consul.hcl_config_path }}
 
 [Service]
-EnvironmentFile=-{{ consul_env_path }}
+EnvironmentFile=-{{ consul.env_config_path }}
 User=consul
 Group=consul
-ExecStart={{ consul_executable_path }} agent -config-dir={{ consul_etc_path }}
+ExecStart={{ consul.executable_path }} agent -config-dir={{ consul.etc_path }}
 ExecReload=/bin/kill --signal HUP $MAINPID
 KillMode=process
 KillSignal=SIGTERM

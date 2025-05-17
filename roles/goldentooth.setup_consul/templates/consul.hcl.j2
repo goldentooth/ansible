@@ -1,15 +1,15 @@
-datacenter = "{{ consul_datacenter }}"
-domain = "{{ consul_domain }}"
-data_dir = "{{ consul_opt_path }}"
+datacenter = "{{ consul.datacenter }}"
+domain = "{{ consul.domain }}"
+data_dir = "{{ consul.opt_path }}"
 encrypt = "{{ gossip_key.stdout }}"
 bind_addr = "{{ ipv4_address }}"
 retry_join = {{ groups['consul_server'] | map('extract', hostvars, 'ipv4_address') | ansible.builtin.to_json }}
 
 tls {
   defaults {
-    ca_file         = "{{ consul_agent_ca_path }}"
-    cert_file       = "{{ consul_agent_cert_path }}"
-    key_file        = "{{ consul_agent_key_path }}"
+    ca_file         = "{{ step_ca.ca_ref_cert_path }}"
+    cert_file       = "{{ consul.cert_path }}"
+    key_file        = "{{ consul.key_path }}"
     verify_incoming = true
     verify_outgoing = true
   }

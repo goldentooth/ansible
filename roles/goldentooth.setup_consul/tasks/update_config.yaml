@@ -2,7 +2,7 @@
 - name: 'Copy Consul service configuration into place on all nodes.'
   ansible.builtin.template:
     src: 'consul.service.j2'
-    dest: "{{ consul_service_path }}"
+    dest: '/etc/systemd/system/consul.service'
     owner: 'consul'
     group: 'consul'
     mode: '0600'
@@ -22,9 +22,9 @@
     mode: '0600'
   loop:
     - src: 'consul.env.j2'
-      dest: "{{ consul_env_path }}"
+      dest: "{{ consul.env_config_path }}"
     - src: 'consul.hcl.j2'
-      dest: "{{ consul_hcl_path }}"
+      dest: "{{ consul.hcl_config_path }}"
   loop_control:
     loop_var: 'file'
   notify:
@@ -32,7 +32,7 @@
 
 - name: 'Validate Consul configuration.'
   ansible.builtin.command:
-    cmd: "consul validate {{ consul_etc_path }}"
+    cmd: "consul validate {{ consul.etc_path }}"
   changed_when: false
 
 - name: 'Flush handlers.'

@@ -1,7 +1,7 @@
 ---
 - name: 'Remove any existing gossip key.'
   ansible.builtin.file:
-    path: "{{ consul_opt_path }}/serf/local.keyring"
+    path: "{{ consul.opt_path }}/serf/local.keyring"
     state: 'absent'
 
 - name: 'Generate the gossip encryption key.'
@@ -16,7 +16,7 @@
 
     - name: 'Set fact for the Consul agent token on server nodes.'
       ansible.builtin.set_fact:
-        consul_agent_token: "{{ vault.consul.mgmt_token }}"
+        consul_agent_token: "{{ secret_vault.consul.mgmt_token }}"
 
     - name: 'Update configuration for server nodes.'
       ansible.builtin.include_tasks: 'update_config.yaml'
@@ -28,13 +28,13 @@
 
     - name: 'Create a Consul agent policy for each node.'
       community.general.consul_policy:
-        host: "{{ consul_maybe_leader }}"
+        host: "{{ consul.maybe_leader }}"
         scheme: 'http'
         port: 8500
         validate_certs: false
-        token: "{{ vault.consul.mgmt_token }}"
-        ca_path: "{{ consul_agent_ca_path }}"
-        name: "{{ consul_agent_policy_name }}"
+        token: "{{ secret_vault.consul.mgmt_token }}"
+        ca_path: "{{ step_ca.ca_ref_cert_path }}"
+        name: "{{ consul.agent_policy_name }}"
         description: "Consul agent policy for {{ clean_hostname }}"
         rules: "{{ lookup('ansible.builtin.template', 'consul.agent.policy.hcl.j2') }}"
       register: 'consul_policy'
@@ -42,14 +42,14 @@
 
     - name: 'Create Consul agent tokens.'
       community.general.consul_token:
-        host: "{{ consul_maybe_leader }}"
+        host: "{{ consul.maybe_leader }}"
         scheme: 'http'
         port: 8500
         validate_certs: false
-        token: "{{ vault.consul.mgmt_token }}"
+        token: "{{ secret_vault.consul.mgmt_token }}"
         description: "Consul agent token"
         policies:
-          - name: "{{ consul_agent_policy_name }}"
+          - name: "{{ consul.agent_policy_name }}"
       register: 'consul_agent_token_object'
       until: 'consul_agent_token_object is not failed'
 
@@ -72,6 +72,6 @@
     mode: '0644'
   loop:
     - name: 'CONSUL_HTTP_ADDR'
-      value: "http://{{ consul_maybe_leader }}:8500"
+      value: "http://{{ consul.maybe_leader }}:8500"
   loop_control:
     loop_var: 'variable'
