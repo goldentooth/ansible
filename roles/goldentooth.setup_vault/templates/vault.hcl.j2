@@ -15,10 +15,10 @@ storage "consul" {
 }
 
 listener "tcp" {
-  address             = "{{ ipv4_address }}:8200"
-  tls_cert_file       = "{{ vault_certs_path }}/tls.crt"
-  tls_key_file        = "{{ vault_certs_path }}/tls.key"
-  tls_client_ca_file  = "{{ vault_certs_path }}/ca.crt"
+  address                             = "{{ ipv4_address }}:8200"
+  tls_cert_file                       = "{{ vault_certs_path }}/tls.crt"
+  tls_key_file                        = "{{ vault_certs_path }}/tls.key"
+  tls_require_and_verify_client_cert  = true
   telemetry {
     unauthenticated_metrics_access = true
   }

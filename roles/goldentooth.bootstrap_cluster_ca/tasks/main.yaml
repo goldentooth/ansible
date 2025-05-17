@@ -26,5 +26,12 @@
         --fingerprint={{ step_ca_fingerprint }} \
         --install \
         --force
-  environment:
-    STEPPATH: "{{ step_ca_data_path }}"
+
+- name: 'Ensure JWK provisioner password file is present.'
+  ansible.builtin.copy:
+    content: "{{ vault.step_ca.passwords.provisioners.jwk }}"
+    dest: "{{ step_ca_provisioner_password_path }}"
+    owner: 'root'
+    group: 'root'
+    mode: 0600
+  no_log: true

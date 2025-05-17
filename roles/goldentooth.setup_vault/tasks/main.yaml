@@ -60,8 +60,6 @@
   loop:
     - name: 'VAULT_ADDR'
       value: "https://{{ groups['vault'] | first }}:8200"
-    - name: 'VAULT_CACERT'
-      value: "{{ vault_certs_path }}/ca.crt"
     - name: 'VAULT_CLIENT_CERT'
       value: "{{ vault_certs_path }}/tls.crt"
     - name: 'VAULT_CLIENT_KEY'
