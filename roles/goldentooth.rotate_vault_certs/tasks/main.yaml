@@ -16,3 +16,16 @@
         --not-after='24h' \
         --console \
         --force
+
+- name: 'Repair permissions on Vault certs.'
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: 'file'
+    owner: 'vault'
+    group: 'vault'
+    mode: '0600'
+  loop:
+    - "{{ vault_cert_path }}"
+    - "{{ vault_key_path }}"
+  loop_control:
+    loop_var: 'item'
