@@ -58,8 +58,11 @@ my:
 
 # Load balancer data:
 load_balancer:
-  hostname: "{{ hostvars[groups['load_balancer'][0]]['clean_hostname'] }}"
-  ipv4_address: "{{ hostvars[groups['load_balancer'][0]]['ipv4_address'] }}"
+  hostname: "{{ groups['load_balancer'] | first }}"
+  ipv4_address: "{{ hostvars[groups['load_balancer'] | first]['ipv4_address'] }}"
+  nginx:
+    user: 'www-data'
+    group: 'www-data'
 
 # Control plane data:
 k8s_control_plane:
@@ -249,6 +252,13 @@ step_ca:
   root_password_path: "/etc/step-ca/.password_root.txt"
   server: "{{ groups['step_ca'] | first }}"
   user: 'step'
+
+# Node Homepage data:
+node_homepage:
+  web_root: '/srv/status'
+  nginx:
+    user: 'www-data'
+    group: 'www-data'
 
 # #############################################################################
 # Variables for vendored roles.
