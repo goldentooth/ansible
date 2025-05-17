@@ -5,8 +5,8 @@
       {{ step_ca_executable }} \
         ca certificate \
         vault.service.consul \
-        "{{ vault_certs_path }}/tls.crt" \
-        "{{ vault_certs_path }}/tls.key" \
+        "{{ vault_cert_path }}" \
+        "{{ vault_key_path }}" \
         --provisioner="{{ step_ca_provisioner }}" \
         --password-file="{{ step_ca_provisioner_password_path }}" \
         --san='vault.service.consul' \

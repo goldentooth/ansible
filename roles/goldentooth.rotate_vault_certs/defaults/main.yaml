@@ -1,5 +1,7 @@
-vault_path: '/opt/vault'
-vault_certs_path: "{{ vault_path }}/tls"
+vault_opt_path: '/opt/vault'
+vault_certs_path: "{{ vault_opt_path }}/tls"
+vault_cert_path: "{{ vault_certs_path }}/tls.crt"
+vault_key_path: "{{ vault_certs_path }}/tls.key"
 
 step_ca_provisioner: 'default'
 step_ca_provisioner_password_path: '/root/.step/jwk_provisioner_password.txt'
