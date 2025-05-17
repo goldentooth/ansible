@@ -40,3 +40,17 @@
         --force
   notify:
     - 'Restart Consul service.'
+
+- name: 'Repair permissions on Consul certs directory.'
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: 'file'
+    owner: 'consul'
+    group: 'consul'
+    mode: '0600'
+  loop:
+    - "{{ consul_agent_cert_path }}"
+    - "{{ consul_agent_key_path }}"
+    - "{{ consul_agent_ca_path }}"
+  loop_control:
+    loop_var: 'item'

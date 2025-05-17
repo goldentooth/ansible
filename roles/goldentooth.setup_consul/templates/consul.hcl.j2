@@ -9,8 +9,8 @@ tls {
   defaults {
     ca_file = "{{ consul_agent_ca_path }}"
     {% if clean_hostname in groups['consul_server'] %}
-    cert_file = "{{ consul_agent_server_path }}"
-    key_file = "{{ consul_agent_server_key_path }}"
+    cert_file = "{{ consul_agent_cert_path }}"
+    key_file = "{{ consul_agent_key_path }}"
     {% endif %}
     verify_incoming = true
     verify_outgoing = true
@@ -47,8 +47,9 @@ telemetry {
 
 {% if clean_hostname in groups['consul_server'] %}
 server = true
+
 bootstrap_expect = {{ groups['consul_server'] | length }}
-client_addr = "{{ ipv4_address }}"
+
 ui_config {
   enabled = true
   metrics_provider = "prometheus"
@@ -57,16 +58,18 @@ ui_config {
     base_url = "http://{{ hostvars[groups['prometheus'] | first].ipv4_address }}:{{ listen_port }}"
   }
 }
+
 connect {
   enabled = true
 }
-addresses {
-  grpc = "{{ ipv4_address }}"
-}
+
+{% endif %}
+
+client_addr = "{{ ipv4_address }}"
+
 ports {
   http      = 8500
   https     = 8501
   grpc      = 8502
   grpc_tls  = 8503
 }
-{% endif %}

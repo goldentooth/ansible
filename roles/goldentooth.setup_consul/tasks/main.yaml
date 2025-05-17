@@ -1,5 +1,4 @@
 ---
-
 - name: 'Remove any existing gossip key.'
   ansible.builtin.file:
     path: "{{ consul_data_path }}/serf/local.keyring"
@@ -73,6 +72,6 @@
     mode: '0644'
   loop:
     - name: 'CONSUL_HTTP_ADDR'
-      value: "http://{{ groups['consul_server'] | first }}:8500"
+      value: "http://{{ consul_maybe_leader }}:8500"
   loop_control:
     loop_var: 'variable'
