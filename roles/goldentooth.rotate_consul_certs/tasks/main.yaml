@@ -1,4 +1,10 @@
 ---
+- name: 'Retrieve current Step-CA certificate.'
+  ansible.builtin.slurp:
+    src: "{{ step_ca_cert_path }}"
+  register: 'step_ca_cert_file_base64'
+  delegate_to: "{{ groups['step_ca'][0] }}"
+
 - name: 'Ensure Consul certs directory exists.'
   ansible.builtin.file:
     path: "{{ consul_certs_path }}"
@@ -7,9 +13,30 @@
     group: 'consul'
     mode: '0700'
 
-- name: 'Create Certificate Authority.'
-  ansible.builtin.include_tasks: 'create_ca.yaml'
+- name: 'Upload Step-CA certificate.'
+  ansible.builtin.copy:
+    content: "{{ step_ca_cert_file_base64.content | b64decode }}"
+    dest: "{{ consul_agent_ca_path }}"
+    owner: 'consul'
+    group: 'consul'
+    mode: '0644'
 
-- name: 'Create Server certificates.'
-  ansible.builtin.include_tasks: 'create_server_certs.yaml'
-  when: "inventory_hostname in groups['consul_server']"
+- name: 'Generate Consul server certificate using step-ca.'
+  ansible.builtin.shell:
+    cmd: |
+      {{ step_ca_executable }} \
+        ca certificate \
+        "{{ clean_hostname }}.server.{{ consul_datacenter }}.{{ consul_domain }}" \
+        "{{ consul_agent_cert_path }}" \
+        "{{ consul_agent_key_path }}" \
+        --provisioner="{{ step_ca_provisioner }}" \
+        --password-file="{{ step_ca_provisioner_password_path }}" \
+        --san="{{ clean_hostname }}" \
+        --san="{{ clean_hostname }}.server.{{ consul_datacenter }}.{{ consul_domain }}" \
+        --san="server.{{ consul_datacenter }}.{{ consul_domain }}" \
+        --san="{{ ipv4_address }}" \
+        --not-after="24h" \
+        --console \
+        --force
+  notify:
+    - 'Restart Consul service.'
