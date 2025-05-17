@@ -3,17 +3,17 @@ Description=Nomad
 Documentation=https://www.nomadproject.io/docs/
 Wants=network-online.target
 After=network-online.target
-{% if nomad_is_consul_enabled %}
+{% if nomad.is_consul_enabled %}
 Wants=consul.service
 After=consul.service
 {% endif %}
 
 [Service]
-User={{ nomad_service_user }}
-Group={{ nomad_service_group }}
-EnvironmentFile={{ nomad_env_path }}
+User={{ nomad.service_user }}
+Group={{ nomad.service_group }}
+EnvironmentFile={{ nomad.env_config_path }}
 ExecReload=/bin/kill -HUP $MAINPID
-ExecStart={{ nomad_executable_path }} agent -config {{ nomad_etc_path }}
+ExecStart={{ nomad.executable_path }} agent -config {{ nomad.etc_path }}
 KillMode=process
 KillSignal=SIGINT
 LimitNOFILE=65536

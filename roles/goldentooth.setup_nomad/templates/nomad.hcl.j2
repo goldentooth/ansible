@@ -1,5 +1,5 @@
-datacenter  = "{{ nomad_datacenter }}"
-data_dir    = "{{ nomad_data_path }}"
+datacenter  = "{{ nomad.datacenter }}"
+data_dir    = "{{ nomad.data_path }}"
 bind_addr   = "{{ ipv4_address }}"
 
 {% if clean_hostname in groups['nomad_server'] -%}
@@ -17,9 +17,9 @@ consul {
   grpc_address        = "{{ ipv4_address }}:8503"
 
   ssl                 = true
-  ca_file             = "{{ nomad_ca_cert_path }}"
-  cert_file           = "{{ nomad_cert_path }}"
-  key_file            = "{{ nomad_key_path }}"
+  ca_file             = "{{ step_ca.ca_ref_cert_path }}"
+  cert_file           = "{{ nomad.cert_path }}"
+  key_file            = "{{ nomad.key_path }}"
   verify_ssl          = true
 
   server_service_name = "nomad"
@@ -38,9 +38,9 @@ client {
 tls {
   http                    = true
   rpc                     = true
-  ca_file                 = "{{ nomad_ca_cert_path }}"
-  cert_file               = "{{ nomad_cert_path }}"
-  key_file                = "{{ nomad_key_path }}"
+  ca_file                 = "{{ step_ca.ca_ref_cert_path }}"
+  cert_file               = "{{ nomad.cert_path }}"
+  key_file                = "{{ nomad.key_path }}"
   verify_server_hostname  = true
   verify_https_client     = true
 }

@@ -1,8 +1,8 @@
 ---
 - name: 'Update the Consul policies.'
   community.general.consul_policy:
-    host: "{{ consul_maybe_leader }}"
-    token: "{{ vault.consul.mgmt_token }}"
+    host: "{{ consul.maybe_leader }}"
+    token: "{{ secret_vault.consul.mgmt_token }}"
     name: "{{ policy.name }}"
     description: "{{ policy.description }}"
     rules: "{{ policy.rules }}"
@@ -19,20 +19,20 @@
 
 - name: 'Create Consul tokens.'
   community.general.consul_token:
-    host: "{{ consul_maybe_leader }}"
+    host: "{{ consul.maybe_leader }}"
     scheme: 'http'
     validate_certs: false
     port: 8500
-    token: "{{ vault.consul.mgmt_token }}"
-    description: "Nomad {{ nomad_role }} token"
+    token: "{{ secret_vault.consul.mgmt_token }}"
+    description: "Nomad {{ nomad.role }} token"
     policies:
-      - name: 'nomad-{{ nomad_role }}'
+      - name: 'nomad-{{ nomad.role }}'
   register: 'nomad_consul_token'
 
 - name: 'Copy Nomad service configuration into place on all nodes.'
   ansible.builtin.template:
     src: 'nomad.service.j2'
-    dest: "{{ nomad_service_path }}"
+    dest: '/etc/systemd/system/nomad.service'
     owner: 'nomad'
     group: 'nomad'
     mode: '0644'
@@ -56,9 +56,9 @@
     mode: '0600'
   loop:
     - src: 'nomad.hcl.j2'
-      dest: "{{ nomad_hcl_path }}"
+      dest: "{{ nomad.hcl_config_path }}"
     - src: 'nomad.env.j2'
-      dest: "{{ nomad_env_path }}"
+      dest: "{{ nomad.env_config_path }}"
   loop_control:
     loop_var: 'file'
   notify:
@@ -76,11 +76,11 @@
     - name: 'NOMAD_ADDR'
       value: "https://{{ groups['nomad_server'] | first }}:4646"
     - name: 'NOMAD_CACERT'
-      value: "{{ nomad_ca_cert_path }}"
+      value: "{{ step_ca.ca_ref_cert_path }}"
     - name: 'NOMAD_CLIENT_CERT'
-      value: "{{ nomad_cli_cert_path }}"
+      value: "{{ nomad.cli_cert_path }}"
     - name: 'NOMAD_CLIENT_KEY'
-      value: "{{ nomad_cli_key_path }}"
+      value: "{{ nomad.cli_key_path }}"
   loop_control:
     loop_var: 'variable'
 
