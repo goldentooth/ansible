@@ -26,12 +26,32 @@
         --fingerprint={{ step_ca_fingerprint }} \
         --install \
         --force
+  changed_when: false
 
 - name: 'Ensure JWK provisioner password file is present.'
   ansible.builtin.copy:
-    content: "{{ vault.step_ca.passwords.provisioners.jwk }}"
+    content: "{{ step_ca_provisioner_password }}"
     dest: "{{ step_ca_provisioner_password_path }}"
     owner: 'root'
     group: 'root'
     mode: 0600
   no_log: true
+
+- name: 'Retrieve current Step-CA certificate.'
+  ansible.builtin.slurp:
+    src: "{{ step_ca_cert_path }}"
+  register: 'step_ca_cert_file_base64'
+  delegate_to: "{{ groups['step_ca'] | first }}"
+
+- name: 'Write Step-CA certificate to shared certificates path.'
+  ansible.builtin.copy:
+    content: "{{ step_ca_cert_file_base64.content | b64decode }}"
+    dest: "{{ step_ca_shared_certificate_path }}"
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+
+- name: 'Run update-ca-certificates.'
+  ansible.builtin.command:
+    cmd: 'update-ca-certificates'
+  changed_when: false

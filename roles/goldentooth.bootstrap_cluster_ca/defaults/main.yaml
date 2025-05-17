@@ -8,4 +8,8 @@ step_ca_name: "{{ cluster.name }}"
 step_ca_dns: "{{ cluster.host_fqdn }},{{ cluster.node_fqdn }},{{ ipv4_address }}"
 step_ca_address: "{{ ipv4_address }}:9443"
 step_ca_executable: 'step'
+step_ca_provisioner_password: 'not-a-real-password'
+step_ca_root_cert_path: '~/.step/certs/root_ca.crt'
 step_ca_provisioner_password_path: '~/.step/jwk_provisioner_password.txt'
+step_ca_shared_certificate_path: "/usr/local/share/ca-certificates/{{ cluster.name }}.crt"
+step_ca_cert_path: "/etc/step-ca/certs/root_ca.crt"

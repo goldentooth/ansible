@@ -137,6 +137,8 @@ nomad_role: "{{ 'server' if 'nomad_server' in group_names else 'client' }}"
 nomad_service_user: "{{ 'nomad' if nomad_role == 'server' else 'root' }}"
 nomad_service_group: "{{ 'nomad' if nomad_role == 'server' else 'root' }}"
 
+step_ca_provisioner_password: "{{ vault.step_ca.passwords.provisioners.jwk }}"
+
 # #############################################################################
 # Variables for vendored roles.
 # #############################################################################
