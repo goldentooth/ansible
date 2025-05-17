@@ -1,6 +1,6 @@
 ---
 - name: 'Initialize the first control plane node.'
-  when: 'inventory_hostname == k8s_control_plane.first.hostname'
+  when: 'inventory_hostname == kubernetes.first'
   block:
 
     - name: 'Initialize the first control plane node with kubeadm.'
@@ -8,16 +8,16 @@
         cmd: |-
           kubeadm init
             --control-plane-endpoint="{{ load_balancer.ipv4_address }}:6443"
-            --kubernetes-version="stable-{{ k8s_version_clean }}"
+            --kubernetes-version="stable-{{ kubernetes.version_clean }}"
             --service-cidr="{{ network.service.cidr }}"
             --pod-network-cidr="{{ network.pod.cidr }}"
-            --cert-dir="{{ k8s_cert_dir }}"
-            --cri-socket="{{ k8s_cri_socket }}"
+            --cert-dir="{{ kubernetes.pki_path }}"
+            --cri-socket="{{ kubernetes.cri_socket_path }}"
             --upload-certs
       args:
-        creates: "{{ k8s_config_path }}"
+        creates: "{{ kubernetes.admin_conf_path }}"
       environment:
-        KUBECONFIG: "{{ k8s_config_path }}"
+        KUBECONFIG: "{{ kubernetes.admin_conf_path }}"
       register: 'kubeadm_init'
 
     - name: 'Restart kubelet.'
@@ -42,7 +42,7 @@
 
     - name: 'Configure Calico networking.'
       ansible.builtin.command:
-        cmd: "kubectl apply -f {{ k8s_calico_manifest_url }}"
+        cmd: "kubectl apply -f {{ kubernetes.calico_manifest_url }}"
       register: 'calico_result'
       until: 'calico_result is not failed'
       retries: 12
@@ -52,24 +52,24 @@
 - name: 'Set the kubeadm certificate key.'
   ansible.builtin.set_fact:
     k8s_certificate_key: "{{ line | regex_search('--certificate-key ([^ ]+)', '\\1') | first }}"
-  loop: "{{ hostvars[k8s_control_plane.first.hostname]['kubeadm_init'].stdout_lines | default([]) }}"
+  loop: "{{ hostvars[kubernetes.first]['kubeadm_init'].stdout_lines | default([]) }}"
   loop_control:
     loop_var: 'line'
   when: '(line | trim) is match(".*--certificate-key.*")'
 
 - name: 'Create kubeadm token for joining nodes.'
   ansible.builtin.command:
-    cmd: "kubeadm --kubeconfig {{ k8s_config_path }} token create"
+    cmd: "kubeadm --kubeconfig {{ kubernetes.admin_conf_path }} token create"
   changed_when: false
   register: 'temp_token'
-  delegate_to: "{{ k8s_control_plane.first.hostname }}"
+  delegate_to: "{{ kubernetes.first }}"
 
 - name: 'Set kubeadm token fact.'
   ansible.builtin.set_fact:
     kubeadm_token: "{{ temp_token.stdout }}"
 
 - name: 'Set up the rest of the control plane nodes.'
-  when: 'inventory_hostname in k8s_control_plane.rest.hostnames'
+  when: 'inventory_hostname in kubernetes.rest'
   block:
 
     - name: 'Ensure presence of Kubernetes directory.'
@@ -95,7 +95,7 @@
       ansible.builtin.shell:
         cmd: |
           if [ -f /etc/kubernetes/manifests/kube-apiserver.yaml ]; then
-            kubeadm reset -f --cert-dir {{ k8s_cert_dir }};
+            kubeadm reset -f --cert-dir {{ kubernetes.pki_path }};
           fi
       changed_when: false
 
@@ -119,20 +119,20 @@
         state: 'link'
         mode: '0600'
 
-- name: 'Get a kubeadm join command for k8s_worker nodes.'
+- name: 'Get a kubeadm join command for worker nodes.'
   ansible.builtin.command:
     cmd: 'kubeadm token create --print-join-command'
   changed_when: false
-  when: 'ansible_hostname == k8s_control_plane.first.hostname'
+  when: 'ansible_hostname == kubernetes.first'
   register: 'kubeadm_join_command'
 
 - name: 'Set the kubeadm join command fact.'
   ansible.builtin.set_fact:
     kubeadm_join_command: |
-      {{ hostvars[k8s_control_plane.first.hostname]['kubeadm_join_command'].stdout }} --ignore-preflight-errors=all
+      {{ hostvars[kubernetes.first]['kubeadm_join_command'].stdout }} --ignore-preflight-errors=all
 
 - name: 'Join node to Kubernetes control plane.'
   ansible.builtin.command:
     cmd: "{{ kubeadm_join_command }}"
-  when: 'inventory_hostname in k8s_worker.hostnames'
+  when: "clean_hostname in groups['k8s_worker']"
   changed_when: false

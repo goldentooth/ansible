@@ -11,12 +11,12 @@
         types:
           - 'deb'
         uris:
-          - "{{ k8s_apt_repo_url }}"
+          - "{{ kubernetes.apt_repo_url }}"
         suites:
           - '/'
         architectures:
           - 'arm64'
-        signed_by: "{{ k8s_apt_repo_url }}/Release.key"
+        signed_by: "{{ kubernetes.apt_repo_url }}/Release.key"
       notify:
         - 'Update Apt cache.'
 

@@ -4,4 +4,4 @@
   hosts: 'k8s_cluster'
   remote_user: 'root'
   roles:
-    - { role: 'goldentooth.uninstall_k8s_packages' }
+    - { role: 'goldentooth.uninstall_kubernetes.apt_packages' }

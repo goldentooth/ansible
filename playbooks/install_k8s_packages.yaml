@@ -11,7 +11,7 @@
   remote_user: 'root'
   roles:
     - { role: 'goldentooth.setup_k8s_apt' }
-    - { role: 'goldentooth.install_k8s_packages' }
+    - { role: 'goldentooth.install_kubernetes.apt_packages' }
   handlers:
     - name: 'Update Apt cache.'
       ansible.builtin.apt:
@@ -21,7 +21,7 @@
       ansible.builtin.dpkg_selections:
         name: "{{ package }}"
         selection: 'hold'
-      loop: "{{ k8s_packages }}"
+      loop: "{{ kubernetes.apt_packages }}"
       loop_control:
         loop_var: 'package'
 

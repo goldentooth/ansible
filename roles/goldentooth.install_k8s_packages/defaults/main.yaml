@@ -1,5 +1,5 @@
 # The Kubernetes packages to install.
-k8s_packages:
+kubernetes.apt_packages:
   - 'kubeadm'
   - 'kubectl'
   - 'kubelet'

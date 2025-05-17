@@ -1,7 +1,7 @@
 ---
 - name: 'Install Kubernetes packages.'
   ansible.builtin.apt:
-    name: "{{ k8s_packages }}"
+    name: "{{ kubernetes.apt_packages }}"
     state: 'present'
   notify:
     - 'Hold Kubernetes packages.'

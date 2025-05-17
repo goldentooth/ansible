@@ -2,6 +2,12 @@
 # Standard variables.
 # #############################################################################
 
+# Cluster name.
+cluster_name: 'goldentooth'
+
+# The version of Kubernetes we're rolling with.
+kubernetes_version: '1.32'
+
 # This should always be 'python3'.
 ansible_python_interpreter: 'python3'
 
@@ -10,9 +16,6 @@ clean_hostname: "{{ inventory_hostname | splitext | first | lower }}"
 
 # Calculated IPv4 address for the current host.  Doesn't always work, usually does.
 ipv4_address: "{{ ansible_default_ipv4.address | default(ansible_all_ipv4_addresses[0]) }}"
-
-# Cluster name.
-cluster_name: 'goldentooth'
 
 # #############################################################################
 # Data structure for my personal preferences.
@@ -64,23 +67,6 @@ load_balancer:
     user: 'www-data'
     group: 'www-data'
 
-# Control plane data:
-k8s_control_plane:
-  all:
-    hostnames: "{{ groups['k8s_control_plane'] | map('extract', hostvars, 'clean_hostname') | list }}"
-    ipv4_addresses: "{{ groups['k8s_control_plane'] | map('extract', hostvars, 'ipv4_address') | list }}"
-  first:
-    hostname: "{{ hostvars[groups['k8s_control_plane'][0]]['clean_hostname'] }}"
-    ipv4_address: "{{ hostvars[groups['k8s_control_plane'][0]]['ipv4_address'] }}"
-  rest:
-    hostnames: "{{ groups['k8s_control_plane'][1:] | map('extract', hostvars, 'clean_hostname') | list }}"
-    ipv4_addresses: "{{ groups['k8s_control_plane'][1:] | map('extract', hostvars, 'ipv4_address') | list }}"
-
-# k8s_worker data:
-k8s_worker:
-  hostnames: "{{ groups['k8s_worker'] | map('extract', hostvars, 'clean_hostname') | list }}"
-  ipv4_addresses: "{{ groups['k8s_worker'] | map('extract', hostvars, 'ipv4_address') | list }}"
-
 # Network data:
 network:
   infrastructure:
@@ -117,18 +103,30 @@ node:
   fqdn: "{{ clean_hostname }}.{{ cluster.node_domain }}"
   ip: "{{ ipv4_address }}"
 
-# The version of Kubernetes we're rolling with.
-k8s_version_clean: '1.32'
-k8s_version: "v{{ k8s_version_clean }}"
-
-# The Kubernetes Apt repository URL.
-k8s_apt_repo_url: "https://pkgs.k8s.io/core:/stable:/{{ k8s_version }}/deb/"
-
-# The Kubernetes packages to install from Apt.
-k8s_packages:
-  - 'kubeadm'
-  - 'kubectl'
-  - 'kubelet'
+# Kubernetes data:
+kubernetes:
+  # The first control plane node.
+  first: "{{ groups['k8s_control_plane'] | first }}"
+  # The rest of the control plane nodes.
+  rest: "{{ groups['k8s_control_plane'][1:] }}"
+  # The Kubernetes config file path.
+  admin_conf_path: '/etc/kubernetes/admin.conf'
+  # The Calico project manifest file.
+  calico_manifest_url: 'https://projectcalico.docs.tigera.io/manifests/calico.yaml'
+  # The version of Kubernetes we're rolling with.
+  version_clean: "{{ kubernetes_version }}"
+  version: "v{{ kubernetes_version }}"
+  # The Kubernetes certificate directory.
+  pki_path: '/etc/kubernetes/pki'
+  # The CRI socket URI.
+  cri_socket_path: 'unix:///var/run/containerd/containerd.sock'
+  # The Kubernetes packages to install from Apt.
+  apt_packages:
+    - 'kubeadm'
+    - 'kubectl'
+    - 'kubelet'
+  # The Kubernetes Apt repository URL.
+  apt_repo_url: "https://pkgs.k8s.io/core:/stable:/{{ kubernetes_version }}/deb/"
 
 # NFS mount information.
 nfs_server: "{{ groups['nfs_server'] }}"
