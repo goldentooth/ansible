@@ -1,7 +1,7 @@
 ---
 - name: 'Remove ACL bootstrap reset file if it exists.'
   ansible.builtin.file:
-    path: "{{ acl_bootstrap_reset_path }}"
+    path: "{{ consul.acl_bootstrap_reset_path }}"
     state: 'absent'
   changed_when: false
 
@@ -27,7 +27,7 @@
     - name: 'Write the ACL bootstrap reset index to acl-bootstrap-reset.'
       ansible.builtin.copy:
         content: "{{ reset_index }}"
-        dest: "{{ acl_bootstrap_reset_path }}"
+        dest: "{{ consul.acl_bootstrap_reset_path }}"
       delegate_to: "{{ server }}"
       loop: "{{ groups['consul_server'] }}"
       loop_control:
@@ -137,7 +137,7 @@
 
 - name: 'Remove ACL bootstrap reset file if it exists.'
   ansible.builtin.file:
-    path: "{{ acl_bootstrap_reset_path }}"
+    path: "{{ consul.acl_bootstrap_reset_path }}"
     state: 'absent'
   changed_when: false
 
@@ -171,7 +171,7 @@
         cmd: |
           consul acl token create \
             -description "Agent token for {{ clean_hostname }}" \
-            -node-identity "{{ clean_hostname }}:{{ consul_datacenter }}"
+            -node-identity "{{ clean_hostname }}:{{ consul.datacenter }}"
       delegate_to: "{{ groups['consul_server'] | first }}"
       environment:
         CONSUL_HTTP_TOKEN: "{{ consul_mgmt_token }}"
@@ -183,7 +183,7 @@
 
     - name: 'Add the client node token.'
       ansible.builtin.lineinfile:
-        path: "{{ consul_hcl_path }}"
+        path: "{{ consul.hcl_config_path }}"
         line: "    agent = \"{{consul_client_node_token}}\""
         regex: '^\s+agent = .*'
         state: 'present'
