@@ -1,26 +1,4 @@
 ---
-- name: 'Retrieve current Step-CA certificate.'
-  ansible.builtin.slurp:
-    src: "{{ step_ca_cert_path }}"
-  register: 'step_ca_cert_file_base64'
-  delegate_to: "{{ groups['step_ca'][0] }}"
-
-- name: 'Ensure Consul certs directory exists.'
-  ansible.builtin.file:
-    path: "{{ consul_certs_path }}"
-    state: 'directory'
-    owner: 'consul'
-    group: 'consul'
-    mode: '0700'
-
-- name: 'Upload Step-CA certificate.'
-  ansible.builtin.copy:
-    content: "{{ step_ca_cert_file_base64.content | b64decode }}"
-    dest: "{{ consul_agent_ca_path }}"
-    owner: 'consul'
-    group: 'consul'
-    mode: '0644'
-
 - name: 'Generate Consul server certificate using step-ca.'
   ansible.builtin.shell:
     cmd: |
@@ -49,8 +27,7 @@
     group: 'consul'
     mode: '0600'
   loop:
-    - "{{ consul_agent_cert_path }}"
     - "{{ consul_agent_key_path }}"
-    - "{{ consul_agent_ca_path }}"
+    - "{{ consul_agent_cert_path }}"
   loop_control:
     loop_var: 'item'

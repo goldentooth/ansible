@@ -3,12 +3,10 @@ consul_domain: 'consul'
 consul_config_path: '/etc/consul.d'
 
 consul_certs_path: "{{ consul_config_path }}/certs"
-
-consul_agent_ca_path: "{{ consul_certs_path }}/ca.crt"
+consul_agent_ca_path: "{{ consul_certs_path }}/not-a-real-cert.crt"
 consul_agent_cert_path: "{{ consul_certs_path }}/tls.crt"
 consul_agent_key_path: "{{ consul_certs_path }}/tls.key"
 
 step_ca_provisioner: 'default'
 step_ca_provisioner_password_path: '/root/.step/jwk_provisioner_password.txt'
 step_ca_executable: 'step'
-step_ca_cert_path: "/etc/step-ca/certs/root_ca.crt"
