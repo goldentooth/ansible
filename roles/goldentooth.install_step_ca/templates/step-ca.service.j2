@@ -6,16 +6,16 @@ After=network-online.target
 Wants=network-online.target
 StartLimitIntervalSec=30
 StartLimitBurst=3
-ConditionFileNotEmpty={{ step_ca_ca_config_path }}
-ConditionFileNotEmpty={{ step_ca_intermediate_password_path }}
+ConditionFileNotEmpty={{ step_ca.ca_config_path }}
+ConditionFileNotEmpty={{ step_ca.intermediate_password_path }}
 
 [Service]
 Type=simple
-User={{ step_ca_user }}
-Group={{ step_ca_user }}
-Environment=STEPPATH={{ step_ca_data_path }}
-WorkingDirectory={{ step_ca_data_path }}
-ExecStart=step-ca {{ step_ca_ca_config_path }} --password-file {{ step_ca_intermediate_password_path }}
+User={{ step_ca.user }}
+Group={{ step_ca.user }}
+Environment=STEPPATH={{ step_ca.etc_path }}
+WorkingDirectory={{ step_ca.etc_path }}
+ExecStart={{ step_ca.ca_executable }} {{ step_ca.ca_config_path }} --password-file {{ step_ca.intermediate_password_path }}
 ExecReload=/bin/kill --signal HUP $MAINPID
 Restart=on-failure
 RestartSec=5
