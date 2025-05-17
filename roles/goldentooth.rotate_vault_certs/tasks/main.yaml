@@ -2,13 +2,13 @@
 - name: 'Generate certificate for Vault from step-ca.'
   ansible.builtin.shell:
     cmd: |
-      {{ step_ca_executable }} \
+      {{ step_ca.executable }} \
         ca certificate \
         vault.service.consul \
-        "{{ vault_cert_path }}" \
-        "{{ vault_key_path }}" \
-        --provisioner="{{ step_ca_provisioner }}" \
-        --password-file="{{ step_ca_provisioner_password_path }}" \
+        "{{ vault.cert_path }}" \
+        "{{ vault.key_path }}" \
+        --provisioner="{{ step_ca.provisioner }}" \
+        --password-file="{{ step_ca.provisioner_password_path }}" \
         --san='vault.service.consul' \
         --san='localhost' \
         --san="{{ clean_hostname }}" \
@@ -25,7 +25,7 @@
     group: 'vault'
     mode: '0600'
   loop:
-    - "{{ vault_cert_path }}"
-    - "{{ vault_key_path }}"
+    - "{{ vault.cert_path }}"
+    - "{{ vault.key_path }}"
   loop_control:
     loop_var: 'item'
