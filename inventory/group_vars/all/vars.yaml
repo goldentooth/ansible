@@ -138,20 +138,34 @@ nfs_mounts:
     options: {}
 
 # Slurm options.
+slurm_nfs_base_path: "{{ nfs_mounts['Primary']['mount'] }}/slurm"
 slurm:
   lmod:
     source_url: "https://sourceforge.net/projects/lmod/files/Lmod-8.4.tar.bz2"
-  nfs_base_path: "{{ nfs_mounts['Primary']['mount'] }}/slurm"
-
-# Golang version.
-go_version: '1.23.0'
-
-# Python versions for Conda user environments.
-python_versions:
-  - '3.10'
-  - '3.11'
-  - '3.12'
-  - '3.13'
+  nfs_base_path: "{{ slurm_nfs_base_path }}"
+  # Python versions for Conda user environments.
+  python_versions:
+    - '3.10'
+    - '3.11'
+    - '3.12'
+    - '3.13'
+  # Golang version.
+  go_version: '1.23.0'
+  shared_directories:
+    - "{{ slurm_nfs_base_path }}"
+    - "{{ slurm_nfs_base_path }}/var"
+    - "{{ slurm_nfs_base_path }}/var/spool"
+    - "{{ slurm_nfs_base_path }}/var/spool/slurm"
+    - "{{ slurm_nfs_base_path }}/var/spool/slurm/ctld"
+    - "{{ slurm_nfs_base_path }}/apps"
+    - "{{ slurm_nfs_base_path }}/apps/modulefiles"
+    - "{{ slurm_nfs_base_path }}/bin"
+    - "{{ slurm_nfs_base_path }}/tmp"
+  local_directories:
+    - "/var/run/slurm"
+    - "/var/spool/slurm"
+    - "/var/spool/slurm/d"
+  singularity_version: '4.3.0'
 
 # (HashiCorp) Vault data:
 vault:

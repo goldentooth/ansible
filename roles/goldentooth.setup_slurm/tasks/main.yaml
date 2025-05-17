@@ -26,7 +26,7 @@
     mode: '0755'
     owner: 'slurm'
     group: 'slurm'
-  loop: "{{ slurm_shared_directories }}"
+  loop: "{{ slurm.shared_directories }}"
   loop_control:
     loop_var: 'slurm_directory'
   run_once: true
@@ -38,7 +38,7 @@
     mode: '0755'
     owner: 'slurm'
     group: 'slurm'
-  loop: "{{ slurm_local_directories }}"
+  loop: "{{ slurm.local_directories }}"
   loop_control:
     loop_var: 'slurm_directory'
 
@@ -193,7 +193,7 @@
 
 - name: 'Check if Golang is installed.'
   ansible.builtin.stat:
-    path: "{{ slurm.nfs_base_path }}/go/{{ go_version }}/bin/go"
+    path: "{{ slurm.nfs_base_path }}/go/{{ slurm.go_version }}/bin/go"
   register: go_bin_dir
 
 - name: 'Install Golang.'
@@ -201,7 +201,7 @@
 
     - name: 'Create Golang version directory.'
       ansible.builtin.file:
-        path: "{{ slurm.nfs_base_path }}/go/{{ go_version }}"
+        path: "{{ slurm.nfs_base_path }}/go/{{ slurm.go_version }}"
         state: 'directory'
         mode: '0755'
         owner: 'slurm'
@@ -209,8 +209,8 @@
 
     - name: 'Download and unarchive Golang archive.'
       ansible.builtin.unarchive:
-        src: "https://dl.google.com/go/go{{ go_version }}.linux-arm64.tar.gz"
-        dest: "{{ slurm.nfs_base_path }}/go/{{ go_version }}"
+        src: "https://dl.google.com/go/go{{ slurm.go_version }}.linux-arm64.tar.gz"
+        dest: "{{ slurm.nfs_base_path }}/go/{{ slurm.go_version }}"
         remote_src: true
       register: 'go_unarchive'
 
@@ -237,7 +237,7 @@
           local base = "{{ go_unarchive.dest }}/go"
           prepend_path("PATH", pathJoin(base, "bin"))
           conflict("Golang")
-        dest: "{{ slurm.nfs_base_path }}/apps/modulefiles/Golang/{{ go_version }}.lua"
+        dest: "{{ slurm.nfs_base_path }}/apps/modulefiles/Golang/{{ slurm.go_version }}.lua"
         owner: 'slurm'
         group: 'slurm'
         mode: 0755
@@ -247,7 +247,7 @@
 
 - name: 'Check if Singularity is installed.'
   ansible.builtin.stat:
-    path: "{{ slurm.nfs_base_path }}/singularity/{{ singularity_version }}"
+    path: "{{ slurm.nfs_base_path }}/singularity/{{ slurm.singularity_version }}"
   register: singularity_dir
 
 - name: 'Build and install Singularity.'
@@ -285,14 +285,14 @@
       ansible.builtin.git:
         repo: 'https://github.com/sylabs/singularity.git'
         dest: "{{ singularity_git_dir.path }}"
-        version: "v{{ singularity_version }}"
+        version: "v{{ slurm.singularity_version }}"
 
     - name: 'Build Singularity.'
       ansible.builtin.shell:
         cmd: |
           source /etc/profile.d/z00_lmod.sh
-          module load Golang/{{ go_version }}
-          ./mconfig --prefix={{ slurm.nfs_base_path }}/singularity/{{ singularity_version }}
+          module load Golang/{{ slurm.go_version }}
+          ./mconfig --prefix={{ slurm.nfs_base_path }}/singularity/{{ slurm.singularity_version }}
           make -C builddir
           make -C builddir install
         executable: '/bin/bash'
@@ -319,10 +319,10 @@
           - Homepage: https://sylabs.io/singularity
           ]])
           load("Golang")
-          local base = "{{ slurm.nfs_base_path }}/singularity/{{ singularity_version }}"
+          local base = "{{ slurm.nfs_base_path }}/singularity/{{ slurm.singularity_version }}"
           prepend_path("PATH", pathJoin(base, "bin"))
           conflict("Singularity")
-        dest: "{{ slurm.nfs_base_path }}/apps/modulefiles/Singularity/{{ singularity_version }}.lua"
+        dest: "{{ slurm.nfs_base_path }}/apps/modulefiles/Singularity/{{ slurm.singularity_version }}.lua"
         owner: 'slurm'
         group: 'slurm'
         mode: 0755
@@ -423,6 +423,6 @@
   become: true
   become_user: "{{ my.name.lower }}"
   run_once: true
-  loop: "{{ python_versions }}"
+  loop: "{{ slurm.python_versions }}"
   loop_control:
     loop_var: 'python_version'
