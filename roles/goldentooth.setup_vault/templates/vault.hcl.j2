@@ -2,7 +2,7 @@ ui                                  = true
 cluster_addr                        = "https://{{ ipv4_address }}:8201"
 api_addr                            = "https://{{ ipv4_address }}:8200"
 disable_mlock                       = true
-cluster_name                        = "{{ cluster.name }}"
+cluster_name                        = "{{ vault.cluster_name }}"
 enable_response_header_raft_node_id = true
 log_level                           = "debug"
 
@@ -16,8 +16,8 @@ storage "consul" {
 
 listener "tcp" {
   address                             = "{{ ipv4_address }}:8200"
-  tls_cert_file                       = "{{ vault_certs_path }}/tls.crt"
-  tls_key_file                        = "{{ vault_certs_path }}/tls.key"
+  tls_cert_file                       = "{{ vault.cert_path }}"
+  tls_key_file                        = "{{ vault.key_path }}"
   tls_require_and_verify_client_cert  = true
   telemetry {
     unauthenticated_metrics_access = true
@@ -25,7 +25,7 @@ listener "tcp" {
 }
 
 seal "awskms" {
-  kms_key_id = "{{ vault_seal_kms_key_alias }}"
+  kms_key_id = "{{ vault.seal_kms_key_alias }}"
 }
 
 telemetry {

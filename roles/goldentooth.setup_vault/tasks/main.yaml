@@ -1,30 +1,29 @@
 ---
 - name: 'Create/update the Vault Consul Policy.'
   community.general.consul_policy:
-    host: "{{ groups['consul_server'][0] }}"
-    token: "{{ vault.consul.mgmt_token }}"
-    name: "{{ vault_consul_policy_name }}"
+    host: "{{ consul.maybe_leader }}"
+    token: "{{ consul.mgmt_token }}"
+    name: "{{ vault.consul.policy_name }}"
     description: 'Vault policy'
     rules: "{{ lookup('ansible.builtin.file', role_path ~ '/files/vault.policy.hcl') }}"
   run_once: true
 
 - name: 'Create Consul client tokens.'
   community.general.consul_token:
-    host: "{{ groups['consul_server'][0] }}"
+    host: "{{ consul.maybe_leader }}"
     scheme: 'http'
     validate_certs: false
     port: 8500
-    token: "{{ vault.consul.mgmt_token }}"
+    token: "{{ consul.mgmt_token }}"
     description: "Vault token"
     policies:
-      - name: "{{ vault_consul_policy_name }}"
-  when: "clean_hostname in groups['vault']"
+      - name: "{{ vault.consul.policy_name }}"
   register: 'vault_consul_token'
 
 - name: 'Copy Vault service configuration into place on all nodes.'
   ansible.builtin.template:
     src: 'vault.service.j2'
-    dest: "{{ vault_service_path }}"
+    dest: '/etc/systemd/system/vault.service'
     owner: 'vault'
     group: 'vault'
     mode: '0644'
@@ -41,9 +40,9 @@
     mode: '0600'
   loop:
     - src: 'vault.hcl.j2'
-      dest: "{{ vault_hcl_path }}"
+      dest: "{{ vault.hcl_config_path }}"
     - src: 'vault.env.j2'
-      dest: "{{ vault_env_path }}"
+      dest: "{{ vault.env_config_path }}"
   loop_control:
     loop_var: 'file'
   notify:
@@ -59,10 +58,10 @@
     mode: '0644'
   loop:
     - name: 'VAULT_ADDR'
-      value: "https://{{ groups['vault'] | first }}:8200"
+      value: "https://{{ vault.maybe_leader }}:8200"
     - name: 'VAULT_CLIENT_CERT'
-      value: "{{ vault_certs_path }}/tls.crt"
+      value: "{{ vault.cert_path }}"
     - name: 'VAULT_CLIENT_KEY'
-      value: "{{ vault_certs_path }}/tls.key"
+      value: "{{ vault.key_path }}"
   loop_control:
     loop_var: 'variable'
