@@ -325,7 +325,7 @@ step_ca:
   shared_cert_path: "/usr/local/share/ca-certificates/{{ cluster.name }}.crt"
   default_provisioner:
     name: 'default'
-    password_path: '/root/.step/jwk_default_provisioner.password.txt'
+    password_path: '/root/.step/jwk_provisioner_password.txt'
     password:  "{{ secret_vault.step_ca.passwords.provisioners.jwk }}"
 
 # Node Homepage data:

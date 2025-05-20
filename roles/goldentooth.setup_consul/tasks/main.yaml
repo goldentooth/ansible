@@ -29,28 +29,24 @@
     - name: 'Create a Consul agent policy for each node.'
       community.general.consul_policy:
         host: "{{ consul.maybe_leader }}"
-        scheme: 'http'
-        port: 8500
-        validate_certs: false
         token: "{{ secret_vault.consul.mgmt_token }}"
         ca_path: "{{ step_ca.root_cert_path }}"
         name: "{{ consul.agent_policy_name }}"
         description: "Consul agent policy for {{ clean_hostname }}"
         rules: "{{ lookup('ansible.builtin.template', 'consul.agent.policy.hcl.j2') }}"
       register: 'consul_policy'
+      delegate_to: "{{ consul.maybe_leader }}"
       until: 'consul_policy is not failed'
 
     - name: 'Create Consul agent tokens.'
       community.general.consul_token:
         host: "{{ consul.maybe_leader }}"
-        scheme: 'http'
-        port: 8500
-        validate_certs: false
         token: "{{ secret_vault.consul.mgmt_token }}"
         description: "Consul agent token"
         policies:
           - name: "{{ consul.agent_policy_name }}"
       register: 'consul_agent_token_object'
+      delegate_to: "{{ consul.maybe_leader }}"
       until: 'consul_agent_token_object is not failed'
 
     - name: 'Set fact for the Consul agent token on client nodes.'
@@ -66,12 +62,14 @@
   ansible.builtin.lineinfile:
     path: '~/.bashrc'
     regexp: "^export {{ variable.name }}"
-    line: "export {{ variable.name }}={{ variable.value}}"
+    line: "export {{ variable.name }}={{ variable.value }}"
     owner: 'root'
     group: 'root'
     mode: '0644'
   loop:
     - name: 'CONSUL_HTTP_ADDR'
-      value: "http://{{ consul.maybe_leader }}:8500"
+      value: "http://{{ ipv4_address }}:8500"
+    - name: 'CONSUL_HTTP_TOKEN'
+      value: "{{ consul_agent_token }}"
   loop_control:
     loop_var: 'variable'
