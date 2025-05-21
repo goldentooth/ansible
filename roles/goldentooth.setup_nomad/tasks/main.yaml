@@ -1,7 +1,7 @@
 ---
 - name: 'Update the Consul policies.'
   community.general.consul_policy:
-    host: "{{ consul.maybe_leader }}"
+    host: "{{ ipv4_address }}"
     token: "{{ secret_vault.consul.mgmt_token }}"
     name: "{{ policy.name }}"
     description: "{{ policy.description }}"
@@ -19,10 +19,7 @@
 
 - name: 'Create Consul tokens.'
   community.general.consul_token:
-    host: "{{ consul.maybe_leader }}"
-    scheme: 'http'
-    validate_certs: false
-    port: 8500
+    host: "{{ ipv4_address }}"
     token: "{{ secret_vault.consul.mgmt_token }}"
     description: "Nomad {{ nomad.role }} token"
     policies:
@@ -74,7 +71,7 @@
     mode: '0644'
   loop:
     - name: 'NOMAD_ADDR'
-      value: "https://{{ groups['nomad_server'] | first }}:4646"
+      value: "https://{{ ipv4_address }}:4646"
     - name: 'NOMAD_CACERT'
       value: "{{ step_ca.root_cert_path }}"
     - name: 'NOMAD_CLIENT_CERT'
