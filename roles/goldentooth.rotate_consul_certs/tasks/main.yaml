@@ -13,7 +13,7 @@
         --san="{{ clean_hostname }}.{{ consul.role }}.{{ consul.datacenter }}.{{ consul.domain }}" \
         --san="{{ consul.role }}.{{ consul.datacenter }}.{{ consul.domain }}" \
         --san="{{ ipv4_address }}" \
-        --not-after="24h" \
+        --not-after="168h" \
         --console \
         --force
   notify:

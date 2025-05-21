@@ -8,8 +8,8 @@
 
 - name: 'Look for existing configuration.'
   ansible.builtin.stat:
-    path: "{{ step_ca.ca.config_path }}"
-  register: 'step_ca_config'
+    path: "{{ step_ca.ca.ca_config_file_path }}"
+  register: 'step_ca_config_file'
 
 - name: 'Ensure intermediate password file is present.'
   ansible.builtin.copy:
@@ -86,4 +86,32 @@
         path: "{{ step_ca.ca.password_file_paths.root }}"
         state: 'absent'
 
-  when: 'not step_ca_config.stat.exists'
+  when: 'not step_ca_config_file.stat.exists'
+
+- name: 'Read file directly into fact.'
+  ansible.builtin.slurp:
+    src: "{{ step_ca.ca.ca_config_file_path }}"
+  register: 'step_ca_config_file_base64'
+
+- name: 'Set fact for step-ca config.'
+  ansible.builtin.set_fact:
+    step_ca_config: "{{ step_ca_config_file_base64.content | b64decode | from_json }}"
+
+- name: 'Update the facts.'
+  ansible.utils.update_fact:
+    updates:
+      - path: step_ca_config['authority']['claims']
+        value: "{{ step_ca_config['authority']['claims'] | default({}) }}"
+      - path: step_ca_config['authority']['claims']['maxTLSCertDuration']
+        value: "168h"
+  register: 'updated_config'
+
+- name: 'Update the step-ca configuration.'
+  ansible.builtin.copy:
+    content: "{{ updated_config.step_ca_config | to_nice_json }}"
+    dest: "{{ step_ca.ca.ca_config_file_path }}"
+    owner: "{{ step_ca.ca.user }}"
+    group: "{{ step_ca.ca.user }}"
+    mode: 0644
+  notify:
+    - 'Restart step-ca service.'
