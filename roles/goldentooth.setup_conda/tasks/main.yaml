@@ -1,0 +1,25 @@
+- name: 'Check if Miniforge is installed.'
+  ansible.builtin.stat:
+    path: "{{ miniforge_base_dir }}/bin/conda"
+  register: 'miniforge_conda_stat'
+
+- name: 'Install Miniforge'
+  block:
+
+    - name: 'Create temporary directory for Miniforge installer.'
+      ansible.builtin.tempfile:
+        state: 'directory'
+      register: 'miniforge_script_dir'
+
+    - name: 'Download Miniforge installer.'
+      ansible.builtin.get_url:
+        url: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh"
+        dest: "{{ miniforge_script_dir.path }}/miniforge.sh"
+        mode: '0755'
+
+    - name: 'Install Miniforge silently.'
+      ansible.builtin.command:
+        cmd: "bash miniforge.sh -b -u -p {{ miniforge_base_dir }}"
+        chdir: "{{ miniforge_script_dir.path }}"
+
+  when: not miniforge_conda_stat.stat.exists

@@ -1,0 +1,36 @@
+# Description: Setup Ray.
+
+- name: 'Create a user for Ray.'
+  hosts: 'ray'
+  remote_user: 'root'
+  tasks:
+    - name: 'Add the user to the system.'
+      ansible.builtin.user:
+        name: 'ray'
+        shell: '/bin/bash'
+        generate_ssh_key: true
+
+    - name: 'Create a log directory.'
+      ansible.builtin.file:
+        path: '/var/log/ray'
+        state: 'directory'
+        owner: 'ray'
+        group: 'ray'
+        mode: '0755'
+
+- name: 'Setup Ray.'
+  hosts: 'ray'
+  remote_user: 'root'
+  vars:
+    miniforge_base_dir: '/home/ray/miniforge'
+  become: true
+  become_user: 'ray'
+  roles:
+    - { role: 'goldentooth.setup_conda' }
+    - { role: 'goldentooth.setup_ray' }
+  handlers:
+    - name: 'Restart Ray.'
+      ansible.builtin.service:
+        name: 'ray'
+        state: 'restarted'
+        enabled: true

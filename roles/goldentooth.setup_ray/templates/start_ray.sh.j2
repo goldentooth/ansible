@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+source {{ miniforge_base_dir }}/etc/profile.d/conda.sh;
+conda activate {{ ray.conda.environment_name }};
+ray start \
+  {% if ray.role == 'head' -%}
+  --head \
+  --dashboard-host={{ ipv4_address }} \
+  --port=6379 \
+  {%- else -%}
+  --address={{ ray.head.ipv4_address }}:6379
+  {%- endif %}
+  --block;

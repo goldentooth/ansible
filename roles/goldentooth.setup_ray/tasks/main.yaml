@@ -1,0 +1,46 @@
+- name: 'Create user Conda environments.'
+  ansible.builtin.shell:
+    cmd: |
+      source {{ miniforge_base_dir }}/etc/profile.d/conda.sh;
+      conda update -n base conda -y;
+      conda create -n python{{ python_version }} python={{ python_version }} -y;
+    creates: "~/.conda/envs/python{{ python_version }}"
+    executable: '/bin/bash'
+  loop: "{{ ray.python_versions }}"
+  loop_control:
+    loop_var: 'python_version'
+  become: true
+  become_user: 'ray'
+
+- name: 'Install Ray in Conda environment.'
+  ansible.builtin.shell:
+    cmd: |
+      source {{ miniforge_base_dir }}/etc/profile.d/conda.sh;
+      conda activate {{ ray.conda.environment_name }};
+      conda config --add channels defaults;
+      conda update -n base conda -y;
+      conda update --all -y;
+      conda install ray-default -y;
+    executable: '/bin/bash'
+  become: true
+  become_user: 'ray'
+
+- name: 'Install start_ray.sh script.'
+  ansible.builtin.template:
+    src: 'start_ray.sh.j2'
+    dest: '/usr/local/bin/start_ray.sh'
+    owner: 'root'
+    group: 'root'
+    mode: '0755'
+  notify:
+    - 'Restart Ray.'
+
+- name: 'Install Ray systemd service.'
+  ansible.builtin.template:
+    src: 'ray.service.j2'
+    dest: '/etc/systemd/system/ray.service'
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+  notify:
+    - 'Restart Ray.'

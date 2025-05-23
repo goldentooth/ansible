@@ -78,3 +78,19 @@ all:
     proxmox:
       children:
         all_nodes:
+    ray:
+      children:
+        ray_head:
+          hosts:
+            erenford:
+        ray_worker:
+          hosts:
+            allyrion:
+            bettley:
+            cargyll:
+            dalt:
+            fenn:
+            gardener:
+            harlton:
+            inchfield:
+            jast:
