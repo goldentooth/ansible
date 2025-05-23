@@ -214,7 +214,7 @@ nfs:
 # Python data:
 python:
   # The default Python version to use.
-  default_version: '3.12'
+  default_version: '3.10'
   versions:
     - '3.10'
     - '3.11'
@@ -397,6 +397,8 @@ ray:
   conda:
     environment_name: "python{{ python.default_version }}"
   role: "{{ 'head' if 'ray_head' in group_names else 'worker' }}"
+  version: '2.46.0'
+
 
 # #############################################################################
 # Variables for vendored roles.

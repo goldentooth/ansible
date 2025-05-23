@@ -2,8 +2,9 @@
   ansible.builtin.shell:
     cmd: |
       source {{ miniforge_base_dir }}/etc/profile.d/conda.sh;
-      conda update -n base conda -y;
       conda create -n python{{ python_version }} python={{ python_version }} -y;
+      conda activate python{{ python_version }};
+      conda install pip -y;
     creates: "~/.conda/envs/python{{ python_version }}"
     executable: '/bin/bash'
   loop: "{{ ray.python_versions }}"
@@ -17,13 +18,12 @@
     cmd: |
       source {{ miniforge_base_dir }}/etc/profile.d/conda.sh;
       conda activate {{ ray.conda.environment_name }};
-      conda config --add channels defaults;
-      conda update -n base conda -y;
-      conda update --all -y;
-      conda install ray-default -y;
+      pip install ray[all]=={{ ray.version }};
     executable: '/bin/bash'
   become: true
   become_user: 'ray'
+  notify:
+    - 'Restart Ray.'
 
 - name: 'Install start_ray.sh script.'
   ansible.builtin.template:

@@ -23,8 +23,6 @@
   remote_user: 'root'
   vars:
     miniforge_base_dir: '/home/ray/miniforge'
-  become: true
-  become_user: 'ray'
   roles:
     - { role: 'goldentooth.setup_conda' }
     - { role: 'goldentooth.setup_ray' }
