@@ -1,8 +1,10 @@
 # Description: Evaluate a variable on a host or group.
 
+
 - name: 'Evaluate a variable on a host or group.'
   hosts: 'all'
   tasks:
+
     - name: 'Evaluate a variable on a host or group.'
       ansible.builtin.debug:
         var: "{{ var }}"

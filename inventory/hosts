@@ -1,6 +1,10 @@
 localhost:
 all:
   children:
+
+    # -----------------------------------
+    # All Nodes
+    # -----------------------------------
     all_nodes:
       hosts:
         allyrion:
@@ -13,12 +17,10 @@ all:
         harlton:
         inchfield:
         jast:
-    docker:
-      children:
-        load_balancer:
-    step_ca:
-      hosts:
-        jast:
+
+    # -----------------------------------
+    # Kubernetes
+    # -----------------------------------
     k8s_cluster:
       children:
         k8s_control_plane:
@@ -34,15 +36,10 @@ all:
             harlton:
             inchfield:
             jast:
-    load_balancer:
-      hosts:
-        allyrion:
-    nfs_server:
-      children:
-        load_balancer:
-    prometheus:
-      children:
-        load_balancer:
+
+    # -----------------------------------
+    # Slurm
+    # -----------------------------------
     slurm:
       children:
         slurm_controller:
@@ -52,38 +49,10 @@ all:
           children:
             k8s_control_plane:
             k8s_worker:
-    consul:
-      children:
-        consul_server:
-          children:
-            k8s_control_plane:
-        consul_client:
-          children:
-            load_balancer:
-            k8s_worker:
-    vault:
-      children:
-        consul_server:
-    envoy:
-      children:
-        load_balancer:
-    nomad:
-      children:
-        nomad_server:
-          children:
-            k8s_control_plane:
-        nomad_client:
-          children:
-            k8s_worker:
-    proxmox:
-      children:
-        all_nodes:
-    grafana:
-      hosts:
-        gardener:
-    loki:
-      hosts:
-        inchfield:
+
+    # -----------------------------------
+    # Ray
+    # -----------------------------------
     ray:
       children:
         ray_head:
@@ -100,3 +69,91 @@ all:
             harlton:
             inchfield:
             jast:
+
+    # -----------------------------------
+    # Consul
+    # -----------------------------------
+    consul:
+      children:
+        consul_server:
+          children:
+            k8s_control_plane:
+        consul_client:
+          children:
+            load_balancer:
+            k8s_worker:
+
+    # -----------------------------------
+    # Nomad
+    # -----------------------------------
+    nomad:
+      children:
+        nomad_server:
+          children:
+            k8s_control_plane:
+        nomad_client:
+          children:
+            k8s_worker:
+
+    # -----------------------------------
+    # Docker
+    # -----------------------------------
+    docker:
+      hosts:
+        allyrion:
+
+    # -----------------------------------
+    # Step-CA
+    # -----------------------------------
+    step_ca:
+      hosts:
+        jast:
+
+    # -----------------------------------
+    # Load Balancer
+    # -----------------------------------
+    load_balancer:
+      hosts:
+        allyrion:
+
+    # -----------------------------------
+    # NFS Server
+    # -----------------------------------
+    nfs_server:
+      hosts:
+        allyrion:
+
+    # -----------------------------------
+    # Prometheus
+    # -----------------------------------
+    prometheus:
+      hosts:
+        allyrion:
+
+    # -----------------------------------
+    # Vault
+    # -----------------------------------
+    vault:
+      children:
+        consul_server:
+
+    # -----------------------------------
+    # Envoy
+    # -----------------------------------
+    envoy:
+      children:
+        load_balancer:
+
+    # -----------------------------------
+    # Grafana
+    # -----------------------------------
+    grafana:
+      hosts:
+        gardener:
+
+    # -----------------------------------
+    # Loki
+    # -----------------------------------
+    loki:
+      hosts:
+        inchfield:

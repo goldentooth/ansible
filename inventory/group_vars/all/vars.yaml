@@ -103,6 +103,8 @@ cluster:
   cloudfront_distribution_domain: "home-proxy.{{ cluster_name }}.net"
   cloudfront_origin_domain: "clearbrook.{{ cluster_name }}.net"
   ca_cert_path: "/etc/ssl/certs/{{ cluster_name }}.pem"
+  github:
+    organization: "{{ cluster_name }}"
 
 # Host data:
 # Here, "host" means that we're referring to a physical Raspberry Pi.
@@ -398,6 +400,12 @@ ray:
     environment_name: "python{{ python.default_version }}"
   role: "{{ 'head' if 'ray_head' in group_names else 'worker' }}"
   version: '2.46.0'
+
+# Grafana data:
+grafana:
+  provisioners:
+    dashboards:
+      repository_name: 'grafana-dashboards'
 
 # #############################################################################
 # Variables for vendored roles.

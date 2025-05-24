@@ -1,4 +1,20 @@
 ---
+- name: 'Ensure that `git` is installed.'
+  ansible.builtin.apt:
+    pkg:
+      - 'git'
+    state: 'present'
+
+- name: 'Grab mounts manually.'
+  ansible.builtin.shell:
+    cmd: 'cat /proc/mounts'
+  register: 'proc_mounts'
+  changed_when: 'false'
+
+- name: 'Set a fact to indicate if the Grafana data directory is mounted.'
+  ansible.builtin.set_fact:
+    grafana_data_mounted: "{{ proc_mounts.stdout_lines | select('search', '/var/lib/grafana') | list | length > 0 }}"
+
 - name: 'Install Grafana.'
   ansible.builtin.apt:
     pkg:
@@ -24,6 +40,7 @@
     fstype: 'tmpfs'
     opts: 'size=100M,mode=0755'
     state: 'present'
+  when: 'not grafana_data_mounted'
   notify:
     - 'Restart Grafana service.'
 
@@ -34,5 +51,58 @@
     owner: 'grafana'
     group: 'grafana'
     mode: '0600'
+  notify:
+    - 'Restart Grafana service.'
+
+- name: 'Check out the Grafana dashboards repository.'
+  ansible.builtin.git:
+    repo: "https://github.com/{{ cluster.github.organization }}/{{ grafana.provisioners.dashboards.repository_name }}.git"
+    dest: '/var/lib/grafana/dashboards'
+  become: 'yes'
+  become_user: 'grafana'
+  notify:
+    - 'Restart Grafana service.'
+
+- name: 'Update ownership of the dashboards directory.'
+  ansible.builtin.file:
+    path: '/var/lib/grafana/dashboards'
+    state: 'directory'
+    owner: 'grafana'
+    group: 'grafana'
+    mode: '0755'
+
+- name: 'Install Grafana script to update dashboards.'
+  ansible.builtin.template:
+    src: 'script.update_dashboards.sh.j2'
+    dest: '/usr/local/bin/grafana-update-dashboards.sh'
+    owner: 'root'
+    group: 'root'
+    mode: '0755'
+
+- name: 'Install Cron Job to update Grafana dashboards.'
+  ansible.builtin.template:
+    src: 'cron.update_dashboards.j2'
+    dest: '/etc/cron.d/grafana_update_dashboards'
+    owner: 'grafana'
+    group: 'grafana'
+    mode: '0644'
+
+- name: 'Add dashboard provisioning configuration.'
+  ansible.builtin.template:
+    src: 'provisioners.dashboards.yaml.j2'
+    dest: '/etc/grafana/provisioning/dashboards/all.yml'
+    owner: 'grafana'
+    group: 'grafana'
+    mode: '0644'
+  notify:
+    - 'Restart Grafana service.'
+
+- name: 'Add datasource provisioning configuration.'
+  ansible.builtin.template:
+    src: 'provisioners.datasources.yaml.j2'
+    dest: '/etc/grafana/provisioning/datasources/all.yml'
+    owner: 'grafana'
+    group: 'grafana'
+    mode: '0644'
   notify:
     - 'Restart Grafana service.'

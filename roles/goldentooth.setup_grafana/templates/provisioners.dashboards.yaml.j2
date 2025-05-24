@@ -1,0 +1,14 @@
+apiVersion: 1
+
+providers:
+  - name: "{{ grafana.provisioners.dashboards.repository_name }}"
+    orgId: 1
+    type: file
+    folder: ''
+    folderUid: ''
+    disableDeletion: false
+    updateIntervalSeconds: 15
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: true
