@@ -12,7 +12,7 @@
     src: 'loki.yml.j2'
     dest: '/etc/loki/config.yml'
     owner: 'loki'
-    group: 'loki'
+    group: 'root'
     mode: '0644'
   notify:
     - 'Restart Loki service.'

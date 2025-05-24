@@ -28,6 +28,17 @@ query_range:
 limits_config:
   metric_aggregation_enabled: true
 
+compactor:
+  working_directory: /tmp/retention
+  compaction_interval: 10m
+  retention_enabled: true
+  retention_delete_delay: 2h
+  retention_delete_worker_count: 150
+  delete_request_store: gcs
+
+limits_config:
+  retention_period: 168h
+
 schema_config:
   configs:
     - from: 2020-10-24
