@@ -406,6 +406,7 @@ grafana:
   provisioners:
     dashboards:
       repository_name: 'grafana-dashboards'
+  admin_password: "{{ secret_vault.grafana.admin_password }}"
 
 # #############################################################################
 # Variables for vendored roles.
