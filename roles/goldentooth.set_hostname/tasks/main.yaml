@@ -2,11 +2,9 @@
 - name: 'Set the node hostname.'
   ansible.builtin.hostname:
     name: "{{ clean_hostname }}"
-  become: true
 
 - name: 'Add the hostname to /etc/hosts.'
   ansible.builtin.lineinfile:
     path: '/etc/hosts'
-    line: "{{ ansible_default_ipv4.address }} {{ clean_hostname }}"
+    line: "{{ ipv4_address }} {{ clean_hostname }}"
     state: 'present'
-  become: true

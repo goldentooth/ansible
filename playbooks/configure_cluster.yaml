@@ -1,23 +1,35 @@
 # Description: Configure the hosts in the cluster.
 
-- name: 'Configure the hosts in the cluster.'
+- name: 'Configure the Raspberry Pi hosts.'
   hosts: 'all'
+  remote_user: 'root'
   roles:
     - { role: 'goldentooth.pi_config' }
     - { role: 'goldentooth.set_hostname' }
     - { role: 'goldentooth.set_motd' }
-    - { role: 'goldentooth.set_bash_prompt' }
-    - { role: 'goldentooth.setup_security' }
     - { role: 'goldentooth.setup_etc_hosts' }
-  remote_user: "{{ my.name.lower }}"
+    - { role: 'goldentooth.setup_security' }
   handlers:
+
+    - name: 'Restart journald service.'
+      ansible.builtin.systemd:
+        name: 'systemd-journald'
+        state: 'restarted'
+
     - name: 'Reboot.'
       ansible.builtin.reboot:
         reboot_timeout: 300
-      become: true
 
-- name: 'Configure the Bash prompt for the root user.'
+- name: 'Configure general settings for the root user.'
   hosts: 'all'
   roles:
     - { role: 'goldentooth.set_bash_prompt' }
+    - { role: 'goldentooth.setup_user' }
   remote_user: 'root'
+
+- name: 'Configure general settings for the normie user.'
+  hosts: 'all'
+  roles:
+    - { role: 'goldentooth.set_bash_prompt' }
+    - { role: 'goldentooth.setup_user' }
+  remote_user: "{{ my.name.lower }}"

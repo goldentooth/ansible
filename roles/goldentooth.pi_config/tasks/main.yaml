@@ -2,7 +2,8 @@
 - name: 'Set timezone.'
   community.general.timezone:
     name: "{{ pi.timezone }}"
-  notify: 'Reboot.'
+  notify:
+    - 'Reboot.'
 
 - name: 'Set the keyboard layout.'
   ansible.builtin.lineinfile:
@@ -10,8 +11,8 @@
     regexp: '^XKBLAYOUT='
     line: 'XKBLAYOUT="{{ pi.keyboard }}"'
     state: 'present'
-  become: true
-  notify: 'Reboot.'
+  notify:
+    - 'Reboot.'
 
 - name: 'Enable fan control.'
   ansible.builtin.lineinfile:
@@ -19,8 +20,8 @@
     regexp: '^#?dtoverlay=gpio-fan'
     line: "dtoverlay=gpio-fan,gpiopin={{ pi.fan_gpio }},temp={{ pi.fan_temp }}"
     state: 'present'
-  become: true
-  notify: 'Reboot.'
+  notify:
+    - 'Reboot.'
 
 - name: 'Enable overclocking.'
   ansible.builtin.lineinfile:
@@ -28,7 +29,6 @@
     regexp: "^#?{{ line.prefix }}"
     line: "{{ line.line }}"
     state: 'present'
-  become: true
   loop:
     - prefix: 'arm_boost'
       line: 'arm_boost=1'
@@ -38,7 +38,8 @@
       line: 'over_voltage={{ pi.overclock_voltage }}'
   loop_control:
     loop_var: 'line'
-  notify: 'Reboot.'
+  notify:
+    - 'Reboot.'
 
 - name: 'Ensure important expressions are present in cmdline.txt.'
   ansible.builtin.lineinfile:
@@ -47,7 +48,6 @@
     line: '\1 {{ expression }}'
     state: 'present'
     backrefs: true
-  become: true
   loop:
     - 'cgroup_enable=cpuset'
     - 'cgroup_enable=memory'
@@ -55,19 +55,18 @@
     - 'cgroup_memory=1'
   loop_control:
     loop_var: 'expression'
-  notify: 'Reboot.'
+  notify:
+    - 'Reboot.'
 
 - name: 'Disable swap.'
   when: 'ansible_swaptotal_mb > 0'
   block:
     - name: 'Disable the swapfile.'
       ansible.builtin.command: 'dphys-swapfile swapoff'
-      become: true
       changed_when: false
 
     - name: 'Uninstall the swapfile.'
       ansible.builtin.command: 'dphys-swapfile uninstall'
-      become: true
       changed_when: false
 
     - name: 'Disable the swapfile service.'
@@ -75,17 +74,7 @@
         name: 'dphys-swapfile'
         state: 'stopped'
         enabled: false
-      become: true
       notify: 'Reboot.'
-
-- name: 'Select editor.'
-  ansible.builtin.lineinfile:
-    path: '~/.selected_editor'
-    regexp: '^SELECTED_EDITOR'
-    line: "SELECTED_EDITOR={{ pi.editor }}"
-    create: true
-    state: 'present'
-    mode: '0644'
 
 - name: 'Load kernel modules.'
   ansible.builtin.lineinfile:
@@ -95,24 +84,25 @@
     create: true
     state: 'present'
     mode: '0644'
-  become: true
   loop:
     - 'overlay'
     - 'br_netfilter'
   loop_control:
     loop_var: 'module'
-  notify: 'Reboot.'
+  notify:
+    - 'Reboot.'
 
 - name: 'Ensure kernel modules are enabled.'
   community.general.modprobe:
     name: "{{ module }}"
     state: 'present'
-  become: true
   loop:
     - 'overlay'
     - 'br_netfilter'
   loop_control:
     loop_var: 'module'
+  notify:
+    - 'Reboot.'
 
 - name: 'Let iptables see bridged traffic.'
   ansible.posix.sysctl:
@@ -123,12 +113,31 @@
     - 'net.bridge.bridge-nf-call-iptables'
     - 'net.bridge.bridge-nf-call-ip6tables'
     - 'net.ipv4.ip_forward'
-  become: true
-  notify: 'Reboot.'
+  notify:
+    - 'Reboot.'
 
 - name: 'Add authorized key.'
   ansible.posix.authorized_key:
     user: 'root'
     state: 'present'
     key: "{{ secret_vault.ssh_public_key }}"
-  become: true
+
+- name: 'Create journal configuration directory.'
+  ansible.builtin.file:
+    path: '/etc/systemd/journald.conf.d'
+    state: 'directory'
+    owner: 'root'
+    group: 'root'
+    mode: '0755'
+
+- name: 'Set journal log limits.'
+  ansible.builtin.copy:
+    dest: '/etc/systemd/journald.conf.d/60-pi_config.conf'
+    content: |
+      [Journal]
+      SystemMaxUse=256M
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+  notify:
+    - 'Restart journald service.'

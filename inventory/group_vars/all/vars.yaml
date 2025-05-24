@@ -78,8 +78,6 @@ load_balancer:
   node_exporter:
     enabled_collectors:
       - 'systemd'
-      - textfile:
-          directory": "{{ node_exporter_textfile_dir }}"
 
 # Network data:
 network:

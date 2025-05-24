@@ -11,7 +11,6 @@
   connection: 'local'
   delegate_facts: true
   run_once: true
-  become: true
 
 - name: 'Add inventory hosts to /etc/hosts.'
   ansible.builtin.blockinfile:
@@ -23,7 +22,6 @@
     unsafe_writes: true
     marker: "# Ansible inventory hosts {mark}"
     mode: '0644'
-  become: true
 
 - name: 'Add load balancer to /etc/hosts.'
   ansible.builtin.lineinfile:
@@ -33,4 +31,3 @@
     state: 'present'
     backup: true
     unsafe_writes: true
-  become: true

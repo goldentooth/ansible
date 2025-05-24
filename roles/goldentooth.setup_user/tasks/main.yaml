@@ -1,0 +1,11 @@
+---
+- name: 'Select editor.'
+  ansible.builtin.lineinfile:
+    path: '~/.selected_editor'
+    regexp: '^SELECTED_EDITOR'
+    line: "SELECTED_EDITOR={{ my.editor }}"
+    create: true
+    state: 'present'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'

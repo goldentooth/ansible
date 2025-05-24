@@ -2,4 +2,3 @@
 - name: 'Setup security.'
   ansible.builtin.import_role:
     name: 'geerlingguy.security'
-  become: true
