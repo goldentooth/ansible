@@ -71,7 +71,7 @@
       changed_when: false
 
     - name: 'Disable the swapfile service.'
-      ansible.builtin.systemd:
+      ansible.builtin.systemd_service:
         name: 'dphys-swapfile'
         state: 'stopped'
         enabled: false

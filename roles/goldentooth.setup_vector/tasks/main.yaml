@@ -1,0 +1,27 @@
+---
+- name: 'Setup Vector.'
+  ansible.builtin.apt:
+    pkg:
+      - 'vector'
+    state: 'present'
+  notify:
+    - 'Restart Vector service.'
+
+- name: 'Configure Vector service.'
+  ansible.builtin.lineinfile:
+    path: '/etc/systemd/system/multi-user.target.wants/vector.service'
+    regexp: '^ExecStart='
+    line: 'ExecStart=/usr/bin/vector --watch-config'
+    state: 'present'
+  notify:
+    - 'Restart Vector service.'
+
+- name: 'Configure Vector YAML.'
+  ansible.builtin.template:
+    src: 'vector.yaml.j2'
+    dest: '/etc/vector/vector.yaml'
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+  notify:
+    - 'Restart Vector service.'

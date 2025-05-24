@@ -78,6 +78,12 @@ all:
     proxmox:
       children:
         all_nodes:
+    grafana:
+      hosts:
+        gardener:
+    loki:
+      hosts:
+        inchfield:
     ray:
       children:
         ray_head:

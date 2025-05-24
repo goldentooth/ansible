@@ -8,11 +8,11 @@
   handlers:
 
     - name: 'Trigger systemd daemon-reload.'
-      ansible.builtin.systemd:
+      ansible.builtin.systemd_service:
         daemon_reload: true
 
     - name: 'Restart Nomad service.'
-      ansible.builtin.systemd:
+      ansible.builtin.systemd_service:
         name: 'nomad'
         state: 'restarted'
         enabled: true

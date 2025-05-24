@@ -1,0 +1,47 @@
+#                                    __   __  __
+#                                    \ \ / / / /
+#                                     \ V / / /
+#                                      \_/  \/
+#
+#                                    V E C T O R
+#                                   Configuration
+#
+# ------------------------------------------------------------------------------
+# Website: https://vector.dev
+# Docs: https://vector.dev/docs
+# Chat: https://chat.vector.dev
+# ------------------------------------------------------------------------------
+
+data_dir: "/var/lib/vector"
+
+sources:
+  dummy_logs:
+    type: "demo_logs"
+    format: "syslog"
+    interval: 1
+
+# See the Vector Remap Language reference for more info: https://vrl.dev
+transforms:
+  parse_logs:
+    type: "remap"
+    inputs: ["dummy_logs"]
+    source: |
+      . = parse_syslog!(string!(.message))
+
+sinks:
+  loki:
+    type: 'loki'
+    inputs:
+      - 'parse_logs'
+    endpoint: "http://{{ groups['loki'] | first }}:3100"
+    encoding:
+      codec: 'json'
+    healthcheck:
+      enabled: false
+    labels:
+      node: "{{ clean_hostname }}"
+      service: "idk lol"
+
+api:
+  enabled: true
+  address: "{{ ipv4_address }}:8686"

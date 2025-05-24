@@ -1,0 +1,15 @@
+# Description: Setup Vector.
+
+- name: 'Setup Vector.'
+  hosts: 'all'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.setup_vector' }
+  handlers:
+
+    - name: 'Restart Vector service.'
+      ansible.builtin.systemd_service:
+        name: 'vector'
+        state: 'restarted'
+        enabled: true
+        daemon_reload: true

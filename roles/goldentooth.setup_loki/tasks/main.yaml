@@ -1,0 +1,18 @@
+---
+- name: 'Install Loki.'
+  ansible.builtin.apt:
+    pkg:
+      - 'loki'
+    state: 'present'
+  notify:
+    - 'Restart Loki service.'
+
+- name: 'Configure Loki YAML.'
+  ansible.builtin.template:
+    src: 'loki.yml.j2'
+    dest: '/etc/loki/config.yml'
+    owner: 'loki'
+    group: 'loki'
+    mode: '0644'
+  notify:
+    - 'Restart Loki service.'
