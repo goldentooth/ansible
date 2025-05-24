@@ -1,0 +1,8 @@
+# Description: Evaluate a message on a host or group.
+
+- name: 'Evaluate a message on a host or group.'
+  hosts: 'all'
+  tasks:
+    - name: 'Evaluate a message on a host or group.'
+      ansible.builtin.debug:
+        msg: "{{ msg }}"

@@ -7,6 +7,26 @@
   notify:
     - 'Restart Grafana service.'
 
+- name: 'Ensure existence of Grafana data directory.'
+  ansible.builtin.file:
+    path: '/var/lib/grafana'
+    state: 'directory'
+    owner: 'grafana'
+    group: 'grafana'
+    mode: '0755'
+  notify:
+    - 'Restart Grafana service.'
+
+- name: 'Manage the mount for the Grafana data directory.'
+  ansible.posix.mount:
+    path: '/var/lib/grafana'
+    src: 'tmpfs'
+    fstype: 'tmpfs'
+    opts: 'size=100M,mode=0755'
+    state: 'present'
+  notify:
+    - 'Restart Grafana service.'
+
 - name: 'Configure Grafana.'
   ansible.builtin.template:
     src: 'grafana.ini.j2'
