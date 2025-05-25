@@ -1,0 +1,5 @@
+- targets:
+    - "{{ groups['loki'] | first }}:3100"
+  labels:
+    instance: "{{ groups['loki'] | first }}"
+    job: 'loki'

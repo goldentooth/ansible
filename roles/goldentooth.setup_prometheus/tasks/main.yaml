@@ -5,6 +5,7 @@
     dest: "{{ prometheus_config_dir }}/file_sd/{{ filename }}"
   loop:
     - 'node.yaml'
+    - 'loki.yaml'
   loop_control:
     loop_var: 'filename'
   notify:
@@ -17,7 +18,7 @@
     owner: 'root'
     group: 'root'
     mode: '0644'
-  delegate_to: "{{ groups['load_balancer'][0] }}"
+  delegate_to: "{{ groups['load_balancer'] | first }}"
   run_once: true
   notify:
     - 'Restart Nginx on the load balancer.'
