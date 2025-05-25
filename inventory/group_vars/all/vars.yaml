@@ -406,6 +406,11 @@ grafana:
       repository_name: 'grafana-dashboards'
   admin_password: "{{ secret_vault.grafana.admin_password }}"
 
+# Loki data:
+loki:
+  consul:
+    policy_name: 'loki'
+
 # #############################################################################
 # Variables for vendored roles.
 # #############################################################################

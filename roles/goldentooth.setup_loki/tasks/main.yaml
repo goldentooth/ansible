@@ -7,6 +7,27 @@
   notify:
     - 'Restart Loki service.'
 
+- name: 'Create/update the Loki Consul Policy.'
+  community.general.consul_policy:
+    host: "{{ ipv4_address }}"
+    token: "{{ consul.mgmt_token }}"
+    name: "{{ loki.consul.policy_name }}"
+    description: 'Loki policy'
+    rules: "{{ lookup('ansible.builtin.file', role_path ~ '/files/loki.policy.hcl') }}"
+
+- name: 'Create Loki Consul token.'
+  community.general.consul_token:
+    host: "{{ ipv4_address }}"
+    token: "{{ consul.mgmt_token }}"
+    description: "Loki token"
+    policies:
+      - name: "{{ loki.consul.policy_name }}"
+  register: 'loki_consul_token_object'
+
+- name: 'Set fact for the Loki Consul token.'
+  ansible.builtin.set_fact:
+    loki_consul_token: "{{ loki_consul_token_object.token.SecretID}}"
+
 - name: 'Configure Loki YAML.'
   ansible.builtin.template:
     src: 'loki.yml.j2'

@@ -16,28 +16,29 @@ common:
   replication_factor: 1
   ring:
     kvstore:
-      store: inmemory
+      store: consul
+      consul:
+        acl_token: {{ loki_consul_token }}
+        host: {{ ipv4_address }}:8500
 
 query_range:
   results_cache:
     cache:
       embedded_cache:
         enabled: true
-        max_size_mb: 100
+        max_size_mb: 20
 
 limits_config:
   metric_aggregation_enabled: true
+  retention_period: 168h
 
 compactor:
   working_directory: /tmp/retention
   compaction_interval: 10m
   retention_enabled: true
   retention_delete_delay: 2h
-  retention_delete_worker_count: 150
-  delete_request_store: gcs
-
-limits_config:
-  retention_period: 168h
+  retention_delete_worker_count: 5
+  delete_request_store: filesystem
 
 schema_config:
   configs:
