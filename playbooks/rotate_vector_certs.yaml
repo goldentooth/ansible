@@ -1,0 +1,14 @@
+# Description: Rotate Vector TLS certificates.
+
+- name: 'Rotate Vector TLS certificates.'
+  hosts: 'all'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.rotate_vector_certs' }
+  handlers:
+
+    - name: 'Restart Vector service.'
+      ansible.builtin.systemd_service:
+        name: 'vector'
+        state: 'restarted'
+        enabled: true

@@ -1,0 +1,14 @@
+# Description: Rotate Loki TLS certificates.
+
+- name: 'Rotate Loki TLS certificates.'
+  hosts: 'loki'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.rotate_loki_certs' }
+  handlers:
+
+    - name: 'Restart Loki service.'
+      ansible.builtin.systemd_service:
+        name: 'loki'
+        state: 'restarted'
+        enabled: true

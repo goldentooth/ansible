@@ -98,6 +98,7 @@ cluster:
   name: "{{ cluster_name }}"
   domain: "{{ cluster_name }}.net"
   node_domain: "nodes.{{ cluster_name }}.net"
+  services_domain: "services.{{ cluster_name }}.net"
   cloudfront_distribution_domain: "home-proxy.{{ cluster_name }}.net"
   cloudfront_origin_domain: "clearbrook.{{ cluster_name }}.net"
   ca_cert_path: "/etc/ssl/certs/{{ cluster_name }}.pem"
@@ -410,6 +411,17 @@ grafana:
 loki:
   consul:
     policy_name: 'loki'
+  certs_path: '/etc/loki/tls'
+  cert_path: '/etc/loki/tls/tls.crt'
+  key_path: '/etc/loki/tls/tls.key'
+
+# Vector data:
+vector:
+  consul:
+    policy_name: 'vector'
+  certs_path: '/etc/vector/tls'
+  cert_path: '/etc/vector/tls/tls.crt'
+  key_path: '/etc/vector/tls/tls.key'
 
 # #############################################################################
 # Variables for vendored roles.

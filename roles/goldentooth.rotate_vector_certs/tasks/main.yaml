@@ -1,0 +1,45 @@
+---
+- name: 'Ensure directory for Vector certs exists.'
+  ansible.builtin.file:
+    path: "{{ vector.certs_path }}"
+    state: 'directory'
+    owner: 'vector'
+    group: 'vector'
+    mode: '0755'
+
+- name: 'Generate certificate for Vector from step-ca.'
+  ansible.builtin.shell:
+    cmd: |
+      {{ step_ca.executable }} \
+        ca certificate \
+        vector.{{ cluster.services_domain }} \
+        "{{ vector.cert_path }}" \
+        "{{ vector.key_path }}" \
+        --provisioner="{{ step_ca.default_provisioner.name }}" \
+        --password-file="{{ step_ca.default_provisioner.password_path }}" \
+        --san="vector.{{ cluster.services_domain }}" \
+        --san="vector" \
+        --san='localhost' \
+        --san="{{ clean_hostname }}" \
+        --san="{{ clean_hostname }}.{{ cluster.node_domain }}" \
+        --san="{{ ipv4_address }}" \
+        --not-after='168h' \
+        --console \
+        --force
+  notify:
+    - 'Restart Vector service.'
+
+- name: 'Repair permissions on Vector certs.'
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: 'file'
+    owner: 'vector'
+    group: 'root'
+    mode: '0600'
+  loop:
+    - "{{ vector.cert_path }}"
+    - "{{ vector.key_path }}"
+  loop_control:
+    loop_var: 'item'
+  notify:
+    - 'Restart Vector service.'

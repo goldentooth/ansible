@@ -76,13 +76,19 @@ sinks:
       - 'l_internal'
       - 'l_nginx'
       - 'l_slurm'
-    endpoint: "http://{{ groups['loki'] | first }}:3100"
+    endpoint: "https://{{ groups['loki'] | first }}:3100"
     encoding:
       codec: 'json'
     healthcheck:
       enabled: false
     labels:
       node: "{{ clean_hostname }}"
+    tls:
+      ca_file: "{{ step_ca.root_cert_path }}"
+      crt_file: "{{ vector.cert_path }}"
+      key_file: "{{ vector.key_path }}"
+      verify_hostname: true
+      verify_certificate: true
 
 api:
   enabled: true

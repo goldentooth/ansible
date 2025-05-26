@@ -1,0 +1,45 @@
+---
+- name: 'Ensure directory for Loki certs exists.'
+  ansible.builtin.file:
+    path: "{{ loki.certs_path }}"
+    state: 'directory'
+    owner: 'loki'
+    group: 'root'
+    mode: '0755'
+
+- name: 'Generate certificate for Loki from step-ca.'
+  ansible.builtin.shell:
+    cmd: |
+      {{ step_ca.executable }} \
+        ca certificate \
+        loki.{{ cluster.services_domain }} \
+        "{{ loki.cert_path }}" \
+        "{{ loki.key_path }}" \
+        --provisioner="{{ step_ca.default_provisioner.name }}" \
+        --password-file="{{ step_ca.default_provisioner.password_path }}" \
+        --san="loki.{{ cluster.services_domain }}" \
+        --san="loki" \
+        --san='localhost' \
+        --san="{{ clean_hostname }}" \
+        --san="{{ clean_hostname }}.{{ cluster.node_domain }}" \
+        --san="{{ ipv4_address }}" \
+        --not-after='168h' \
+        --console \
+        --force
+  notify:
+    - 'Restart Loki service.'
+
+- name: 'Repair permissions on Loki certs.'
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: 'file'
+    owner: 'loki'
+    group: 'root'
+    mode: '0600'
+  loop:
+    - "{{ loki.cert_path }}"
+    - "{{ loki.key_path }}"
+  loop_control:
+    loop_var: 'item'
+  notify:
+    - 'Restart Loki service.'

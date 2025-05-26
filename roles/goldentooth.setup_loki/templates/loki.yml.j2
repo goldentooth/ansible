@@ -1,10 +1,67 @@
 auth_enabled: false
 
 server:
-  http_listen_port: 3100
+  grpc_listen_address: {{ ipv4_address }}
   grpc_listen_port: 9096
-  log_level: debug
   grpc_server_max_concurrent_streams: 1000
+  grpc_tls_config: &http_tls_config
+    cert_file: "{{ loki.cert_path }}"
+    key_file: "{{ loki.key_path }}"
+    client_ca_file: "{{ step_ca.root_cert_path }}"
+    client_auth_type: "VerifyClientCertIfGiven"
+    # "RequireAndVerifyClientCert" or "VerifyClientCertIfGiven".
+  http_listen_address: {{ ipv4_address }}
+  http_listen_port: 3100
+  http_tls_config: *http_tls_config
+  log_level: 'debug'
+  log_format: 'json'
+  log_request_at_info_level_enabled: true
+
+frontend:
+  grpc_client_config: &grpc_client_config
+    tls_enabled: true
+    tls_cert_path: "{{ loki.cert_path }}"
+    tls_key_path: "{{ loki.key_path }}"
+    tls_ca_path: "{{ step_ca.root_cert_path }}"
+  encoding: protobuf
+
+block_builder:
+  scheduler_grpc_client_config: *grpc_client_config
+
+pattern_ingester:
+  enabled: true
+  metric_aggregation:
+    loki_address: {{ ipv4_address }}:3100
+  client_config:
+    grpc_client_config: *grpc_client_config
+
+compactor_grpc_client:
+  <<:
+    - *grpc_client_config
+
+ingest_limits_frontend:
+  client_config:
+    grpc_client_config: *grpc_client_config
+
+# distributor:
+#   lifecycler:
+#     pattern_ingestor:
+#       client_config:
+#         <<:
+#           - *grpc_client_config
+
+ingester_client:
+  grpc_client_config: *grpc_client_config
+
+frontend_worker:
+  grpc_client_config: *grpc_client_config
+
+query_scheduler:
+  grpc_client_config: *grpc_client_config
+
+ruler:
+  ruler_client: *grpc_client_config
+  alertmanager_url: http://{{ ipv4_address }}:9093
 
 common:
   instance_addr: {{ ipv4_address }}
@@ -49,17 +106,6 @@ schema_config:
       index:
         prefix: index_
         period: 24h
-
-pattern_ingester:
-  enabled: true
-  metric_aggregation:
-    loki_address: {{ ipv4_address }}:3100
-
-ruler:
-  alertmanager_url: http://{{ ipv4_address }}:9093
-
-frontend:
-  encoding: protobuf
 
 # querier:
 #   engine:
