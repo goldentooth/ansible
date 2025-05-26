@@ -1,12 +1,12 @@
 # Description: Setup the load balancer.
 
 - name: 'Setup the load balancer.'
-  hosts: 'load_balancer'
+  hosts: 'haproxy'
   remote_user: 'root'
   roles:
     - { role: 'prometheus.prometheus.node_exporter' }
     - { role: 'prometheus.prometheus.nginx_exporter' }
-    - { role: 'goldentooth.setup_load_balancer' }
+    - { role: 'goldentooth.setup_haproxy' }
   handlers:
     - name: 'Restart HAProxy.'
       ansible.builtin.service:

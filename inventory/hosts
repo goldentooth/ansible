@@ -80,7 +80,7 @@ all:
             k8s_control_plane:
         consul_client:
           children:
-            load_balancer:
+            haproxy:
             k8s_worker:
 
     # -----------------------------------
@@ -112,7 +112,7 @@ all:
     # -----------------------------------
     # Load Balancer
     # -----------------------------------
-    load_balancer:
+    haproxy:
       hosts:
         allyrion:
 
@@ -142,7 +142,7 @@ all:
     # -----------------------------------
     envoy:
       children:
-        load_balancer:
+        haproxy:
 
     # -----------------------------------
     # Grafana

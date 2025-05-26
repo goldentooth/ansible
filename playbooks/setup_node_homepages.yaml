@@ -16,4 +16,4 @@
         name: 'nginx'
         state: 'restarted'
         enabled: true
-      delegate_to: "{{ groups['load_balancer'][0] }}"
+      delegate_to: "{{ groups['haproxy'][0] }}"

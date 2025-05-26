@@ -61,10 +61,10 @@ my:
 # #############################################################################
 
 # Load balancer data:
-load_balancer:
-  hostname: "{{ groups['load_balancer'] | first }}"
+haproxy:
+  hostname: "{{ groups['haproxy'] | first }}"
   domain_name: 'lb-apiserver.kubernetes.local'
-  ipv4_address: "{{ hostvars[groups['load_balancer'] | first]['ipv4_address'] }}"
+  ipv4_address: "{{ hostvars[groups['haproxy'] | first]['ipv4_address'] }}"
   nginx:
     user: 'www-data'
     group: 'www-data'
@@ -509,7 +509,7 @@ prometheus_scrape_configs:
   - job_name: 'haproxy'
     static_configs:
       - targets:
-          - "{{ groups['load_balancer'] | first }}:8405"
+          - "{{ groups['haproxy'] | first }}:8405"
     relabel_configs:
       - source_labels: [instance]
         target_label: instance
@@ -518,7 +518,7 @@ prometheus_scrape_configs:
   - job_name: 'nginx'
     static_configs:
       - targets:
-          - "{{ groups['load_balancer'] | first }}:9113"
+          - "{{ groups['haproxy'] | first }}:9113"
     relabel_configs:
       - source_labels: [instance]
         target_label: instance

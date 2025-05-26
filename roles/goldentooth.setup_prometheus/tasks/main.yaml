@@ -18,7 +18,7 @@
     owner: 'root'
     group: 'root'
     mode: '0644'
-  delegate_to: "{{ groups['load_balancer'] | first }}"
+  delegate_to: "{{ groups['haproxy'] | first }}"
   run_once: true
   notify:
     - 'Restart Nginx on the load balancer.'

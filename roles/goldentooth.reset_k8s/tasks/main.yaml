@@ -3,7 +3,7 @@
   ansible.builtin.command:
     cmd: 'kubeadm reset --force'
   failed_when: false
-  when: 'inventory_hostname != load_balancer.hostname'
+  when: 'inventory_hostname != haproxy.hostname'
   changed_when: false
 
 - name: 'Remove Kubernetes directory and its contents.'
