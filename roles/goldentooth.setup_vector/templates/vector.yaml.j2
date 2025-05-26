@@ -15,16 +15,52 @@
 data_dir: "/var/lib/vector"
 
 sources:
-  dummy_logs:
-    type: "demo_logs"
-    format: "syslog"
-    interval: 1
+  l_docker:
+    type: docker_logs
+  l_fail2ban:
+    type: file
+    include:
+      - '/var/log/fail2ban.log'
+    ignore_older_secs: 600
+  l_haproxy:
+    type: file
+    include:
+      - '/var/log/haproxy.log'
+    ignore_older_secs: 600
+  l_journald:
+    type: journald
+#   kubernetes_logs:
+#     type: kubernetes_logs
+#     ignore_older_secs: 600
+#     self_node_name: "{{ clean_hostname }}"
+#     timezone: "{{ my.local.timezone }}"
+  l_internal:
+    type: internal_logs
+#  internal_metrics:
+#    type: internal_metrics
+  l_nginx:
+    type: file
+    include:
+      - '/var/log/nginx/*.log'
+    ignore_older_secs: 600
+  l_syslog:
+    type: file
+    include:
+      - '/var/log/syslog'
+    ignore_older_secs: 600
+  l_slurm:
+    type: file
+    include:
+      - '/var/log/slurm/slurmctld.log'
+      - '/var/log/slurm/slurmd.log'
+    ignore_older_secs: 600
 
 # See the Vector Remap Language reference for more info: https://vrl.dev
 transforms:
-  parse_logs:
-    type: "remap"
-    inputs: ["dummy_logs"]
+  t_parse_syslog:
+    type: 'remap'
+    inputs:
+      - 'l_syslog'
     source: |
       . = parse_syslog!(string!(.message))
 
@@ -32,7 +68,14 @@ sinks:
   loki:
     type: 'loki'
     inputs:
-      - 'parse_logs'
+      - 't_parse_syslog'
+      - 'l_docker'
+      - 'l_fail2ban'
+      - 'l_haproxy'
+      - 'l_journald'
+      - 'l_internal'
+      - 'l_nginx'
+      - 'l_slurm'
     endpoint: "http://{{ groups['loki'] | first }}:3100"
     encoding:
       codec: 'json'
@@ -40,7 +83,6 @@ sinks:
       enabled: false
     labels:
       node: "{{ clean_hostname }}"
-      service: "idk lol"
 
 api:
   enabled: true

@@ -25,3 +25,13 @@
     mode: '0644'
   notify:
     - 'Restart Vector service.'
+
+- name: 'Grant Vector read access to /var/log/slurm.'
+  ansible.posix.acl:
+    path: '/var/log/slurm'
+    entity: 'vector'
+    etype: 'user'
+    permissions: 'r'
+    recursive: true
+    state: 'present'
+  ignore_errors: true
