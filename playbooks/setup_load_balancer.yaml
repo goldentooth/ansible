@@ -1,6 +1,6 @@
-# Description: Setup the load balancer.
+# Description: Setup the haproxy.
 
-- name: 'Setup the load balancer.'
+- name: 'Setup the haproxy.'
   hosts: 'haproxy'
   remote_user: 'root'
   roles:

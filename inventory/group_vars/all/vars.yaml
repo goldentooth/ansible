@@ -60,7 +60,7 @@ my:
 # Shared variables.
 # #############################################################################
 
-# Load balancer data:
+# haproxy data:
 haproxy:
   hostname: "{{ groups['haproxy'] | first }}"
   domain_name: 'lb-apiserver.kubernetes.local'
