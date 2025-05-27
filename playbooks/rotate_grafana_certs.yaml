@@ -1,0 +1,14 @@
+# Description: Rotate Grafana TLS certificates.
+
+- name: 'Rotate Grafana TLS certificates.'
+  hosts: 'grafana'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.rotate_grafana_certs' }
+  handlers:
+
+    - name: 'Restart Grafana service.'
+      ansible.builtin.systemd_service:
+        name: 'grafana-server'
+        state: 'restarted'
+        enabled: true

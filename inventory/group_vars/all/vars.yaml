@@ -406,6 +406,9 @@ grafana:
     dashboards:
       repository_name: 'grafana-dashboards'
   admin_password: "{{ secret_vault.grafana.admin_password }}"
+  certs_path: '/etc/grafana/tls'
+  cert_path: '/etc/grafana/tls/tls.crt'
+  key_path: '/etc/grafana/tls/tls.key'
 
 # Loki data:
 loki:
@@ -536,6 +539,16 @@ prometheus_scrape_configs:
         target_label: instance
         regex: '([^:]+):\d+'
         replacement: '${1}'
+  - job_name: 'loki'
+    static_configs:
+      - targets:
+          - "{{ groups['loki'] | first }}:3100"
+        labels:
+          instance: "{{ groups['loki'] | first }}"
+          job: 'loki'
+    scheme: 'https'
+    tls_config:
+      ca_file: "{{ step_ca.root_cert_path }}"
   - job_name: 'unknown'
     file_sd_configs:
       - files:

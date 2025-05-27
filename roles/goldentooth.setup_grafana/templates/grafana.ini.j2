@@ -36,7 +36,7 @@
 #################################### Server ####################################
 [server]
 # Protocol (http, https, h2, socket)
-;protocol = http
+protocol = https
 
 # Minimum TLS version allowed. By default, this value is empty. Accepted values are: TLS1.2, TLS1.3. If nothing is set TLS1.2 would be taken
 ;min_tls_version = ""
@@ -71,8 +71,8 @@ http_port = 3000
 ;enable_gzip = false
 
 # https certs & key file
-;cert_file =
-;cert_key =
+cert_file = {{ grafana.cert_path }}
+cert_key = {{ grafana.key_path }}
 
 # optional password to be used to decrypt key file
 ;cert_pass =
@@ -112,9 +112,9 @@ http_port = 3000
 ;[grpc_server]
 ;network = "tcp"
 ;address = "127.0.0.1:10000"
-;use_tls = false
-;cert_file =
-;key_file =
+use_tls = true
+cert_file = {{ grafana.cert_path }}
+key_file = {{ grafana.key_path }}
 ;max_recv_msg_size =
 ;max_send_msg_size =
 # this will log the request and response for each unary gRPC call
@@ -1455,7 +1455,7 @@ primary = "loki"
 # For "loki" only.
 # URL of the external Loki instance.
 # Either "loki_remote_url", or both of "loki_remote_read_url" and "loki_remote_write_url" is required for the "loki" backend.
-loki_remote_url = "http://{{ groups['loki'] | first }}:3100"
+loki_remote_url = "https://{{ groups['loki'] | first }}:3100"
 
 # For "loki" only.
 # URL of the external Loki's read path. To be used in configurations where Loki has separated read and write URLs.

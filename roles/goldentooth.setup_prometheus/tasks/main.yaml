@@ -5,7 +5,6 @@
     dest: "{{ prometheus_config_dir }}/file_sd/{{ filename }}"
   loop:
     - 'node.yaml'
-    - 'loki.yaml'
   loop_control:
     loop_var: 'filename'
   notify:
