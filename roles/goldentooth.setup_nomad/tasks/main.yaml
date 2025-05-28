@@ -1,4 +1,10 @@
 ---
+- name: 'Install Nomad.'
+  ansible.builtin.apt:
+    pkg:
+      - 'nomad'
+    state: 'present'
+
 - name: 'Update the Consul policies.'
   community.general.consul_policy:
     host: "{{ ipv4_address }}"

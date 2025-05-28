@@ -1,10 +1,9 @@
 # Description: Configure the hosts in the cluster.
 
-- name: 'Configure the Raspberry Pi hosts.'
+- name: 'Configure all hosts.'
   hosts: 'all'
   remote_user: 'root'
   roles:
-    - { role: 'goldentooth.pi_config' }
     - { role: 'goldentooth.set_hostname' }
     - { role: 'goldentooth.set_motd' }
     - { role: 'goldentooth.setup_etc_hosts' }

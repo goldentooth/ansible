@@ -1,0 +1,76 @@
+# Description: Setup common package repositories for Apt.
+
+- name: 'Setup common Apt repositories'
+  hosts: all
+  remote_user: root
+  vars:
+    apt_repos:
+      envoy:
+        uri: "https://apt.envoyproxy.io"
+        suites: ["{{ ansible_distribution_release | lower }}"]
+        components: ["main"]
+        arch: "{{ host.architecture }}"
+        signed_by: "https://apt.envoyproxy.io/signing.key"
+        hosts: ["envoy"]
+
+      grafana:
+        uri: "https://apt.grafana.com/"
+        suites: ["stable"]
+        components: ["main"]
+        arch: "{{ host.architecture }}"
+        signed_by: "https://apt.grafana.com/gpg.key"
+        hosts: ["all"]
+
+      hashicorp:
+        uri: "https://apt.releases.hashicorp.com/"
+        suites: ["{{ ansible_distribution_release | lower }}"]
+        components: ["main"]
+        arch: "{{ host.architecture }}"
+        signed_by: "https://apt.releases.hashicorp.com/gpg"
+        hosts: ["consul"]
+
+      kubernetes:
+        uri: "{{ kubernetes.apt_repo_url }}"
+        suites: ["/"]
+        components: []
+        arch: "{{ host.architecture }}"
+        signed_by: "{{ kubernetes.apt_repo_url }}/Release.key"
+        hosts: ["k8s_cluster"]
+
+      smallstep:
+        uri: "https://packages.smallstep.com/stable/debian"
+        suites: ["debs"]
+        components: ["main"]
+        arch: "{{ host.architecture }}"
+        signed_by: "https://packages.smallstep.com/keys/apt/repo-signing-key.gpg"
+        hosts: ["consul"]
+
+      vector:
+        uri: "https://apt.vector.dev/"
+        suites: ["stable"]
+        components: ["vector-0"]
+        arch: "{{ host.architecture }}"
+        signed_by: "https://keys.datadoghq.com/DATADOG_APT_KEY_CURRENT.public"
+        hosts: ["all"]
+
+  tasks:
+
+    - name: 'Add configured Apt repositories'
+      ansible.builtin.deb822_repository:
+        name: "{{ item.key }}"
+        types: ["deb"]
+        uris: ["{{ item.value.uri }}"]
+        suites: "{{ item.value.suites }}"
+        components: "{{ item.value.components }}"
+        architectures: ["{{ item.value.arch }}"]
+        signed_by: "{{ item.value.signed_by }}"
+        state: present
+        enabled: true
+      when: inventory_hostname in groups[item.value.hosts | first] or item.value.hosts | first == 'all'
+      loop: "{{ apt_repos | dict2items }}"
+      notify: 'Update Apt cache'
+
+  handlers:
+    - name: 'Update Apt cache'
+      ansible.builtin.apt:
+        update_cache: true

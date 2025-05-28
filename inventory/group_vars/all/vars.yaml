@@ -91,7 +91,7 @@ network:
     network: '10.4.11.0'
     cidr: '10.4.11.0/24'
     netmask: '255.255.255.0'
-    interface: 'eth0'
+    interface: "{{ ansible_interfaces | first }}"
 
 # Cluster data:
 cluster:
@@ -106,13 +106,15 @@ cluster:
     organization: "{{ cluster_name }}"
 
 # Host data:
-# Here, "host" means that we're referring to a physical Raspberry Pi.
+# Here, "host" means that we're referring to a physical machine.
 # This should reflect the existing network layout, which is configured
 # within my router, etc. I'm working to evolve how this is configured,
 # which is why there is some redundancy at present.
 host:
   fqdn: "{{ clean_hostname }}.{{ cluster.domain }}"
   ip: "{{ ipv4_address }}"
+  architecture: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+  networking_service: "{{ 'networking' if 'all_pis' in group_names else 'systemd-networkd' }}"
 
 # Node data:
 # Here, "node" means that we're referring to a cluster entity.
@@ -199,7 +201,7 @@ kubernetes:
     - 'kubectl'
     - 'kubelet'
   # The Kubernetes Apt repository URL.
-  apt_repo_url: "https://pkgs.k8s.io/core:/stable:/{{ kubernetes_version }}/deb/"
+  apt_repo_url: "https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_version }}/deb/"
 
 # NFS mount information.
 nfs:
@@ -308,6 +310,8 @@ nomad:
   env_config_path: '/etc/nomad.d/nomad.env'
   executable_path: '/usr/bin/nomad'
   is_consul_enabled: true
+  client:
+    node_class: "{{ 'gpu' if 'nomad_client_gpu' in group_names else 'default' }}"
 
 # Step-CA data:
 step_ca:

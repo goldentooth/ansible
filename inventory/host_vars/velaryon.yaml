@@ -1,0 +1,10 @@
+clean_hostname: velaryon
+mac_address: 2c:f0:5d:0f:ff:39
+ipv4_address: 10.4.0.30
+prompt:
+  colors:
+    primary: 23
+    secondary: 59
+    tertiary: 66
+  emoji: 🐠
+host_index: 23

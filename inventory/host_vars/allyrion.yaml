@@ -8,5 +8,10 @@ prompt:
     tertiary: 52
   emoji: ✋
 host_index: 0
-# Kubespray
-ansible_host: "{{ ipv4_address }}"
+
+# #############################################################################
+# Variables for vendored roles.
+# #############################################################################
+
+nfs_exports:
+- "/mnt/usb1 *(rw,sync,no_root_squash,no_subtree_check)"

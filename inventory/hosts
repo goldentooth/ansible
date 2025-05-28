@@ -6,17 +6,22 @@ all:
     # All Nodes
     # -----------------------------------
     all_nodes:
-      hosts:
-        allyrion:
-        bettley:
-        cargyll:
-        dalt:
-        erenford:
-        fenn:
-        gardener:
-        harlton:
-        inchfield:
-        jast:
+      children:
+        all_pis:
+          hosts:
+            allyrion:
+            bettley:
+            cargyll:
+            dalt:
+            erenford:
+            fenn:
+            gardener:
+            harlton:
+            inchfield:
+            jast:
+        all_non_pis:
+          hosts:
+            velaryon:
 
     # -----------------------------------
     # Kubernetes
@@ -29,6 +34,10 @@ all:
             cargyll:
             dalt:
         k8s_worker:
+          children:
+            k8s_worker_gpu:
+              hosts:
+                velaryon:
           hosts:
             erenford:
             fenn:
@@ -43,12 +52,21 @@ all:
     slurm:
       children:
         slurm_controller:
-          children:
-            k8s_control_plane:
+          hosts:
+            bettley:
+            cargyll:
+            dalt:
         slurm_compute:
-          children:
-            k8s_control_plane:
-            k8s_worker:
+          hosts:
+            bettley:
+            cargyll:
+            dalt:
+            erenford:
+            fenn:
+            gardener:
+            harlton:
+            inchfield:
+            jast:
 
     # -----------------------------------
     # Ray
@@ -59,6 +77,10 @@ all:
           hosts:
             erenford:
         ray_worker:
+          children:
+            ray_worker_gpu:
+              hosts:
+                velaryon:
           hosts:
             allyrion:
             bettley:
@@ -76,12 +98,20 @@ all:
     consul:
       children:
         consul_server:
-          children:
-            k8s_control_plane:
+          hosts:
+            bettley:
+            cargyll:
+            dalt:
         consul_client:
-          children:
-            haproxy:
-            k8s_worker:
+          hosts:
+            allyrion:
+            erenford:
+            fenn:
+            gardener:
+            harlton:
+            inchfield:
+            jast:
+            velaryon:
 
     # -----------------------------------
     # Nomad
@@ -89,11 +119,23 @@ all:
     nomad:
       children:
         nomad_server:
-          children:
-            k8s_control_plane:
+          hosts:
+            bettley:
+            cargyll:
+            dalt:
         nomad_client:
           children:
-            k8s_worker:
+            nomad_client_gpu:
+              hosts:
+                velaryon:
+          hosts:
+            erenford:
+            fenn:
+            gardener:
+            harlton:
+            inchfield:
+            jast:
+            velaryon:
 
     # -----------------------------------
     # Docker
@@ -134,15 +176,17 @@ all:
     # Vault
     # -----------------------------------
     vault:
-      children:
-        consul_server:
+      hosts:
+        bettley:
+        cargyll:
+        dalt:
 
     # -----------------------------------
     # Envoy
     # -----------------------------------
     envoy:
-      children:
-        haproxy:
+      hosts:
+        allyrion:
 
     # -----------------------------------
     # Grafana

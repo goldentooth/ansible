@@ -1,4 +1,10 @@
 ---
+- name: 'Install Vault.'
+  ansible.builtin.apt:
+    pkg:
+      - 'vault'
+    state: 'present'
+
 - name: 'Create/update the Vault Consul Policy.'
   community.general.consul_policy:
     host: "{{ ipv4_address }}"

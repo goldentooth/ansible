@@ -8,5 +8,3 @@ prompt:
     tertiary: 102
   emoji: 🌳
 host_index: 7
-# Kubespray
-ansible_host: "{{ ipv4_address }}"

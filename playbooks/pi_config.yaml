@@ -1,0 +1,18 @@
+# Description: Configure the Raspberry Pi nodes.
+
+- name: 'Configure the Raspberry Pi nodes.'
+  hosts: 'all_pis'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.pi_config' }
+  handlers:
+
+    - name: 'Restart journald service.'
+      ansible.builtin.systemd:
+        name: 'systemd-journald'
+        state: 'restarted'
+
+    - name: 'Reboot.'
+      ansible.builtin.reboot:
+        reboot_timeout: 300
+

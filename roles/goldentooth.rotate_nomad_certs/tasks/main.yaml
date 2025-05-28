@@ -1,4 +1,12 @@
 ---
+- name: 'Ensure directory for Nomad certs exists.'
+  ansible.builtin.file:
+    path: "{{ nomad.certs_path }}"
+    state: 'directory'
+    owner: 'nomad'
+    group: 'nomad'
+    mode: '0755'
+
 - name: 'Generate certificate for Nomad from step-ca.'
   ansible.builtin.shell:
     cmd: |

@@ -8,6 +8,6 @@
   handlers:
     - name: 'Restart networking service.'
       ansible.builtin.service:
-        name: 'networking'
+        name: "{{ host.networking_service}}"
         state: 'restarted'
         enabled: true

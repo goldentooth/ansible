@@ -1,4 +1,12 @@
 ---
+- name: 'Ensure directory for Consul certs exists.'
+  ansible.builtin.file:
+    path: "{{ consul.certs_path }}"
+    state: 'directory'
+    owner: 'consul'
+    group: 'consul'
+    mode: '0755'
+
 - name: 'Generate Consul certificate using step-ca.'
   ansible.builtin.shell:
     cmd: |

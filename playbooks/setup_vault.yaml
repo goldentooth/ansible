@@ -1,4 +1,4 @@
-# Description: Setup HashiCorp Consul.
+# Description: Setup HashiCorp Vault.
 
 - name: 'Setup HashiCorp Vault.'
   hosts: 'vault'

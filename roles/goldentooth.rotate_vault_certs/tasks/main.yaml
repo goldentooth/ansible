@@ -1,4 +1,12 @@
 ---
+- name: 'Ensure directory for Vault certs exists.'
+  ansible.builtin.file:
+    path: "{{ vault.certs_path }}"
+    state: 'directory'
+    owner: 'vault'
+    group: 'vault'
+    mode: '0755'
+
 - name: 'Generate certificate for Vault from step-ca.'
   ansible.builtin.shell:
     cmd: |

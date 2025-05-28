@@ -3,6 +3,8 @@
 - name: 'Setup Slurm.'
   hosts: 'slurm'
   remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.setup_slurm' }
   handlers:
     - name: 'Retrieve first MUNGE key.'
       ansible.builtin.slurp:
@@ -56,5 +58,3 @@
         daemon_reload: true
         enabled: true
       when: "'slurm_controller' in group_names"
-  roles:
-    - { role: 'goldentooth.setup_slurm' }

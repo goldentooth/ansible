@@ -1,8 +1,0 @@
----
-- name: 'Install Kubernetes packages.'
-  ansible.builtin.apt:
-    name: "{{ kubernetes.apt_packages }}"
-    state: 'present'
-  notify:
-    - 'Hold Kubernetes packages.'
-    - 'Enable and restart kubelet service.'

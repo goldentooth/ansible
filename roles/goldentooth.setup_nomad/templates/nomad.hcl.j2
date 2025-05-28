@@ -31,7 +31,12 @@ consul {
 
 {% if clean_hostname in groups['nomad_client'] -%}
 client {
-  enabled = true
+  enabled     = true
+  node_class  = "{{ nomad.client.node_class }}"
+  meta {
+    arch  = "{{ ansible_architecture }}"
+    gpu   = "{{ 'true' if 'gpu' == nomad.client.node_class else 'false' }}"
+  }
 }
 {% endif %}
 

@@ -1,4 +1,10 @@
 ---
+- name: 'Install Envoy.'
+  ansible.builtin.apt:
+    pkg:
+      - 'envoy'
+    state: 'present'
+
 - name: 'Create Envoy configuration directory.'
   ansible.builtin.file:
     path: "{{ envoy_config_path }}"

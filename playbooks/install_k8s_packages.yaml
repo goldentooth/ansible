@@ -9,9 +9,16 @@
 - name: 'Install Kubernetes packages.'
   hosts: 'k8s_cluster'
   remote_user: 'root'
-  roles:
-    - { role: 'goldentooth.setup_k8s_apt' }
-    - { role: 'goldentooth.install_kubernetes.apt_packages' }
+  tasks:
+
+    - name: 'Install Kubernetes packages.'
+      ansible.builtin.apt:
+        name: "{{ kubernetes.apt_packages }}"
+        state: 'present'
+      notify:
+        - 'Hold Kubernetes packages.'
+        - 'Enable and restart kubelet service.'
+
   handlers:
     - name: 'Update Apt cache.'
       ansible.builtin.apt:
