@@ -55,6 +55,13 @@
 
   tasks:
 
+    - name: 'Ensure necessary packages are installed'
+      ansible.builtin.apt:
+        name:
+          - 'python3-apt'
+          - 'python3-debian'
+        state: 'present'
+
     - name: 'Add configured Apt repositories'
       ansible.builtin.deb822_repository:
         name: "{{ item.key }}"

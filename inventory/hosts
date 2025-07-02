@@ -19,6 +19,8 @@ all:
             harlton:
             inchfield:
             jast:
+            karstark:
+            lipps:
         all_non_pis:
           hosts:
             velaryon:
@@ -45,6 +47,8 @@ all:
             harlton:
             inchfield:
             jast:
+            karstark:
+            lipps:
 
     # -----------------------------------
     # Slurm
@@ -67,6 +71,8 @@ all:
             harlton:
             inchfield:
             jast:
+            karstark:
+            lipps:
 
     # -----------------------------------
     # Ray
@@ -91,6 +97,8 @@ all:
             harlton:
             inchfield:
             jast:
+            karstark:
+            lipps:
 
     # -----------------------------------
     # Consul
@@ -112,6 +120,8 @@ all:
             inchfield:
             jast:
             velaryon:
+            karstark:
+            lipps:
 
     # -----------------------------------
     # Nomad
@@ -135,6 +145,8 @@ all:
             harlton:
             inchfield:
             jast:
+            karstark:
+            lipps:
             velaryon:
 
     # -----------------------------------
