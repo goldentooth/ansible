@@ -55,3 +55,15 @@
   ansible.builtin.command:
     cmd: 'update-ca-certificates'
   changed_when: false
+
+- name: 'Copy cert-renewer service template.'
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/cert-renewer@.service"
+    dest: '/etc/systemd/system/cert-renewer@.service'
+    mode: '0644'
+
+- name: 'Copy cert-renewer timer template.'
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/cert-renewer@.timer"
+    dest: '/etc/systemd/system/cert-renewer@.timer'
+    mode: '0644'
