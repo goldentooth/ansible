@@ -10,6 +10,29 @@
     - 'Trigger systemd daemon-reload.'
     - 'Restart Consul service.'
 
+- name: 'Ensure Consul service directory exists.'
+  ansible.builtin.file:
+    path: '/etc/systemd/system/cert-renewer@consul.service.d'
+    state: directory
+    owner: 'root'
+    group: 'root'
+    mode: '0755'
+
+- name: 'Enable cert-renewer service for Consul.'
+  ansible.builtin.systemd_service:
+    name: 'cert-renewer@consul.timer'
+    enabled: true
+    state: 'started'
+  notify:
+    - 'Trigger systemd daemon-reload.'
+
+- name: 'Copy Consul certificate renewer configuration into place on all nodes.'
+  ansible.builtin.template:
+    src: 'cert-renewer@consul.conf.j2'
+    dest: '/etc/systemd/system/cert-renewer@consul.service.d/override.conf'
+  notify:
+    - 'Trigger systemd daemon-reload.'
+
 - name: 'Flush handlers.'
   ansible.builtin.meta: 'flush_handlers'
 

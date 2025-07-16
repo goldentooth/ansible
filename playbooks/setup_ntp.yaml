@@ -1,0 +1,17 @@
+# Description: Setup NTP.
+
+- name: 'Setup NTP.'
+  hosts: 'all_pis'
+  remote_user: 'root'
+  tasks:
+
+    - name: 'Install NTP package.'
+      ansible.builtin.package:
+        name: 'ntp'
+        state: 'present'
+
+    - name: 'Ensure NTP service is enabled and started.'
+      ansible.builtin.systemd:
+        name: 'ntp'
+        state: 'started'
+        enabled: true

@@ -6,14 +6,14 @@ Documentation=https://smallstep.com/docs/step-ca/certificate-authority-server-pr
 [Timer]
 Persistent=true
 
-; Run the timer unit every 15 minutes.
-OnCalendar=*:1/15
+; Run the timer unit every 5 minutes.
+OnCalendar=*:1/5
 
 ; Always run the timer on time.
 AccuracySec=1us
 
 ; Add jitter to prevent a "thundering hurd" of simultaneous certificate renewals.
-RandomizedDelaySec=5m
+RandomizedDelaySec=1m
 
 [Install]
 WantedBy=timers.target

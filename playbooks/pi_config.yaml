@@ -8,9 +8,10 @@
   handlers:
 
     - name: 'Restart journald service.'
-      ansible.builtin.systemd:
+      ansible.builtin.systemd_service:
         name: 'systemd-journald'
         state: 'restarted'
+        enabled: true
 
     - name: 'Reboot.'
       ansible.builtin.reboot:
