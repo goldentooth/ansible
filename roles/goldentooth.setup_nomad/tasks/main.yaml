@@ -87,6 +87,52 @@
   loop_control:
     loop_var: 'variable'
 
+- name: 'Ensure Nomad service directory exists.'
+  ansible.builtin.file:
+    path: '/etc/systemd/system/cert-renewer@nomad.service.d'
+    state: directory
+    owner: 'root'
+    group: 'root'
+    mode: '0755'
+
+- name: 'Enable cert-renewer service for Nomad.'
+  ansible.builtin.systemd_service:
+    name: 'cert-renewer@nomad.timer'
+    enabled: true
+    state: 'started'
+  notify:
+    - 'Trigger systemd daemon-reload.'
+
+- name: 'Copy Nomad certificate renewer configuration into place on all nodes.'
+  ansible.builtin.template:
+    src: 'cert-renewer@nomad.conf.j2'
+    dest: '/etc/systemd/system/cert-renewer@nomad.service.d/override.conf'
+  notify:
+    - 'Trigger systemd daemon-reload.'
+
+- name: 'Ensure Nomad-cli service directory exists.'
+  ansible.builtin.file:
+    path: '/etc/systemd/system/cert-renewer@nomad-cli.service.d'
+    state: directory
+    owner: 'root'
+    group: 'root'
+    mode: '0755'
+
+- name: 'Enable cert-renewer service for Nomad.'
+  ansible.builtin.systemd_service:
+    name: 'cert-renewer@nomad-cli.timer'
+    enabled: true
+    state: 'started'
+  notify:
+    - 'Trigger systemd daemon-reload.'
+
+- name: 'Copy Nomad certificate renewer configuration into place on all nodes.'
+  ansible.builtin.template:
+    src: 'cert-renewer@nomad-cli.conf.j2'
+    dest: '/etc/systemd/system/cert-renewer@nomad-cli.service.d/override.conf'
+  notify:
+    - 'Trigger systemd daemon-reload.'
+
 - name: 'Add Nomad-relevant line in ~/.bashrc.'
   ansible.builtin.lineinfile:
     path: '~/.bashrc'
