@@ -7,6 +7,10 @@
     - { role: 'goldentooth.setup_vector' }
   handlers:
 
+    - name: 'Trigger systemd daemon-reload.'
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+
     - name: 'Restart Vector service.'
       ansible.builtin.systemd_service:
         name: 'vector'

@@ -21,7 +21,7 @@
         --san='localhost' \
         --san="{{ clean_hostname }}" \
         --san="{{ ipv4_address }}" \
-        --not-after='168h' \
+        --not-after='24h' \
         --console \
         --force
 

@@ -68,3 +68,26 @@
       value: "{{ vault.key_path }}"
   loop_control:
     loop_var: 'variable'
+
+- name: 'Ensure Vault service directory exists.'
+  ansible.builtin.file:
+    path: '/etc/systemd/system/cert-renewer@vault.service.d'
+    state: directory
+    owner: 'root'
+    group: 'root'
+    mode: '0755'
+
+- name: 'Enable cert-renewer service for Vault.'
+  ansible.builtin.systemd_service:
+    name: 'cert-renewer@vault.timer'
+    enabled: true
+    state: 'started'
+  notify:
+    - 'Trigger systemd daemon-reload.'
+
+- name: 'Copy Vault certificate renewer configuration into place on all nodes.'
+  ansible.builtin.template:
+    src: 'cert-renewer@vault.conf.j2'
+    dest: '/etc/systemd/system/cert-renewer@vault.service.d/override.conf'
+  notify:
+    - 'Trigger systemd daemon-reload.'
