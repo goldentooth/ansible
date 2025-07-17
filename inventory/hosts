@@ -213,3 +213,29 @@ all:
     loki:
       hosts:
         inchfield:
+
+    # -----------------------------------
+    # Gluster
+    # -----------------------------------
+    gluster:
+      hosts:
+        allyrion:
+        erenford:
+        gardener:
+
+    # -----------------------------------
+    # Ceph
+    # -----------------------------------
+    ceph:
+      hosts:
+        fenn:
+        karstark:
+        lipps:
+
+    # -----------------------------------
+    # Seaweed
+    # -----------------------------------
+    seaweed:
+      hosts:
+        inchfield:
+        jast:

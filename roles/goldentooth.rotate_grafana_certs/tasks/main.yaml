@@ -23,7 +23,7 @@
         --san="{{ clean_hostname }}" \
         --san="{{ clean_hostname }}.{{ cluster.node_domain }}" \
         --san="{{ ipv4_address }}" \
-        --not-after='168h' \
+        --not-after='24h' \
         --console \
         --force
   notify:

@@ -1,0 +1,50 @@
+---
+- name: 'Ensure that `glusterfs-server` is installed.'
+  ansible.builtin.apt:
+    pkg:
+      - 'glusterfs-server'
+    state: 'present'
+  notify:
+    - name: 'Restart GlusterFS service.'
+
+- name: 'Create a new primary partition on /dev/sda.'
+  community.general.parted:
+    device: '/dev/sda'
+    number: 1
+    state: 'present'
+    part_type: 'primary'
+    fs_type: 'ext4'
+    resize: true
+
+- name: 'Format /dev/sda1 as ext4.'
+  ansible.builtin.filesystem:
+    fstype: 'ext4'
+    dev: '/dev/sda1'
+
+- name: 'Ensure mount point exists.'
+  ansible.builtin.file:
+    path: '/gluster/brick'
+    state: directory
+    mode: '0755'
+    owner: 'root'
+    group: 'root'
+
+- name: 'Mount the brick.'
+  ansible.posix.mount:
+    path: '/gluster/brick'
+    src: '/dev/sda1'
+    fstype: 'ext4'
+    opts: 'defaults'
+    state: 'mounted'
+  notify:
+    - name: 'Restart GlusterFS service.'
+
+- name: 'Create Gluster volume.'
+  gluster.gluster.gluster_volume:
+    bricks: "/gluster/brick/default-brick"
+    cluster: "{{ groups['gluster'] | map('extract', hostvars, 'ipv4_address') | list }}"
+    name: 'gluster'
+    rebalance: true
+    start_if_created: true
+    state: 'present'
+  run_once: true

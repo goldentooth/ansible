@@ -1,0 +1,15 @@
+# Description: Setup GlusterFS.
+
+- name: 'Setup GlusterFS.'
+  hosts: 'gluster'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.setup_gluster' }
+  handlers:
+    - name: 'Restart GlusterFS service.'
+      ansible.builtin.systemd_service:
+        name: 'glusterd'
+        state: 'restarted'
+        enabled: true
+        force: true
+        daemon_reload: true

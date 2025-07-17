@@ -23,6 +23,29 @@
   notify:
     - 'Restart Grafana service.'
 
+- name: 'Ensure Grafana service directory exists.'
+  ansible.builtin.file:
+    path: '/etc/systemd/system/cert-renewer@grafana.service.d'
+    state: directory
+    owner: 'root'
+    group: 'root'
+    mode: '0755'
+
+- name: 'Enable cert-renewer service for Grafana.'
+  ansible.builtin.systemd_service:
+    name: 'cert-renewer@grafana.timer'
+    enabled: true
+    state: 'started'
+  notify:
+    - 'Trigger systemd daemon-reload.'
+
+- name: 'Copy Grafana certificate renewer configuration into place on all nodes.'
+  ansible.builtin.template:
+    src: 'cert-renewer@grafana.conf.j2'
+    dest: '/etc/systemd/system/cert-renewer@grafana.service.d/override.conf'
+  notify:
+    - 'Trigger systemd daemon-reload.'
+
 - name: 'Ensure existence of Grafana data directory.'
   ansible.builtin.file:
     path: '/var/lib/grafana'
