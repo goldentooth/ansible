@@ -2,7 +2,6 @@ collections:
   - name: 'ansible.posix'
   - name: 'community.docker'
   - name: 'community.general'
-  - name: 'gluster.gluster'
   - name: 'kubernetes.core'
   - name: 'prometheus.prometheus'
 roles:

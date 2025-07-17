@@ -430,6 +430,16 @@ vector:
   cert_path: '/etc/vector/tls/tls.crt'
   key_path: '/etc/vector/tls/tls.key'
 
+# ZFS data:
+zfs:
+  arc_max: 134217728  # 128MB ARC size for low-RAM Pis
+  pool:
+    name: 'rpool'
+    device: '/dev/sda'
+  datasets:
+    - name: 'data'
+      mountpoint: '/data'
+
 # #############################################################################
 # Variables for vendored roles.
 # #############################################################################

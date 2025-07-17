@@ -1,0 +1,63 @@
+---
+- name: 'Check for existence of ZFS pool with specified name.'
+  ansible.builtin.command:
+    cmd: 'zpool list {{ zfs.pool.name }}'
+  register: 'zfs_pool_check'
+  ignore_errors: true
+  changed_when: false
+
+- name: 'Create a new primary partition on /dev/sda.'
+  community.general.parted:
+    device: '/dev/sda'
+    number: 1
+    state: 'present'
+    part_type: 'primary'
+    fs_type: 'zfs'
+    resize: true
+  when: zfs_pool_check.rc != 0
+
+- name: 'Ensure that ZFS packages are installed.'
+  ansible.builtin.apt:
+    pkg:
+      - 'sanoid'
+      - 'zfsutils-linux'
+      - 'zfs-dkms'
+      - 'zfs-zed'
+    state: 'present'
+  notify:
+    - 'Restart ZFS-zed service.'
+
+- name: "Set ARC max for low-memory system"
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/zfs.conf
+    content: "options zfs zfs_arc_max={{ zfs.arc_max }}\n"
+    mode: '0644'
+  notify: 'Update initramfs.'
+
+- name: 'Ensure ZFS module is loaded.'
+  ansible.builtin.modprobe:
+    name: 'zfs'
+    state: 'present'
+
+- name: 'Create ZFS pool.'
+  ansible.builtin.command:
+    cmd: "zpool create -f {{ zfs.pool.name }} {{ zfs.pool.device }}"
+  when: zfs_pool_check.rc != 0
+
+- name: 'Create datasets.'
+  block:
+    - name: "Create dataset {{ item.name }}"
+      ansible.builtin.command: |
+        zfs create {{ zfs.pool.name }}/{{ item.name }}
+      args:
+        creates: "/{{ item.mountpoint | trim('/') }}"
+      loop: "{{ zfs.datasets }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: "Set mountpoint for {{ item.name }}"
+      ansible.builtin.command: |
+        zfs set mountpoint={{ item.mountpoint }} {{ zfs.pool.name }}/{{ item.name }}
+      loop: "{{ zfs.datasets }}"
+      loop_control:
+        label: "{{ item.name }}"

@@ -1,0 +1,19 @@
+# Description: Setup ZFS.
+
+- name: 'Setup ZFS.'
+  hosts: 'zfs'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.setup_zfs' }
+  handlers:
+    - name: 'Restart ZFS-zed service.'
+      ansible.builtin.systemd_service:
+        name: 'zfs-zed'
+        state: 'restarted'
+        enabled: true
+        daemon_reload: true
+
+    - name: 'Update initramfs.'
+      ansible.builtin.command:
+        cmd: 'update-initramfs -u'
+      register: initramfs_update

@@ -215,9 +215,9 @@ all:
         inchfield:
 
     # -----------------------------------
-    # Gluster
+    # ZFS
     # -----------------------------------
-    gluster:
+    zfs:
       hosts:
         allyrion:
         erenford:
