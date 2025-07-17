@@ -1,0 +1,9 @@
+[Service]
+; `Environment=` overrides are applied per environment variable. This line does not
+; affect any other variables set in the service template.
+Environment=CERT_LOCATION="{{ loki.cert_path }}" \
+            KEY_LOCATION="{{ loki.key_path }}"
+WorkingDirectory="{{ loki.key_path | dirname }}"
+
+; Restart Loki service after certificate renewal
+ExecStartPost=/usr/bin/env sh -c "! systemctl --quiet is-active loki.service || systemctl try-reload-or-restart loki.service"
