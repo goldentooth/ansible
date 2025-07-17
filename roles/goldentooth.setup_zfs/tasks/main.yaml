@@ -14,7 +14,7 @@
     part_type: 'primary'
     fs_type: 'zfs'
     resize: true
-  when: zfs_pool_check.rc != 0
+  when: 'zfs_pool_check.rc != 0'
 
 - name: 'Ensure that ZFS packages are installed.'
   ansible.builtin.apt:
@@ -46,7 +46,7 @@
 
 - name: 'Create datasets.'
   block:
-    - name: "Create dataset {{ item.name }}"
+    - name: "Create dataset."
       ansible.builtin.command: |
         zfs create {{ zfs.pool.name }}/{{ item.name }}
       args:
@@ -55,9 +55,33 @@
       loop_control:
         label: "{{ item.name }}"
 
-    - name: "Set mountpoint for {{ item.name }}"
+    - name: "Set mountpoint."
       ansible.builtin.command: |
         zfs set mountpoint={{ item.mountpoint }} {{ zfs.pool.name }}/{{ item.name }}
       loop: "{{ zfs.datasets }}"
       loop_control:
         label: "{{ item.name }}"
+
+- name: 'Ensure sanoid configuration directory exists.'
+  ansible.builtin.file:
+    path: '/etc/sanoid'
+    state: 'directory'
+    mode: '0755'
+
+- name: 'Copy Sanoid defaults file into place.'
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/sanoid.defaults.conf"
+    dest: '/etc/sanoid/sanoid.defaults.conf'
+    mode: '0644'
+
+- name: 'Copy Sanoid conf file into place.'
+  ansible.builtin.template:
+    src: 'sanoid.conf.j2'
+    dest: '/etc/sanoid/sanoid.conf'
+    mode: '0644'
+
+- name: 'Enable Sanoid timer.'
+  ansible.builtin.systemd:
+    name: 'sanoid.timer'
+    enabled: true
+    state: 'started'
