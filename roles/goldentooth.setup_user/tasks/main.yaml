@@ -9,3 +9,42 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: '0644'
+
+- name: 'Install uv (includes uvx).'
+  ansible.builtin.get_url:
+    url: https://astral.sh/uv/install.sh
+    dest: /tmp/install-uv.sh
+    mode: '0755'
+  register: download_uv
+
+- name: 'Run uv installer.'
+  ansible.builtin.shell: /tmp/install-uv.sh
+  when: download_uv.changed
+
+- name: 'Create ~/.bash_local with uvx setup.'
+  ansible.builtin.blockinfile:
+    path: '~/.bash_local'
+    create: true
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - uvx setup"
+    block: |
+      # Add uv/uvx to PATH
+      export PATH="$HOME/.local/bin:$PATH"
+
+      # Anthropic API key for goldentooth-agent
+      export ANTHROPIC_API_KEY="{{ secret_vault.anthropic.api_key }}"
+
+      # Goldentooth Agent alias
+      alias goldentooth-agent="uvx --from git+https://github.com/goldentooth/agent gta"
+      alias gta="uvx --from git+https://github.com/goldentooth/agent gta"
+
+- name: 'Source ~/.bash_local from ~/.bashrc.'
+  ansible.builtin.lineinfile:
+    path: '~/.bashrc'
+    line: "[ -f ~/.bash_local ] && source ~/.bash_local"
+    create: true
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'

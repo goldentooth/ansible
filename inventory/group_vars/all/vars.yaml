@@ -40,6 +40,8 @@ my:
 #   easy_password: <string>
 #   ssh_public_key: <string>
 #   github_token: <string>
+#   anthropic:
+#     api_key: <string>
 #   aws:
 #     access_key_id: <string>
 #     secret_access_key: <string>
