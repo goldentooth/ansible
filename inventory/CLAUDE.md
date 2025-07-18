@@ -85,3 +85,10 @@ Individual host variables in `host_vars/` override group variables and can speci
 - Keep sensitive data in the encrypted vault file
 - Use the `clean_hostname` variable for consistent naming
 - Leverage the `ipv4_address` variable for dynamic IP resolution
+
+## Related Documentation
+
+For more information about how inventory integrates with other components:
+- See `../playbooks/CLAUDE.md` for how playbooks use inventory groups
+- See `../roles/CLAUDE.md` for how roles consume inventory variables
+- See `../roles/goldentooth.*/CLAUDE.md` for role-specific variable usage

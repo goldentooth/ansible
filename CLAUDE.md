@@ -140,6 +140,17 @@ ansible-playbook -i inventory/hosts playbooks/setup_vault.yaml --ask-vault-pass
 - `inventory/`: Host definitions and group variables
 - `inventory/group_vars/all/vars.yaml`: Main configuration variables
 
+## Additional Documentation
+
+This repository includes detailed CLAUDE.md documentation throughout its structure:
+
+- **`inventory/CLAUDE.md`**: Host groups, variables, and secrets management
+- **`playbooks/CLAUDE.md`**: Playbook categories and usage patterns
+- **`roles/CLAUDE.md`**: Role organization and conventions
+- **`roles/goldentooth.*/CLAUDE.md`**: Individual documentation for each of the 41 goldentooth roles
+
+Each role's CLAUDE.md file provides specific guidance on purpose, dependencies, configuration, and integration with other cluster components.
+
 ## Development Notes
 
 - All custom roles follow the `goldentooth.*` naming convention

@@ -109,6 +109,21 @@ Some roles split tasks across multiple files:
 - `main.yaml`: Primary task orchestration
 - `update_config.yaml`: Configuration updates
 
+## Individual Role Documentation
+
+Each goldentooth role includes its own detailed CLAUDE.md file with specific guidance:
+
+- **Purpose and overview**: What the role does and why it's needed
+- **File structure**: Templates, tasks, and configuration files
+- **Key features**: Major capabilities and functionality
+- **Dependencies**: Required services and prerequisites
+- **Variables**: Role-specific configuration options
+- **Usage examples**: How to invoke the role
+- **Integration points**: How it works with other roles
+- **Security considerations**: Important security aspects
+
+To access role-specific documentation, see `roles/goldentooth.*/CLAUDE.md` files.
+
 ## Key Variables
 
 Roles leverage variables from:

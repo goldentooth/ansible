@@ -127,3 +127,10 @@ ansible-playbook -i inventory/hosts playbooks/<playbook_name>.yaml
 - Use appropriate host targeting
 - Include necessary handlers for service management
 - Test playbooks in development before production use
+
+## Related Documentation
+
+For more information about playbook components:
+- See `../inventory/CLAUDE.md` for host groups and variables used by playbooks
+- See `../roles/CLAUDE.md` for role organization and conventions
+- See `../roles/goldentooth.*/CLAUDE.md` for detailed documentation on each role used in playbooks
