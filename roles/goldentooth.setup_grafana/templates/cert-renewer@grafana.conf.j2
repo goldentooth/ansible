@@ -1,9 +1,9 @@
 [Service]
 ; `Environment=` overrides are applied per environment variable. This line does not
 ; affect any other variables set in the service template.
-Environment=CERT_LOCATION="{{ grafana.cert_path }}" \
-            KEY_LOCATION="{{ grafana.key_path }}"
-WorkingDirectory="{{ grafana.key_path | dirname }}"
+Environment=CERT_LOCATION={{ grafana.cert_path }} \
+            KEY_LOCATION={{ grafana.key_path }}
+WorkingDirectory={{ grafana.key_path | dirname }}
 
 ; Restart Grafana service after certificate renewal
 ExecStartPost=/usr/bin/env sh -c "! systemctl --quiet is-active grafana.service || systemctl try-reload-or-restart grafana.service"
