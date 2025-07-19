@@ -1,0 +1,13 @@
+---
+- name: 'Restart ZFS-zed service.'
+  ansible.builtin.systemd:
+    name: 'zfs-zed'
+    state: 'restarted'
+
+- name: 'Update initramfs.'
+  ansible.builtin.command:
+    cmd: 'update-initramfs -u'
+
+- name: 'Reload systemd daemon.'
+  ansible.builtin.systemd:
+    daemon_reload: true

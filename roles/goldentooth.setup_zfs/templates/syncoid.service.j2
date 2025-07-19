@@ -1,0 +1,13 @@
+[Unit]
+Description=Syncoid ZFS replication to %i
+After=zfs-import.target
+Requires=zfs-import.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/syncoid --no-privilege-elevation {{ zfs.pool.name }}/{{ zfs.datasets[0].name }} root@%i:{{ zfs.pool.name }}/{{ zfs.datasets[0].name }}
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

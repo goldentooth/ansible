@@ -46,42 +46,107 @@
 
 - name: 'Create datasets.'
   block:
+    - name: "Check if dataset exists"
+      ansible.builtin.command: |
+        zfs list {{ zfs.pool.name }}/{{ item.name }}
+      register: dataset_check
+      loop: "{{ zfs.datasets }}"
+      loop_control:
+        label: "{{ item.name }}"
+      ignore_errors: true
+      changed_when: false
+
     - name: "Create dataset."
       ansible.builtin.command: |
-        zfs create {{ zfs.pool.name }}/{{ item.name }}
-      args:
-        creates: "/{{ item.mountpoint | trim('/') }}"
-      loop: "{{ zfs.datasets }}"
+        zfs create -o mountpoint={{ item.item.mountpoint }} {{ zfs.pool.name }}/{{ item.item.name }}
+      when: item.rc != 0
+      loop: "{{ dataset_check.results }}"
       loop_control:
-        label: "{{ item.name }}"
-
-    - name: "Set mountpoint."
-      ansible.builtin.command: |
-        zfs set mountpoint={{ item.mountpoint }} {{ zfs.pool.name }}/{{ item.name }}
-      loop: "{{ zfs.datasets }}"
-      loop_control:
-        label: "{{ item.name }}"
+        label: "{{ item.item.name }}"
+  when: inventory_hostname == groups['zfs'][0]  # Only create datasets on primary
 
 - name: 'Ensure sanoid configuration directory exists.'
   ansible.builtin.file:
     path: '/etc/sanoid'
     state: 'directory'
     mode: '0755'
+  when: inventory_hostname == groups['zfs'][0]  # Only on primary
 
 - name: 'Copy Sanoid defaults file into place.'
   ansible.builtin.copy:
     src: "{{ role_path }}/files/sanoid.defaults.conf"
     dest: '/etc/sanoid/sanoid.defaults.conf'
     mode: '0644'
+  when: inventory_hostname == groups['zfs'][0]  # Only on primary
 
 - name: 'Copy Sanoid conf file into place.'
   ansible.builtin.template:
     src: 'sanoid.conf.j2'
     dest: '/etc/sanoid/sanoid.conf'
     mode: '0644'
+  when: inventory_hostname == groups['zfs'][0]  # Only on primary
 
 - name: 'Enable Sanoid timer.'
   ansible.builtin.systemd:
     name: 'sanoid.timer'
     enabled: true
     state: 'started'
+  when: inventory_hostname == groups['zfs'][0]  # Only on primary
+
+# Configure Syncoid for ZFS replication between nodes
+- name: 'Configure Syncoid systemd service for ZFS replication.'
+  ansible.builtin.template:
+    src: 'syncoid.service.j2'
+    dest: '/etc/systemd/system/syncoid@.service'
+    mode: '0644'
+  notify: 'Reload systemd daemon.'
+
+- name: 'Configure Syncoid systemd timer for ZFS replication.'
+  ansible.builtin.template:
+    src: 'syncoid.timer.j2'
+    dest: '/etc/systemd/system/syncoid@.timer'
+    mode: '0644'
+  notify: 'Reload systemd daemon.'
+
+- name: 'Configure SSH key for ZFS replication.'
+  ansible.builtin.copy:
+    content: "{{ zfs_replication_ssh_key }}"
+    dest: '/root/.ssh/id_rsa_zfs'
+    mode: '0600'
+    owner: 'root'
+    group: 'root'
+  when: zfs_replication_ssh_key is defined
+
+- name: 'Configure SSH config for ZFS replication.'
+  ansible.builtin.blockinfile:
+    path: '/root/.ssh/config'
+    create: true
+    mode: '0600'
+    block: |
+      # ZFS replication configuration
+      {% for host in groups['zfs'] %}
+      {% if host != inventory_hostname %}
+      Host {{ host }}
+        HostName {{ hostvars[host]['ipv4_address'] }}
+        User root
+        IdentityFile /root/.ssh/id_rsa_zfs
+        StrictHostKeyChecking no
+        UserKnownHostsFile /dev/null
+      {% endif %}
+      {% endfor %}
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - ZFS Replication"
+
+- name: 'Reload systemd daemon.'
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when: groups['zfs'] | length > 1
+
+- name: 'Enable and start Syncoid timers for replication targets.'
+  ansible.builtin.systemd:
+    name: "syncoid@{{ item }}.timer"
+    enabled: true
+    state: 'started'
+  loop: "{{ groups['zfs'] | reject('eq', inventory_hostname) | list }}"
+  when: 
+    - groups['zfs'] | length > 1
+    - inventory_hostname == groups['zfs'][0]  # Only run on first ZFS node (allyrion)

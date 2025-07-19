@@ -13,12 +13,16 @@ This role sets up ZFS storage system with automated snapshots, dataset managemen
 - Configure ZFS performance parameters
 - Create and manage ZFS datasets
 - Set up snapshot retention policies
+- Configure Syncoid for ZFS replication between cluster nodes
 
 ## Files
 
 - `tasks/main.yaml`: Main task file
 - `templates/sanoid.conf.j2`: Sanoid configuration template
+- `templates/syncoid.service.j2`: Syncoid systemd service template
+- `templates/syncoid.timer.j2`: Syncoid systemd timer template
 - `files/sanoid.defaults.conf`: Default Sanoid configuration
+- `handlers/main.yaml`: Systemd and ZFS service handlers
 
 ## Key Features
 
@@ -36,6 +40,12 @@ This role sets up ZFS storage system with automated snapshots, dataset managemen
 - Uses Sanoid for automated snapshot management
 - Configures snapshot retention policies
 - Provides point-in-time recovery capabilities
+
+### ZFS Replication
+- Uses Syncoid for automated ZFS replication between cluster nodes
+- Configures systemd timers for regular replication (every 15 minutes)
+- Sets up SSH keys and configuration for secure replication
+- Automatically configures replication targets for all ZFS group members
 
 ### Performance Optimization
 - Configures ARC size for low-RAM systems
@@ -56,6 +66,7 @@ Key variables from inventory:
 - `zfs.pool.name`: ZFS pool name
 - `zfs.pool.device`: Storage device for pool
 - `zfs.datasets`: List of datasets to create
+- `zfs_replication_ssh_key`: SSH private key for ZFS replication (optional, stored in vault)
 
 ## Usage
 
