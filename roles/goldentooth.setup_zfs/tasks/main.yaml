@@ -108,28 +108,20 @@
     mode: '0644'
   notify: 'Reload systemd daemon.'
 
-- name: 'Configure SSH key for ZFS replication.'
-  ansible.builtin.copy:
-    content: "{{ zfs_replication_ssh_key }}"
-    dest: '/root/.ssh/id_rsa_zfs'
-    mode: '0600'
-    owner: 'root'
-    group: 'root'
-  when: zfs_replication_ssh_key is defined
-
-- name: 'Configure SSH config for ZFS replication.'
+- name: 'Configure SSH config for ZFS replication using certificates.'
   ansible.builtin.blockinfile:
     path: '/root/.ssh/config'
     create: true
     mode: '0600'
     block: |
-      # ZFS replication configuration
+      # ZFS replication configuration using SSH certificates
       {% for host in groups['zfs'] %}
       {% if host != inventory_hostname %}
       Host {{ host }}
         HostName {{ hostvars[host]['ipv4_address'] }}
         User root
-        IdentityFile /root/.ssh/id_rsa_zfs
+        CertificateFile /etc/step/certs/root_ssh_key-cert.pub
+        IdentityFile /etc/step/certs/root_ssh_key
         StrictHostKeyChecking no
         UserKnownHostsFile /dev/null
       {% endif %}
