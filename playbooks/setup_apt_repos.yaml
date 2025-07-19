@@ -53,6 +53,14 @@
         signed_by: "https://keys.datadoghq.com/DATADOG_APT_KEY_CURRENT.public"
         hosts: ["all"]
 
+      nodejs:
+        uri: "https://deb.nodesource.com/node_20.x"
+        suites: ["nodistro"]
+        components: ["main"]
+        arch: "{{ host.architecture }}"
+        signed_by: "https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key"
+        hosts: ["all"]
+
   tasks:
 
     - name: 'Ensure necessary packages are installed'

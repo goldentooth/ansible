@@ -1,0 +1,37 @@
+[Unit]
+Description=SSH user certificate renewer for {{ my.name.lower }}
+After=network-online.target
+Documentation=https://smallstep.com/docs/step-cli/reference/ssh/certificate
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+User=root
+
+Environment=STEPPATH=/etc/step-ca
+
+# Check if certificate needs renewal
+ExecCondition=/usr/bin/step certificate needs-renewal /etc/step/certs/{{ my.name.lower }}_ssh_key-cert.pub
+
+# Renew the certificate
+ExecStart=/usr/bin/step ssh certificate \
+    --sign \
+    --force \
+    --no-password \
+    --insecure \
+    --provisioner="{{ step_ca.default_provisioner.name }}" \
+    --provisioner-password-file="{{ step_ca.default_provisioner.password_path }}" \
+    --principal="{{ my.name.lower }}" \
+    --principal="{{ ansible_hostname }}-{{ my.name.lower }}" \
+    --ca-url="https://{{ hostvars[step_ca.server].ipv4_address }}:9443" \
+    --root="{{ step_ca.root_cert_path }}" \
+    --not-after=24h \
+    {{ my.name.lower }}@{{ ansible_hostname }} \
+    /etc/step/certs/{{ my.name.lower }}_ssh_key.pub
+
+# Copy renewed certificate to user directory
+ExecStartPost=/usr/bin/cp /etc/step/certs/{{ my.name.lower }}_ssh_key-cert.pub /home/{{ my.name.lower }}/.ssh/id_ed25519-cert.pub
+ExecStartPost=/usr/bin/chown {{ my.name.lower }}:{{ my.name.lower }} /home/{{ my.name.lower }}/.ssh/id_ed25519-cert.pub
+
+[Install]
+WantedBy=multi-user.target

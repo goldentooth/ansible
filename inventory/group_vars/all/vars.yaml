@@ -316,8 +316,12 @@ nomad:
     node_class: "{{ 'gpu' if 'nomad_client_gpu' in group_names else 'default' }}"
 
 # Step-CA data:
+# Step-CA certificate authority configuration
 step_ca:
+  # The server running step-ca (Certificate Authority)
   server: "{{ groups['step_ca'] | first }}"
+  
+  # CA-specific configuration (used when setting up/managing the CA itself)
   ca:
     bind_address: "{{ ipv4_address }}:9443"
     ca_config_file_path: '/etc/step-ca/config/ca.json'
@@ -325,6 +329,7 @@ step_ca:
     defaults_config_file_path: '/etc/step-ca/config/defaults.json'
     etc_path: '/etc/step-ca'
     executable: 'step-ca'
+    # Password file paths on the CA server (used during CA initialization)
     password_file_paths:
       default_provisioner: '/etc/step-ca/.password_jwk_provisioner.txt'
       intermediate: "/etc/step-ca/.password_intermediate.txt"
@@ -333,11 +338,19 @@ step_ca:
     root_cert_path: '/etc/step-ca/certs/root_ca.crt'
     sans: "{{ host.fqdn }},{{ node.fqdn }},{{ ipv4_address }}"
     user: 'step'
+  
+  # Step CLI configuration
   executable: 'step'
+  
+  # CA certificate paths on client nodes
   root_cert_path: "/etc/ssl/certs/{{ cluster.name }}.pem"
   shared_cert_path: "/usr/local/share/ca-certificates/{{ cluster.name }}.crt"
+  
+  # Default provisioner configuration for certificate issuance/renewal
+  # Used by client nodes when requesting certificates from the CA
   default_provisioner:
     name: 'default'
+    # Password file path on client nodes (different from CA server path)
     password_path: '/root/.step/jwk_provisioner_password.txt'
     password:  "{{ secret_vault.step_ca.passwords.provisioners.jwk }}"
 

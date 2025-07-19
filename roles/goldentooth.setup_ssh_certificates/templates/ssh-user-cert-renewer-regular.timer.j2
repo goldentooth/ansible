@@ -1,0 +1,12 @@
+[Unit]
+Description=Timer for SSH user certificate renewal for {{ my.name.lower }}
+Documentation=https://smallstep.com/docs/step-cli/reference/ssh/certificate
+
+[Timer]
+# Run daily
+OnBootSec=10min
+OnUnitActiveSec=1d
+RandomizedDelaySec=1h
+
+[Install]
+WantedBy=timers.target

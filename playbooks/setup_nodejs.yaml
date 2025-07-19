@@ -1,0 +1,26 @@
+# Description: Setup Node.js on all cluster nodes.
+
+- name: 'Setup Node.js'
+  hosts: all
+  remote_user: root
+  tasks:
+
+    - name: 'Install Node.js'
+      ansible.builtin.apt:
+        name: nodejs
+        state: present
+        update_cache: true
+
+    - name: 'Verify Node.js installation'
+      ansible.builtin.command: node --version
+      register: node_version
+      changed_when: false
+
+    - name: 'Verify NPM installation'
+      ansible.builtin.command: npm --version
+      register: npm_version
+      changed_when: false
+
+    - name: 'Display Node.js version'
+      ansible.builtin.debug:
+        msg: "Node.js {{ node_version.stdout }} and NPM {{ npm_version.stdout }} installed successfully"

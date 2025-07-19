@@ -1,0 +1,11 @@
+[Unit]
+Description=Timer for SSH host certificate renewal
+Documentation=https://smallstep.com/docs/step-cli/reference/ssh/certificate
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,7 @@
+# Description: Setup SSH certificate authentication across the cluster.
+
+- name: 'Setup SSH certificate authentication.'
+  hosts: 'all_nodes'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.setup_ssh_certificates' }

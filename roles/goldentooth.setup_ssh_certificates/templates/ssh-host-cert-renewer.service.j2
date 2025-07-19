@@ -1,0 +1,39 @@
+[Unit]
+Description=SSH host certificate renewer
+After=network-online.target
+Documentation=https://smallstep.com/docs/step-cli/reference/ssh/certificate
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+User=root
+
+Environment=STEPPATH=/etc/step-ca
+
+# Check if certificate needs renewal
+ExecCondition=/usr/bin/step certificate needs-renewal /etc/step/certs/ssh_host.key-cert.pub
+
+# Renew the certificate
+ExecStart=/usr/bin/step ssh certificate \
+    --host \
+    --sign \
+    --force \
+    --no-password \
+    --insecure \
+    --provisioner="{{ step_ca.default_provisioner.name }}" \
+    --provisioner-password-file="{{ step_ca.default_provisioner.password_path }}" \
+    --principal="{{ ansible_hostname }}" \
+    --principal="{{ ansible_hostname }}.{{ cluster.node_domain }}" \
+    --principal="{{ ansible_hostname }}.{{ cluster.domain }}" \
+    --principal="{{ ansible_default_ipv4.address }}" \
+    --ca-url="https://{{ hostvars[step_ca.server].ipv4_address }}:9443" \
+    --root="{{ step_ca.root_cert_path }}" \
+    --not-after=24h \
+    {{ ansible_hostname }} \
+    /etc/step/certs/ssh_host.key.pub
+
+# Reload SSH daemon to pick up new certificate
+ExecStartPost=/usr/bin/systemctl reload sshd
+
+[Install]
+WantedBy=multi-user.target
