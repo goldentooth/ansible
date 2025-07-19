@@ -1,0 +1,188 @@
+---
+# goldentooth.setup_ceph tasks - Modern cephadm approach
+
+- name: 'Install cephadm.'
+  ansible.builtin.get_url:
+    url: 'https://github.com/ceph/ceph/raw/pacific/src/cephadm/cephadm'
+    dest: '/usr/local/bin/cephadm'
+    mode: '0755'
+  tags:
+    - 'ceph'
+    - 'install'
+
+- name: 'Install required packages for cephadm.'
+  ansible.builtin.apt:
+    name:
+      - 'python3'
+      - 'python3-apt'
+      - 'lvm2'
+      - 'curl'
+    state: 'present'
+    update_cache: true
+  tags:
+    - 'ceph'
+    - 'packages'
+
+- name: 'Bootstrap Ceph cluster.'
+  ansible.builtin.command: >
+    cephadm bootstrap --mon-ip {{ ipv4_address }}
+    --cluster-network {{ network.infrastructure.cidr }}
+    --ssh-user root
+    --allow-overwrite
+    --skip-pull
+  when: inventory_hostname == groups['ceph'][0]
+  register: 'ceph_bootstrap'
+  tags:
+    - 'ceph'
+    - 'bootstrap'
+
+- name: 'Display bootstrap output.'
+  ansible.builtin.debug:
+    var: 'ceph_bootstrap.stdout_lines'
+  when: inventory_hostname == groups['ceph'][0] and ceph_bootstrap is defined
+  tags:
+    - 'ceph'
+    - 'bootstrap'
+
+- name: 'Configure cephadm SSH to use certificates.'
+  ansible.builtin.template:
+    src: 'cephadm_ssh_config.j2'
+    dest: '/tmp/cephadm_ssh_config'
+    mode: '0600'
+  when: inventory_hostname == groups['ceph'][0]
+  tags:
+    - 'ceph'
+    - 'ssh'
+
+- name: 'Set cephadm SSH config.'
+  ansible.builtin.shell: >
+    cat /tmp/cephadm_ssh_config | cephadm shell -- ceph cephadm set-ssh-config -i -
+  when: inventory_hostname == groups['ceph'][0]
+  tags:
+    - 'ceph'
+    - 'ssh'
+
+- name: 'Get cephadm public key.'
+  ansible.builtin.command: 'cephadm shell -- ceph cephadm get-pub-key'
+  register: 'cephadm_pubkey'
+  when: inventory_hostname == groups['ceph'][0]
+  tags:
+    - 'ceph'
+    - 'ssh'
+
+- name: 'Add cephadm SSH key to all Ceph nodes.'
+  ansible.posix.authorized_key:
+    user: 'root'
+    key: "{{ hostvars[groups['ceph'][0]]['cephadm_pubkey']['stdout'] }}"
+    state: 'present'
+  when: inventory_hostname in groups['ceph']
+  tags:
+    - 'ceph'
+    - 'ssh'
+
+- name: 'Add additional monitor/manager nodes.'
+  ansible.builtin.command: >
+    cephadm shell -- ceph orch host add {{ clean_hostname }} {{ ipv4_address }}
+  when: 
+    - inventory_hostname != groups['ceph'][0]
+    - inventory_hostname in groups['ceph']
+  delegate_to: "{{ groups['ceph'][0] }}"
+  tags:
+    - 'ceph'
+    - 'hosts'
+
+- name: 'Add monitor service to additional nodes.'
+  ansible.builtin.command: >
+    cephadm shell -- ceph orch apply mon "{{ groups['ceph'] | length }}"
+  when: inventory_hostname == groups['ceph'][0]
+  tags:
+    - 'ceph'
+    - 'mons'
+
+- name: 'Add manager service to additional nodes.'
+  ansible.builtin.command: >
+    cephadm shell -- ceph orch apply mgr "{{ (groups['ceph'] | length / 2) | round(0, 'ceil') | int }}"
+  when: inventory_hostname == groups['ceph'][0]
+  tags:
+    - 'ceph'
+    - 'mgrs'
+
+- name: 'Detect storage devices.'
+  ansible.builtin.shell: |
+    lsblk -dpno NAME,SIZE,TYPE | grep disk | grep -E "(450|500|[4-5][0-9][0-9]).*G" | head -1 | awk '{print $1}'
+  register: 'ceph_storage_device'
+  failed_when: ceph_storage_device.stdout == ""
+  tags:
+    - 'ceph'
+    - 'storage'
+
+- name: 'Add OSD devices.'
+  ansible.builtin.command: >
+    cephadm shell -- ceph orch daemon add osd {{ clean_hostname }}:{{ ceph_storage_device.stdout }}
+  delegate_to: "{{ groups['ceph'][0] }}"
+  tags:
+    - 'ceph'
+    - 'osds'
+
+- name: 'Wait for cluster to be healthy.'
+  ansible.builtin.command: 'cephadm shell -- ceph health'
+  register: 'ceph_health'
+  until: '"HEALTH_OK" in ceph_health.stdout or "HEALTH_WARN" in ceph_health.stdout'
+  retries: 30
+  delay: 10
+  when: inventory_hostname == groups['ceph'][0]
+  tags:
+    - 'ceph'
+    - 'health'
+
+- name: 'Create RBD pools.'
+  ansible.builtin.command: >
+    cephadm shell -- ceph osd pool create {{ item.name }} {{ item.pgs }}
+  loop:
+    - { name: 'kubernetes', pgs: 32 }
+    - { name: 'goldentooth-storage', pgs: 16 }
+  when: inventory_hostname == groups['ceph'][0]
+  ignore_errors: true
+  tags:
+    - 'ceph'
+    - 'pools'
+
+- name: 'Enable RBD application on pools.'
+  ansible.builtin.command: >
+    cephadm shell -- ceph osd pool application enable {{ item }} rbd
+  loop:
+    - 'kubernetes'
+    - 'goldentooth-storage'
+  when: inventory_hostname == groups['ceph'][0]
+  ignore_errors: true
+  tags:
+    - 'ceph'
+    - 'pools'
+
+- name: 'Initialize RBD pools.'
+  ansible.builtin.command: >
+    cephadm shell -- rbd pool init {{ item }}
+  loop:
+    - 'kubernetes'
+    - 'goldentooth-storage'
+  when: inventory_hostname == groups['ceph'][0]
+  ignore_errors: true
+  tags:
+    - 'ceph'
+    - 'pools'
+
+- name: 'Display final cluster status.'
+  ansible.builtin.command: 'cephadm shell -- ceph -s'
+  register: 'ceph_status'
+  when: inventory_hostname == groups['ceph'][0]
+  tags:
+    - 'ceph'
+    - 'status'
+
+- name: 'Show final Ceph cluster status.'
+  ansible.builtin.debug:
+    var: 'ceph_status.stdout_lines'
+  when: inventory_hostname == groups['ceph'][0] and ceph_status is defined
+  tags:
+    - 'ceph'
+    - 'status'

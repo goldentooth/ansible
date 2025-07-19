@@ -1,0 +1,6 @@
+---
+# goldentooth.setup_ceph handlers - cephadm approach
+
+- name: 'Restart Ceph cluster'
+  ansible.builtin.command: 'cephadm shell -- ceph orch restart'
+  when: inventory_hostname == groups['ceph'][0]

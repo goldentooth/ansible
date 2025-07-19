@@ -1,0 +1,7 @@
+Host {% for host in groups['ceph'] %}{{ hostvars[host]['clean_hostname'] }} {{ hostvars[host]['ipv4_address'] }}{% if not loop.last %} {% endif %}{% endfor %}
+
+    User root
+    CertificateFile /etc/step/certs/root_ssh_key-cert.pub
+    IdentityFile /etc/step/certs/root_ssh_key
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
