@@ -1,0 +1,9 @@
+[Service]
+; `Environment=` overrides are applied per environment variable. This line does not
+; affect any other variables set in the service template.
+Environment=CERT_LOCATION={{ step_ca_client_cert_path }} \
+            KEY_LOCATION={{ step_ca_client_key_path }}
+WorkingDirectory={{ step_ca_client_key_path | dirname }}
+
+; Restart blackbox exporter service after certificate renewal
+ExecStartPost=/usr/bin/env sh -c "! systemctl --quiet is-active blackbox-exporter.service || systemctl try-reload-or-restart blackbox-exporter.service"

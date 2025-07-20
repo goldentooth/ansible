@@ -1,0 +1,40 @@
+[Unit]
+Description=Blackbox Exporter
+Documentation=https://github.com/prometheus/blackbox_exporter
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=blackbox-exporter
+Group=blackbox-exporter
+ExecStart=/usr/local/bin/blackbox_exporter \
+  --config.file=/etc/blackbox-exporter/blackbox.yaml \
+  --web.listen-address=:{{ blackbox_exporter_port }} \
+  --log.level={{ blackbox_exporter_log_level | default('info') }} \
+  --log.format={{ blackbox_exporter_log_format | default('logfmt') }}
+
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+Restart=on-failure
+RestartSec=5s
+
+# Security settings
+NoNewPrivileges=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/blackbox-exporter
+ProtectControlGroups=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
+MemoryDenyWriteExecute=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target
