@@ -1,0 +1,7 @@
+# Description: Set up containerized cross-compilation environment on Velaryon
+
+- name: 'Set up cross-compilation environment on Velaryon'
+  hosts: velaryon
+  remote_user: root
+  roles:
+    - { role: 'goldentooth.setup_cross_compilation' }

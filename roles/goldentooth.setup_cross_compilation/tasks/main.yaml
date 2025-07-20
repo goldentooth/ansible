@@ -1,0 +1,57 @@
+---
+- name: "Check system requirements"
+  include_tasks: system_check.yaml
+
+- name: "Create cross-compilation directory structure"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  loop:
+    - "{{ cross_compile.base_dir }}"
+    - "{{ cross_compile.artifacts_dir }}"
+    - "{{ cross_compile.cache_dir }}"
+    - "{{ cross_compile.workspace_dir }}"
+
+- name: "Install required system packages"
+  ansible.builtin.apt:
+    name: "{{ system_requirements.required_packages }}"
+    state: present
+    update_cache: yes
+  become: yes
+
+- name: "Clone cross-compile-toolkit repository"
+  ansible.builtin.git:
+    repo: "{{ cross_compile.toolkit_repo }}"
+    dest: "{{ cross_compile.workspace_dir }}/cross-compile-toolkit"
+    version: "{{ cross_compile.toolkit_branch }}"
+    force: yes
+  register: toolkit_clone
+
+- name: "Set up container environment"
+  include_tasks: containers.yaml
+
+- name: "Configure build artifacts management"
+  include_tasks: artifacts.yaml
+
+- name: "Create build automation scripts"
+  include_tasks: automation.yaml
+
+- name: "Test cross-compilation environment"
+  include_tasks: test.yaml
+  when: ansible_check_mode == false
+
+- name: "Display setup summary"
+  ansible.builtin.debug:
+    msg:
+      - "✅ Cross-compilation environment ready"
+      - "📁 Workspace: {{ cross_compile.workspace_dir }}/cross-compile-toolkit"
+      - "📦 Artifacts: {{ cross_compile.artifacts_dir }}"
+      - "🐳 Container registry: {{ cross_compile.registry }}"
+      - ""
+      - "🚀 Usage:"
+      - "   Build Envoy: make envoy-build"
+      - "   Test environment: make test"
+      - "   View status: make status"

@@ -1,33 +1,182 @@
 ---
-- name: 'Autodetect interface connected primary network.'
-  ansible.builtin.command:
-    cmd: "ip route show {{ network.infrastructure.cidr }}"
-  register: 'route_info_0'
-  when: 'network.metallb.interface == ""'
+- name: 'Install network debugging tools'
+  ansible.builtin.package:
+    name:
+      - arping
+      - tcpdump
+      - traceroute
+      - mtr
+      - iperf3
+      - nmap
+      - dnsutils
+      - net-tools
+      - curl
+      - wget
+    state: present
 
-- name: 'Determine if route already exists.'
+# Primary interface selection and wireless disable
+- name: 'Check if wireless interface exists'
+  ansible.builtin.shell:
+    cmd: "ip link show | grep -c '^[0-9]*: wlan'"
+  register: 'wireless_interface_count'
+  changed_when: false
+  failed_when: false
+
+- name: 'Detect wireless interface name'
+  ansible.builtin.shell:
+    cmd: "ip link show | grep '^[0-9]*: wlan' | head -1 | cut -d: -f2 | tr -d ' '"
+  register: 'wireless_interface_name'
+  changed_when: false
+  failed_when: false
+  when: 'wireless_interface_count.stdout | int > 0'
+
+- name: 'Check if eth0 interface exists'
+  ansible.builtin.shell:
+    cmd: "ip link show eth0"
+  register: 'eth0_exists'
+  changed_when: false
+  failed_when: false
+
+- name: 'Disable wireless interface if both eth0 and wireless exist'
+  ansible.builtin.shell:
+    cmd: "ip link set {{ wireless_interface_name.stdout }} down"
+  when:
+    - 'wireless_interface_count.stdout | int > 0'
+    - 'eth0_exists.rc == 0'
+    - 'wireless_interface_name.stdout != ""'
+  register: 'wireless_disabled'
+  failed_when: false
+
+- name: 'Create interface priority configuration'
+  ansible.builtin.copy:
+    dest: '/etc/systemd/network/10-eth0.network'
+    content: |
+      [Match]
+      Name=eth0
+      
+      [Network]
+      DHCP=yes
+      
+      [DHCPv4]
+      RouteMetric=10
+    mode: '0644'
+  notify:
+    - 'Reload systemd'
+    - 'Restart systemd-networkd'
+  when: 'eth0_exists.rc == 0'
+
+- name: 'Create wireless interface disable configuration'
+  ansible.builtin.copy:
+    dest: '/etc/systemd/network/90-wireless-disable.network'
+    content: |
+      [Match]
+      Name=wlan*
+      
+      [Link]
+      Unmanaged=yes
+      
+      [Network]
+      LinkLocalAddressing=no
+      DHCP=no
+    mode: '0644'
+  notify:
+    - 'Reload systemd'
+    - 'Restart systemd-networkd'
+  when: 'wireless_interface_count.stdout | int > 0'
+
+- name: 'Create systemd service to disable wireless on boot'
+  ansible.builtin.copy:
+    dest: '/etc/systemd/system/disable-wireless.service'
+    content: |
+      [Unit]
+      Description=Disable wireless interfaces on cluster nodes
+      After=network.target
+      
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/bash -c 'for iface in $(ip link show | grep "^[0-9]*: wlan" | cut -d: -f2 | tr -d " "); do ip link set $iface down 2>/dev/null || true; done'
+      RemainAfterExit=yes
+      
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  notify:
+    - 'Reload systemd'
+  when: 'wireless_interface_count.stdout | int > 0'
+
+- name: 'Enable disable-wireless service'
+  ansible.builtin.systemd:
+    name: disable-wireless.service
+    enabled: true
+    daemon_reload: true
+  when: 'wireless_interface_count.stdout | int > 0'
+
+# Prefer eth0 for interface detection, fallback to autodetection
+- name: 'Set primary interface to eth0 if available'
+  ansible.builtin.set_fact:
+    metallb_interface: 'eth0'
+  when:
+    - 'network.metallb.interface == ""'
+    - 'eth0_exists.rc == 0'
+
+- name: 'Autodetect interface connected to primary network (fallback)'
+  ansible.builtin.shell:
+    cmd: "ip route | grep '10.4.0.0/24 dev' | head -1"
+  register: 'route_info_0'
+  when:
+    - 'network.metallb.interface == ""'
+    - 'eth0_exists.rc != 0'
+
+- name: 'Set autodetected route interface (fallback)'
+  ansible.builtin.set_fact:
+    metallb_interface: "{{ route_info_0.stdout.split('dev ')[1].split()[0] }}"
+  when:
+    - 'network.metallb.interface == ""'
+    - 'eth0_exists.rc != 0'
+    - 'route_info_0.stdout != ""'
+
+- name: 'Determine if MetalLB route already exists'
   ansible.builtin.command:
     cmd: "ip route show {{ network.metallb.cidr }}"
   changed_when: false
   register: 'route_info_11'
 
-- name: 'Set autodetected route interface.'
-  ansible.builtin.set_fact:
-    network.metallb.interface: "{{ route_info_0.stdout.split()[2] }}"
-  when: 'network.metallb.interface == ""'
-
 - name: 'Ensure static route is added.'
   ansible.builtin.command:
     cmd: |
-      ip route add {{ network.metallb.cidr }} dev {{ network.metallb.interface }}
+      ip route add {{ network.metallb.cidr }} dev {{ metallb_interface | default(network.metallb.interface) }}
   register: 'route_result'
   when: 'route_info_11.stdout.split() | length == 0'
   failed_when: 'route_result.rc != 0 and "File exists" not in route_result.stderr'
 
 - name: 'Persist the route.'
   ansible.builtin.lineinfile:
-    path: "/etc/network/interfaces.d/{{ network.metallb.interface }}.cfg"
+    path: "/etc/network/interfaces.d/{{ metallb_interface | default(network.metallb.interface) }}.cfg"
     create: true
-    line: 'up route add -net {{ network.metallb.network }} netmask {{ network.metallb.netmask }} dev {{ network.metallb.interface }}'
+    line: 'up route add -net {{ network.metallb.network }} netmask {{ network.metallb.netmask }} dev {{ metallb_interface | default(network.metallb.interface) }}'
   notify:
     - 'Restart networking service.'
+
+# Verification and status reporting
+- name: 'Verify primary interface configuration'
+  ansible.builtin.debug:
+    msg: |
+      Network interface configuration summary:
+      - Primary interface: {{ metallb_interface | default(network.metallb.interface) }}
+      - Wireless interfaces detected: {{ wireless_interface_count.stdout | default('0') }}
+      - eth0 available: {{ 'yes' if eth0_exists.rc == 0 else 'no' }}
+      {% if wireless_interface_count.stdout | int > 0 %}
+      - Wireless interface disabled: {{ wireless_interface_name.stdout | default('none') }}
+      {% endif %}
+
+- name: 'Check interface status after configuration'
+  ansible.builtin.shell:
+    cmd: "ip link show | grep -E '^[0-9]+: (eth0|wlan)' | grep -E '(UP|DOWN)'"
+  register: 'interface_status'
+  changed_when: false
+  failed_when: false
+
+- name: 'Display interface status'
+  ansible.builtin.debug:
+    var: interface_status.stdout_lines
+  when: interface_status.stdout_lines is defined

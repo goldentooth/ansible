@@ -1,0 +1,89 @@
+---
+- name: "Enable Docker experimental features"
+  ansible.builtin.lineinfile:
+    path: /etc/docker/daemon.json
+    line: '{ "experimental": true }'
+    create: yes
+    mode: '0644'
+  become: yes
+  notify: restart docker
+
+- name: "Restart Docker to enable experimental features"
+  ansible.builtin.systemd:
+    name: docker
+    state: restarted
+    enabled: yes
+  become: yes
+
+- name: "Install QEMU static binaries for multi-arch emulation"
+  ansible.builtin.shell: |
+    docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+  register: qemu_install
+  changed_when: qemu_install.rc == 0
+
+- name: "Verify QEMU emulation setup"
+  ansible.builtin.shell: |
+    ls -la /proc/sys/fs/binfmt_misc/ | grep qemu
+  register: qemu_verify
+  changed_when: false
+
+- name: "Remove existing buildx builder if present"
+  ansible.builtin.shell: |
+    docker buildx rm {{ cross_compile.docker.builder_name }} || true
+  register: buildx_remove
+  changed_when: buildx_remove.rc == 0
+
+- name: "Create multi-architecture Docker buildx builder"
+  ansible.builtin.shell: |
+    docker buildx create \
+      --name {{ cross_compile.docker.builder_name }} \
+      --driver {{ cross_compile.docker.driver }} \
+      --platform {{ cross_compile.docker.platforms | join(',') }} \
+      --buildkitd-flags '--allow-insecure-entitlement network.host' \
+      --use
+  register: buildx_create
+  changed_when: buildx_create.rc == 0
+
+- name: "Bootstrap buildx builder"
+  ansible.builtin.shell: |
+    docker buildx inspect {{ cross_compile.docker.builder_name }} --bootstrap
+  register: buildx_bootstrap
+  changed_when: buildx_bootstrap.rc == 0
+
+- name: "Verify buildx builder supports required platforms"
+  ansible.builtin.shell: |
+    docker buildx inspect {{ cross_compile.docker.builder_name }} | grep -E "(linux/amd64|linux/arm64)"
+  register: buildx_platforms
+  changed_when: false
+
+- name: "Create buildx configuration file"
+  ansible.builtin.copy:
+    content: |
+      [buildx]
+        driver = "{{ cross_compile.docker.driver }}"
+        
+      [buildx.default]
+        platforms = "{{ cross_compile.docker.platforms | join(',') }}"
+        
+      [buildx."{{ cross_compile.docker.builder_name }}"]
+        driver = "{{ cross_compile.docker.driver }}"
+        platforms = "{{ cross_compile.docker.platforms | join(',') }}"
+    dest: "{{ cross_compile.base_dir }}/buildx.toml"
+    mode: '0644'
+
+- name: "Test multi-architecture build capability"
+  ansible.builtin.shell: |
+    echo 'FROM alpine:latest
+    RUN uname -m' | docker buildx build \
+      --platform linux/arm64 \
+      --tag test-arm64:latest \
+      --load -f -
+  register: buildx_test
+  changed_when: false
+
+- name: "Display buildx configuration"
+  ansible.builtin.debug:
+    msg:
+      - "Builder: {{ cross_compile.docker.builder_name }}"
+      - "Platforms: {{ cross_compile.docker.platforms | join(', ') }}"
+      - "QEMU emulation: {{ 'enabled' if qemu_verify.stdout else 'disabled' }}"

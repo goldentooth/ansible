@@ -93,7 +93,7 @@ network:
     network: '10.4.11.0'
     cidr: '10.4.11.0/24'
     netmask: '255.255.255.0'
-    interface: "{{ ansible_interfaces | first }}"
+    interface: ""
 
 # Cluster data:
 cluster:
@@ -101,6 +101,8 @@ cluster:
   domain: "{{ cluster_name }}.net"
   node_domain: "nodes.{{ cluster_name }}.net"
   services_domain: "services.{{ cluster_name }}.net"
+  k8s_services_domain: "services.k8s.{{ cluster_name }}.net"
+  nomad_services_domain: "services.nomad.{{ cluster_name }}.net"
   cloudfront_distribution_domain: "home-proxy.{{ cluster_name }}.net"
   cloudfront_origin_domain: "clearbrook.{{ cluster_name }}.net"
   ca_cert_path: "/etc/ssl/certs/{{ cluster_name }}.pem"
@@ -137,7 +139,7 @@ argo_cd:
   release_values:
     nameOverride: 'argocd'
     global:
-      domain: "argocd.{{ cluster.domain }}"
+      domain: "argocd.{{ cluster.k8s_services_domain }}"
       # Add Prometheus scrape annotations to all metrics services. This can
       # be used as an alternative to the ServiceMonitors.
       addPrometheusAnnotations: true
@@ -167,7 +169,7 @@ argo_cd:
         - '--insecure'
       service:
         annotations:
-          external-dns.alpha.kubernetes.io/hostname: "argocd.{{ cluster.domain }}"
+          external-dns.alpha.kubernetes.io/hostname: "argocd.{{ cluster.k8s_services_domain }}"
           external-dns.alpha.kubernetes.io/ttl: "60"
         type: 'LoadBalancer'
 
@@ -536,59 +538,76 @@ blackbox_exporter_nginx_proxy: false
 
 # Blackbox Exporter target lists
 blackbox_https_internal_targets:
-  - "https://consul.goldentooth.net:8501"
-  - "https://vault.goldentooth.net:8200"
-  - "https://nomad.goldentooth.net:4646"
-  - "https://grafana.goldentooth.net:3000"
-  - "https://argocd.goldentooth.net"
-  - "https://loki.goldentooth.net:3100"
+  - "https://consul.{{ cluster.services_domain }}"
+  - "https://vault.{{ cluster.services_domain }}"
+  - "https://nomad.{{ cluster.services_domain }}"
+  - "https://grafana.{{ cluster.services_domain }}"
+  - "https://argocd.{{ cluster.k8s_services_domain }}"
+  - "https://loki.{{ cluster.services_domain }}"
 
 blackbox_http_targets:
-  - "http://prometheus.goldentooth.net:9090"
-  - "http://allyrion.nodes.goldentooth.net"
-  - "http://bettley.nodes.goldentooth.net"
-  - "http://cargyll.nodes.goldentooth.net"
-  - "http://dalt.nodes.goldentooth.net"
-  - "http://erenford.nodes.goldentooth.net"
-  - "http://fenn.nodes.goldentooth.net"
-  - "http://gardener.nodes.goldentooth.net"
-  - "http://harlton.nodes.goldentooth.net"
-  - "http://inchfield.nodes.goldentooth.net"
-  - "http://jast.nodes.goldentooth.net"
-  - "http://karstark.nodes.goldentooth.net"
-  - "http://lipps.nodes.goldentooth.net"
-  - "http://velaryon.nodes.goldentooth.net"
+  # Direct IP access for immediate testing
+  - "http://10.4.0.10:9090"  # Prometheus on allyrion
+  # Future domain-based targets (when DNS is configured)
+  - "https://prometheus.{{ cluster.k8s_services_domain }}"
+  - "https://allyrion.{{ cluster.node_domain }}"
+  - "https://bettley.{{ cluster.node_domain }}"
+  - "https://cargyll.{{ cluster.node_domain }}"
+  - "https://dalt.{{ cluster.node_domain }}"
+  - "https://erenford.{{ cluster.node_domain }}"
+  - "https://fenn.{{ cluster.node_domain }}"
+  - "https://gardener.{{ cluster.node_domain }}"
+  - "https://harlton.{{ cluster.node_domain }}"
+  - "https://inchfield.{{ cluster.node_domain }}"
+  - "https://jast.{{ cluster.node_domain }}"
+  - "https://karstark.{{ cluster.node_domain }}"
+  - "https://lipps.{{ cluster.node_domain }}"
+  - "https://velaryon.{{ cluster.node_domain }}"
 
 blackbox_https_external_targets:
-  - "https://clearbrook.goldentooth.net"
-  - "https://home-proxy.goldentooth.net"
+  - "https://clearbrook.{{ cluster.domain }}"
+  - "https://home-proxy.{{ cluster.domain }}"
+  - "https://clog.{{ cluster.domain }}"
 
 blackbox_tcp_targets:
-  - "consul.goldentooth.net:8500"
-  - "consul.goldentooth.net:8502"
-  - "consul.goldentooth.net:8503"
-  - "vault.goldentooth.net:8201"
-  - "jast:9443"
-  - "allyrion:6443"
-  - "loki.goldentooth.net:9096"
+  # Direct IP access for immediate testing
+  - "10.4.0.11:8500"  # Consul HTTP API (bettley)
+  - "10.4.0.11:8200"  # Vault API (bettley)
+  - "10.4.0.11:4646"  # Nomad API (bettley)
+  - "10.4.0.19:9443"  # Step-CA (jast)
+  - "10.4.0.10:6443"  # K8s API via HAProxy (allyrion)
+  # Future domain-based targets (when DNS is configured)
+  - "consul.{{ cluster.services_domain }}:443"
+  - "vault.{{ cluster.services_domain }}:443"
+  - "nomad.{{ cluster.services_domain }}:443"
 
 blackbox_dns_targets:
-  - "goldentooth.net"
-  - "nodes.goldentooth.net"
-  - "services.goldentooth.net"
-  - "consul.goldentooth.net"
-  - "vault.goldentooth.net"
-  - "nomad.goldentooth.net"
-  - "grafana.goldentooth.net"
+  - "{{ cluster.domain }}"
+  - "{{ cluster.node_domain }}"
+  - "{{ cluster.services_domain }}"
+  - "k8s.{{ cluster.domain }}"
+  - "consul.{{ cluster.services_domain }}"
+  - "vault.{{ cluster.services_domain }}"
+  - "nomad.{{ cluster.services_domain }}"
+  - "grafana.{{ cluster.services_domain }}"
 
 blackbox_http_auth_targets:
-  - "http://allyrion:8404/stats"
+  # Direct IP access for immediate testing
+  - "http://10.4.0.10:8404/stats"  # HAProxy stats with admin auth
+  # Future domain-based targets (when DNS is configured)
+  - "https://haproxy.{{ cluster.services_domain }}/stats"
 
 blackbox_api_targets:
-  - "https://consul.goldentooth.net:8501/v1/status/leader"
-  - "https://vault.goldentooth.net:8200/v1/sys/health"
-  - "https://nomad.goldentooth.net:4646/v1/status/leader"
-  - "https://loki.goldentooth.net:3100/ready"
+  # Direct IP access for immediate testing
+  - "http://10.4.0.11:8500/v1/status/leader"  # Consul leader (bettley)
+  - "http://10.4.0.11:8200/v1/sys/health"     # Vault health (bettley) 
+  - "http://10.4.0.11:4646/v1/status/leader"  # Nomad leader (bettley)
+  - "http://10.4.0.18:3100/ready"             # Loki ready (inchfield)
+  # Future domain-based targets (when DNS is configured)
+  - "https://consul.{{ cluster.services_domain }}/v1/status/leader"
+  - "https://vault.{{ cluster.services_domain }}/v1/sys/health"
+  - "https://nomad.{{ cluster.services_domain }}/v1/status/leader"
+  - "https://loki.{{ cluster.services_domain }}/ready"
 
 # Blackbox Exporter certificate paths
 step_ca_cert_path: "{{ step_ca.root_cert_path }}"
@@ -678,109 +697,7 @@ prometheus_scrape_configs:
     scheme: 'https'
     tls_config:
       ca_file: "{{ step_ca.root_cert_path }}"
-  # Blackbox probe jobs using file service discovery
-  - job_name: 'blackbox-https-internal'
-    metrics_path: '/probe'
-    params:
-      module: ['https_2xx_internal']
-    file_sd_configs:
-      - files:
-          - "/etc/prometheus/file_sd/blackbox_targets.yaml"
-    relabel_configs:
-      - source_labels: [job]
-        regex: 'blackbox-https-internal'
-        action: keep
-      - source_labels: [__param_target]
-        target_label: instance
-      - target_label: __address__
-        replacement: "{{ groups['prometheus'] | first }}:{{ blackbox_exporter_port }}"
-      - source_labels: [__param_target]
-        target_label: __param_target
-  - job_name: 'blackbox-http'
-    metrics_path: '/probe'
-    params:
-      module: ['http_2xx']
-    file_sd_configs:
-      - files:
-          - "/etc/prometheus/file_sd/blackbox_targets.yaml"
-    relabel_configs:
-      - source_labels: [job]
-        regex: 'blackbox-http'
-        action: keep
-      - source_labels: [__param_target]
-        target_label: instance
-      - target_label: __address__
-        replacement: "{{ groups['prometheus'] | first }}:{{ blackbox_exporter_port }}"
-      - source_labels: [__param_target]
-        target_label: __param_target
-  - job_name: 'blackbox-https-external'
-    metrics_path: '/probe'
-    params:
-      module: ['https_2xx_external']
-    file_sd_configs:
-      - files:
-          - "/etc/prometheus/file_sd/blackbox_targets.yaml"
-    relabel_configs:
-      - source_labels: [job]
-        regex: 'blackbox-https-external'
-        action: keep
-      - source_labels: [__param_target]
-        target_label: instance
-      - target_label: __address__
-        replacement: "{{ groups['prometheus'] | first }}:{{ blackbox_exporter_port }}"
-      - source_labels: [__param_target]
-        target_label: __param_target
-  - job_name: 'blackbox-tcp'
-    metrics_path: '/probe'
-    params:
-      module: ['tcp_connect']
-    file_sd_configs:
-      - files:
-          - "/etc/prometheus/file_sd/blackbox_targets.yaml"
-    relabel_configs:
-      - source_labels: [job]
-        regex: 'blackbox-tcp'
-        action: keep
-      - source_labels: [__param_target]
-        target_label: instance
-      - target_label: __address__
-        replacement: "{{ groups['prometheus'] | first }}:{{ blackbox_exporter_port }}"
-      - source_labels: [__param_target]
-        target_label: __param_target
-  - job_name: 'blackbox-dns'
-    metrics_path: '/probe'
-    params:
-      module: ['dns_query']
-    file_sd_configs:
-      - files:
-          - "/etc/prometheus/file_sd/blackbox_targets.yaml"
-    relabel_configs:
-      - source_labels: [job]
-        regex: 'blackbox-dns'
-        action: keep
-      - source_labels: [__param_target]
-        target_label: instance
-      - target_label: __address__
-        replacement: "{{ groups['prometheus'] | first }}:{{ blackbox_exporter_port }}"
-      - source_labels: [__param_target]
-        target_label: __param_target
-  - job_name: 'blackbox-icmp'
-    metrics_path: '/probe'
-    params:
-      module: ['icmp_ping']
-    file_sd_configs:
-      - files:
-          - "/etc/prometheus/file_sd/blackbox_targets.yaml"
-    relabel_configs:
-      - source_labels: [job]
-        regex: 'blackbox-icmp'
-        action: keep
-      - source_labels: [__param_target]
-        target_label: instance
-      - target_label: __address__
-        replacement: "{{ groups['prometheus'] | first }}:{{ blackbox_exporter_port }}"
-      - source_labels: [__param_target]
-        target_label: __param_target
+# Temporarily removed blackbox configs to debug
   - job_name: 'unknown'
     file_sd_configs:
       - files:

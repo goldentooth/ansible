@@ -1,0 +1,60 @@
+---
+- name: "Install Podman and container tools"
+  ansible.builtin.apt:
+    name: "{{ system_requirements.container_packages }}"
+    state: present
+    update_cache: yes
+  become: yes
+
+- name: "Enable Podman socket for Docker compatibility"
+  ansible.builtin.systemd:
+    name: podman.socket
+    state: started
+    enabled: yes
+  become: yes
+
+- name: "Create Docker compatibility symlink for Podman"
+  ansible.builtin.file:
+    src: /usr/bin/podman
+    dest: /usr/local/bin/docker
+    state: link
+  become: yes
+
+- name: "Authenticate with container registry"
+  ansible.builtin.shell: |
+    podman login {{ cross_compile.registry }} -u {{ registry_auth.username }} -p {{ registry_auth.token }}
+  when: registry_auth.enabled
+  no_log: true
+
+- name: "Build cross-compilation container images with Podman"
+  ansible.builtin.shell: |
+    cd {{ cross_compile.workspace_dir }}/cross-compile-toolkit/containers/{{ item }}
+    podman build -t goldentooth/{{ item }}:latest .
+  loop:
+    - "base-builder"
+    - "envoy"
+    - "ci-builder"
+  register: container_builds
+
+- name: "Create Podman network for builds"
+  ansible.builtin.shell: |
+    podman network create {{ cross_compile.container.network_name }} || true
+  register: network_create
+  changed_when: "'already exists' not in network_create.stderr"
+
+- name: "Create podman-compose override configuration"
+  ansible.builtin.template:
+    src: docker-compose.override.yml.j2
+    dest: "{{ cross_compile.workspace_dir }}/cross-compile-toolkit/{{ cross_compile.container.override_file }}"
+    mode: '0644'
+  register: compose_override
+
+- name: "Verify built containers"
+  ansible.builtin.shell: |
+    podman images | grep goldentooth
+  register: container_images
+  changed_when: false
+
+- name: "Display built container images"
+  ansible.builtin.debug:
+    var: container_images.stdout_lines

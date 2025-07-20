@@ -1,0 +1,51 @@
+---
+- name: "Test basic cross-compilation environment"
+  ansible.builtin.shell: |
+    cd {{ cross_compile.workspace_dir }}/cross-compile-toolkit
+    make test
+  register: env_test
+  changed_when: false
+
+- name: "Test container registry connectivity"
+  community.docker.docker_image:
+    name: "{{ cross_compile.registry }}/{{ cross_compile.containers.base_builder }}"
+    source: pull
+  register: registry_test
+  failed_when: false
+
+- name: "Test Docker Compose functionality"
+  ansible.builtin.shell: |
+    cd {{ cross_compile.workspace_dir }}/cross-compile-toolkit
+    docker compose ps
+  register: compose_test
+  changed_when: false
+
+- name: "Verify build automation script"
+  ansible.builtin.shell: |
+    {{ cross_compile.workspace_dir }}/goldentooth-build status
+  register: automation_test
+  changed_when: false
+
+- name: "Test artifact directory permissions"
+  ansible.builtin.file:
+    path: "{{ cross_compile.artifacts_dir }}/test-file"
+    state: touch
+    mode: '0644'
+  register: artifact_test
+
+- name: "Clean up test file"
+  ansible.builtin.file:
+    path: "{{ cross_compile.artifacts_dir }}/test-file"
+    state: absent
+
+- name: "Display test results"
+  ansible.builtin.debug:
+    msg:
+      - "🧪 Test Results:"
+      - "   Environment test: {{ 'PASS' if env_test.rc == 0 else 'FAIL' }}"
+      - "   Registry connectivity: {{ 'PASS' if registry_test is succeeded else 'FAIL' }}"
+      - "   Docker Compose: {{ 'PASS' if compose_test.rc == 0 else 'FAIL' }}"
+      - "   Automation script: {{ 'PASS' if automation_test.rc == 0 else 'FAIL' }}"
+      - "   Artifact permissions: {{ 'PASS' if artifact_test is succeeded else 'FAIL' }}"
+      - ""
+      - "{{ '✅ All tests passed!' if (env_test.rc == 0 and registry_test is succeeded and compose_test.rc == 0 and automation_test.rc == 0 and artifact_test is succeeded) else '❌ Some tests failed - check logs above' }}"

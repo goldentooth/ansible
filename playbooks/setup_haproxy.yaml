@@ -1,6 +1,6 @@
-# Description: Setup the haproxy.
+# Description: Setup HAProxy.
 
-- name: 'Setup the haproxy.'
+- name: 'Setup HAProxy.'
   hosts: 'haproxy'
   remote_user: 'root'
   roles:

@@ -1,0 +1,58 @@
+---
+# Default variables for containerized cross-compilation setup
+
+# Cross-compilation toolkit configuration
+cross_compile:
+  toolkit_repo: "https://github.com/goldentooth/cross-compile-toolkit.git"
+  toolkit_branch: "main"
+  registry: "ghcr.io/goldentooth"
+  
+  # Container images
+  containers:
+    base_builder: "base-builder:latest"
+    envoy_builder: "envoy-builder:latest"
+    ci_builder: "ci-builder:latest"
+  
+  # Local directories
+  base_dir: "/opt/goldentooth"
+  artifacts_dir: "/opt/goldentooth/artifacts"
+  cache_dir: "/opt/goldentooth/build-cache"
+  workspace_dir: "/opt/goldentooth/workspace"
+  
+  # Container configuration
+  container:
+    compose_file: "docker-compose.yml"
+    override_file: "docker-compose.override.yml"
+    network_name: "goldentooth-builds"
+
+# Envoy build configuration
+envoy_build:
+  version: "v1.32.0"
+  memory_allocator: "disabled"  # Options: disabled, gperftools, jemalloc
+  build_config: "release"       # Options: release, debug
+  parallel_jobs: "{{ ansible_processor_vcpus | default(4) }}"
+  create_deb_package: true
+  
+# Build automation
+build_automation:
+  auto_pull_images: true
+  cleanup_old_artifacts: true
+  artifact_retention_days: 30
+  
+# System requirements
+system_requirements:
+  min_disk_space_gb: 50
+  min_memory_gb: 8
+  required_packages:
+    - "git"
+    - "make"
+  container_packages:
+    - "podman"
+    - "podman-compose"
+    - "buildah"
+
+# Container registry authentication (optional)
+registry_auth:
+  enabled: false
+  username: ""
+  token: ""

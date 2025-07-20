@@ -47,7 +47,7 @@ modules:
     prober: dns
     timeout: 5s
     dns:
-      query_name: "goldentooth.net"
+      query_name: "{{ cluster.domain }}"
       query_type: "A"
       valid_rcodes:
         - NOERROR

@@ -1,0 +1,174 @@
+---
+- name: "Create build automation wrapper script"
+  ansible.builtin.copy:
+    content: |
+      #!/bin/bash
+      # Goldentooth cross-compilation automation wrapper
+      set -euo pipefail
+      
+      TOOLKIT_DIR="{{ cross_compile.workspace_dir }}/cross-compile-toolkit"
+      ARTIFACTS_DIR="{{ cross_compile.artifacts_dir }}"
+      
+      # Colors for output
+      RED='\033[0;31m'
+      GREEN='\033[0;32m'
+      YELLOW='\033[1;33m'
+      BLUE='\033[0;34m'
+      NC='\033[0m'
+      
+      log() {
+          echo -e "${BLUE}[$(date '+%Y-%m-%d %H:%M:%S')]${NC} $1"
+      }
+      
+      error() {
+          echo -e "${RED}[ERROR]${NC} $1" >&2
+      }
+      
+      success() {
+          echo -e "${GREEN}[SUCCESS]${NC} $1"
+      }
+      
+      warn() {
+          echo -e "${YELLOW}[WARN]${NC} $1"
+      }
+      
+      usage() {
+          echo "Usage: $0 <command> [options]"
+          echo ""
+          echo "Commands:"
+          echo "  build-envoy     Build Envoy ARM64 binary"
+          echo "  test-env        Test cross-compilation environment"
+          echo "  status          Show build system status"
+          echo "  clean           Clean up old artifacts"
+          echo "  update          Update containers and toolkit"
+          echo ""
+          echo "Environment variables:"
+          echo "  ENVOY_VERSION={{ envoy_build.version }}"
+          echo "  MEMORY_ALLOCATOR={{ envoy_build.memory_allocator }}"
+          echo "  BUILD_CONFIG={{ envoy_build.build_config }}"
+      }
+      
+      build_envoy() {
+          log "Building Envoy ARM64 for Raspberry Pi..."
+          cd "${TOOLKIT_DIR}"
+          
+          export ENVOY_VERSION="{{ envoy_build.version }}"
+          export MEMORY_ALLOCATOR="{{ envoy_build.memory_allocator }}"
+          export BUILD_CONFIG="{{ envoy_build.build_config }}"
+          export PARALLEL_JOBS="{{ envoy_build.parallel_jobs }}"
+          export CREATE_DEB="{{ envoy_build.create_deb_package | lower }}"
+          
+          if make envoy-build; then
+              success "Envoy build completed successfully"
+              log "Artifacts available in: ${ARTIFACTS_DIR}/envoy"
+          else
+              error "Envoy build failed"
+              return 1
+          fi
+      }
+      
+      test_env() {
+          log "Testing cross-compilation environment..."
+          cd "${TOOLKIT_DIR}"
+          
+          if make test; then
+              success "Environment test passed"
+          else
+              error "Environment test failed"
+              return 1
+          fi
+      }
+      
+      show_status() {
+          log "Cross-compilation system status"
+          cd "${TOOLKIT_DIR}"
+          make status
+      }
+      
+      clean_artifacts() {
+          log "Cleaning up old artifacts..."
+          {{ cross_compile.workspace_dir }}/cleanup-artifacts.sh
+      }
+      
+      update_system() {
+          log "Updating containers and toolkit..."
+          cd "${TOOLKIT_DIR}"
+          
+          # Pull latest toolkit changes
+          git pull origin main
+          
+          # Update container images
+          docker compose pull
+          
+          success "System updated"
+      }
+      
+      # Main execution
+      case "${1:-help}" in
+          build-envoy)
+              build_envoy
+              ;;
+          test-env)
+              test_env
+              ;;
+          status)
+              show_status
+              ;;
+          clean)
+              clean_artifacts
+              ;;
+          update)
+              update_system
+              ;;
+          help|--help|-h)
+              usage
+              ;;
+          *)
+              error "Unknown command: $1"
+              usage
+              exit 1
+              ;;
+      esac
+    dest: "{{ cross_compile.workspace_dir }}/goldentooth-build"
+    mode: '0755'
+
+- name: "Create symlink in /usr/local/bin"
+  ansible.builtin.file:
+    src: "{{ cross_compile.workspace_dir }}/goldentooth-build"
+    dest: "/usr/local/bin/goldentooth-build"
+    state: link
+    force: yes
+  become: yes
+
+- name: "Create build status monitoring script"
+  ansible.builtin.copy:
+    content: |
+      #!/bin/bash
+      # Monitor build status and send notifications
+      set -euo pipefail
+      
+      TOOLKIT_DIR="{{ cross_compile.workspace_dir }}/cross-compile-toolkit"
+      
+      # Check container health
+      if ! docker compose -f "${TOOLKIT_DIR}/docker-compose.yml" ps --services --filter "status=running" >/dev/null 2>&1; then
+          echo "WARNING: Some cross-compilation containers are not running"
+          exit 1
+      fi
+      
+      # Check disk space
+      AVAILABLE=$(df -BG {{ cross_compile.base_dir }} | awk 'NR==2 {print $4}' | sed 's/G//')
+      if [ "${AVAILABLE}" -lt 10 ]; then
+          echo "WARNING: Low disk space: ${AVAILABLE}GB available"
+          exit 1
+      fi
+      
+      echo "Cross-compilation system healthy"
+    dest: "{{ cross_compile.workspace_dir }}/monitor-build-status.sh"
+    mode: '0755'
+
+- name: "Set up build status monitoring cron"
+  ansible.builtin.cron:
+    name: "Monitor cross-compilation build status"
+    job: "{{ cross_compile.workspace_dir }}/monitor-build-status.sh"
+    minute: "*/15"
+    user: root

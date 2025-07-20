@@ -1,0 +1,85 @@
+---
+- name: "Check if Bazel is already installed"
+  ansible.builtin.shell: |
+    bazel version 2>/dev/null | grep "Build label" | grep -o "[0-9]\+\.[0-9]\+\.[0-9]\+"
+  register: bazel_current_version
+  failed_when: false
+  changed_when: false
+
+- name: "Download Bazel installer"
+  ansible.builtin.get_url:
+    url: "{{ cross_compile.bazel.download_url }}/{{ cross_compile.bazel.version }}/bazel-{{ cross_compile.bazel.version }}-installer-linux-x86_64.sh"
+    dest: "/tmp/bazel-{{ cross_compile.bazel.version }}-installer.sh"
+    mode: '0755'
+  when: bazel_current_version.stdout != cross_compile.bazel.version
+
+- name: "Install Bazel"
+  ansible.builtin.shell: |
+    /tmp/bazel-{{ cross_compile.bazel.version }}-installer.sh --user
+    ln -sf ~/.bazel/bin/bazel /usr/local/bin/bazel
+  become: yes
+  when: bazel_current_version.stdout != cross_compile.bazel.version
+
+- name: "Create Bazel build cache directory"
+  ansible.builtin.file:
+    path: "{{ cross_compile.bazel.build_cache }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: "Create Bazel workspace configuration"
+  ansible.builtin.template:
+    src: bazel_workspace.j2
+    dest: "{{ cross_compile.base_dir }}/WORKSPACE"
+    mode: '0644'
+
+- name: "Create Bazel toolchain configuration for ARM64"
+  ansible.builtin.template:
+    src: bazel_toolchain.j2
+    dest: "{{ cross_compile.base_dir }}/toolchain/BUILD"
+    mode: '0644'
+
+- name: "Create directory for Bazel toolchain"
+  ansible.builtin.file:
+    path: "{{ cross_compile.base_dir }}/toolchain"
+    state: directory
+    mode: '0755'
+
+- name: "Create Bazel build configuration"
+  ansible.builtin.copy:
+    content: |
+      # ARM64 cross-compilation configuration
+      build:arm64 --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64
+      build:arm64 --cpu=aarch64
+      build:arm64 --crosstool_top=@bazel_tools//tools/cpp:toolchain
+      build:arm64 --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
+      
+      # Resource limits
+      build --local_ram_resources={{ cross_compile.bazel.memory_limit }}
+      build --local_cpu_resources={{ cross_compile.bazel.max_jobs }}
+      build --jobs={{ cross_compile.bazel.max_jobs }}
+      
+      # Build cache
+      build --disk_cache={{ cross_compile.bazel.build_cache }}
+      
+      # Verbose output for debugging
+      build --verbose_failures
+      build --verbose_explanations
+      
+      # Envoy-specific flags
+      build --define tcmalloc=disabled
+      build --action_env=CC={{ cross_compile.toolchain.gcc_path }}
+      build --action_env=CXX={{ cross_compile.toolchain.gxx_path }}
+    dest: "{{ cross_compile.base_dir }}/.bazelrc"
+    mode: '0644'
+
+- name: "Test Bazel installation"
+  ansible.builtin.shell: |
+    bazel version
+  register: bazel_test
+  changed_when: false
+
+- name: "Display Bazel version information"
+  ansible.builtin.debug:
+    var: bazel_test.stdout_lines

@@ -1,0 +1,59 @@
+# Docker Compose override for Goldentooth cluster deployment
+# Customizes the cross-compilation environment for Velaryon
+
+version: '3.8'
+
+services:
+  base-builder:
+    volumes:
+      - {{ cross_compile.artifacts_dir }}:/artifacts
+      - {{ cross_compile.cache_dir }}:/tmp/bazel-cache
+    environment:
+      - GOLDENTOOTH_CLUSTER=true
+      - PARALLEL_JOBS={{ envoy_build.parallel_jobs }}
+    networks:
+      - {{ cross_compile.container.network_name }}
+
+  envoy-builder:
+    volumes:
+      - {{ cross_compile.artifacts_dir }}:/artifacts
+      - {{ cross_compile.cache_dir }}:/tmp/bazel-cache
+    environment:
+      - ENVOY_VERSION={{ envoy_build.version }}
+      - MEMORY_ALLOCATOR={{ envoy_build.memory_allocator }}
+      - BUILD_CONFIG={{ envoy_build.build_config }}
+      - PARALLEL_JOBS={{ envoy_build.parallel_jobs }}
+      - CREATE_DEB={{ envoy_build.create_deb_package | lower }}
+      - GOLDENTOOTH_CLUSTER=true
+    networks:
+      - {{ cross_compile.container.network_name }}
+    # Resource limits for Velaryon
+    deploy:
+      resources:
+        limits:
+          memory: {{ (ansible_memtotal_mb * 0.75) | int }}M
+          cpus: '{{ ansible_processor_vcpus | default(4) }}'
+
+  dev-environment:
+    volumes:
+      - {{ cross_compile.artifacts_dir }}:/artifacts
+      - {{ cross_compile.cache_dir }}:/tmp/bazel-cache
+      - {{ cross_compile.workspace_dir }}:/workspace/cluster
+    environment:
+      - GOLDENTOOTH_CLUSTER=true
+      - TERM=xterm-256color
+    networks:
+      - {{ cross_compile.container.network_name }}
+
+  ci-builder:
+    volumes:
+      - {{ cross_compile.artifacts_dir }}:/artifacts
+    environment:
+      - CI=true
+      - GOLDENTOOTH_CLUSTER=true
+    networks:
+      - {{ cross_compile.container.network_name }}
+
+networks:
+  {{ cross_compile.container.network_name }}:
+    external: true

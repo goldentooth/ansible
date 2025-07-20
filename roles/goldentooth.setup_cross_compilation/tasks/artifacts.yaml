@@ -1,0 +1,81 @@
+---
+- name: "Create artifact storage structure"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  loop:
+    - "{{ cross_compile.artifacts_dir }}/envoy"
+    - "{{ cross_compile.artifacts_dir }}/consul"
+    - "{{ cross_compile.artifacts_dir }}/vault"
+    - "{{ cross_compile.artifacts_dir }}/packages"
+    - "{{ cross_compile.artifacts_dir }}/containers"
+
+- name: "Create artifact cleanup script"
+  ansible.builtin.copy:
+    content: |
+      #!/bin/bash
+      # Cleanup old build artifacts
+      set -euo pipefail
+      
+      ARTIFACTS_DIR="{{ cross_compile.artifacts_dir }}"
+      RETENTION_DAYS="{{ build_automation.artifact_retention_days }}"
+      
+      echo "Cleaning up artifacts older than ${RETENTION_DAYS} days..."
+      
+      # Find and remove old artifacts
+      find "${ARTIFACTS_DIR}" -type f -mtime +${RETENTION_DAYS} -delete
+      
+      # Clean up empty directories
+      find "${ARTIFACTS_DIR}" -type d -empty -delete
+      
+      echo "Cleanup completed"
+    dest: "{{ cross_compile.workspace_dir }}/cleanup-artifacts.sh"
+    mode: '0755'
+
+- name: "Set up artifact cleanup cron job"
+  ansible.builtin.cron:
+    name: "Clean up old cross-compilation artifacts"
+    job: "{{ cross_compile.workspace_dir }}/cleanup-artifacts.sh"
+    minute: "0"
+    hour: "2"
+    weekday: "0"
+    user: root
+  when: build_automation.cleanup_old_artifacts
+
+- name: "Create artifact inventory script"
+  ansible.builtin.copy:
+    content: |
+      #!/bin/bash
+      # Generate artifact inventory
+      set -euo pipefail
+      
+      ARTIFACTS_DIR="{{ cross_compile.artifacts_dir }}"
+      
+      echo "Cross-Compilation Artifacts Inventory"
+      echo "====================================="
+      echo "Generated: $(date)"
+      echo ""
+      
+      for category in envoy consul vault packages containers; do
+          if [ -d "${ARTIFACTS_DIR}/${category}" ]; then
+              echo "## ${category^}"
+              find "${ARTIFACTS_DIR}/${category}" -type f -exec ls -lh {} \; | \
+                  awk '{print "  " $9 " (" $5 ", " $6 " " $7 ")"}'
+              echo ""
+          fi
+      done
+    dest: "{{ cross_compile.workspace_dir }}/artifact-inventory.sh"
+    mode: '0755'
+
+- name: "Generate initial artifact inventory"
+  ansible.builtin.shell: |
+    {{ cross_compile.workspace_dir }}/artifact-inventory.sh
+  register: artifact_inventory
+  changed_when: false
+
+- name: "Display artifact inventory"
+  ansible.builtin.debug:
+    var: artifact_inventory.stdout_lines

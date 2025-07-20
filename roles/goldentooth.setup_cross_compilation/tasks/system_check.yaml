@@ -1,0 +1,46 @@
+---
+- name: "Check available disk space"
+  ansible.builtin.shell: |
+    df -BG {{ cross_compile.base_dir | dirname }} | awk 'NR==2 {print $4}' | sed 's/G//'
+  register: available_disk_gb
+  changed_when: false
+
+- name: "Verify minimum disk space requirement"
+  ansible.builtin.fail:
+    msg: "Insufficient disk space. Required: {{ system_requirements.min_disk_space_gb }}GB, Available: {{ available_disk_gb.stdout }}GB"
+  when: (available_disk_gb.stdout | int) < system_requirements.min_disk_space_gb
+
+- name: "Check available memory"
+  ansible.builtin.shell: |
+    awk '/MemTotal/ {printf "%.0f", $2/1024/1024}' /proc/meminfo
+  register: available_memory_gb
+  changed_when: false
+
+- name: "Verify minimum memory requirement"
+  ansible.builtin.fail:
+    msg: "Insufficient memory. Required: {{ system_requirements.min_memory_gb }}GB, Available: {{ available_memory_gb.stdout }}GB"
+  when: (available_memory_gb.stdout | int) < system_requirements.min_memory_gb
+
+- name: "Check if Podman is available"
+  ansible.builtin.shell: |
+    which podman && podman --version | head -1
+  register: podman_check
+  failed_when: false
+  changed_when: false
+
+- name: "Check container runtime version"
+  ansible.builtin.shell: |
+    if command -v podman >/dev/null 2>&1; then
+      podman --version | awk '{print $3}'
+    else
+      echo "not_installed"
+    fi
+  register: container_version
+  changed_when: false
+
+- name: "Display system requirements check"
+  ansible.builtin.debug:
+    msg:
+      - "💾 Disk space: {{ available_disk_gb.stdout }}GB (required: {{ system_requirements.min_disk_space_gb }}GB)"
+      - "🧠 Memory: {{ available_memory_gb.stdout }}GB (required: {{ system_requirements.min_memory_gb }}GB)"
+      - "🐳 Container runtime: {{ container_version.stdout if container_version.stdout != 'not_installed' else 'Not installed' }}"
