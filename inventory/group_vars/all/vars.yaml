@@ -214,13 +214,27 @@ nfs:
       mount: '/mnt/nfs'
       safe_name: 'mnt-nfs'
       type: 'nfs'
-      options: {}
+      options:
+        - 'soft'           # Allow mount operations to fail and return error
+        - 'timeo=30'       # 3 second timeout (30 deciseconds)
+        - 'retrans=2'      # Only 2 retry attempts before giving up
+        - 'intr'           # Allow keyboard interrupts to cancel operations
+        - 'bg'             # Retry mounts in background if they fail
+        - 'nofail'         # Don't treat mount failures as fatal
+        - '_netdev'        # Requires network (systemd dependency)
     gpu_storage:
       share: "{{ hostvars['velaryon'].ipv4_address }}:/mnt/gpu-storage"
       mount: '/mnt/gpu-storage'
       safe_name: 'mnt-gpu\x2dstorage'
       type: 'nfs'
-      options: {}
+      options:
+        - 'soft'           # Allow mount operations to fail and return error
+        - 'timeo=30'       # 3 second timeout (30 deciseconds)
+        - 'retrans=2'      # Only 2 retry attempts before giving up
+        - 'intr'           # Allow keyboard interrupts to cancel operations
+        - 'bg'             # Retry mounts in background if they fail
+        - 'nofail'         # Don't treat mount failures as fatal
+        - '_netdev'        # Requires network (systemd dependency)
 
 # Python data:
 python:

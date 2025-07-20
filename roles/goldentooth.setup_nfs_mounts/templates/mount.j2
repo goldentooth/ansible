@@ -1,5 +1,10 @@
 [Unit]
 Description=Mount {{ item.key }}
+# Make this mount optional for boot
+DefaultDependencies=no
+Conflicts=umount.target
+Before=umount.target
+After=network-online.target
 
 [Mount]
 What={{ item.value.share }}
@@ -8,8 +13,11 @@ Type={{ item.value.type }}
 {% if item.value.options -%}
 Options={{ item.value.options | join(',') }}
 {% else -%}
-Options=defaults
+Options=soft,timeo=30,retrans=2,intr,bg,nofail,_netdev
 {% endif %}
+# Add timeout for mount operations
+TimeoutSec=30
 
 [Install]
-WantedBy=default.target
+WantedBy=remote-fs.target
+# Don't tie to critical system targets

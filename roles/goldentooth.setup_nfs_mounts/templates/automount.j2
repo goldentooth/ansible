@@ -2,10 +2,15 @@
 Description=Automount {{ item.key }}
 After=remote-fs-pre.target network-online.target network.target
 Before=umount.target remote-fs.target
+# Make this mount optional for system startup
+DefaultDependencies=no
 
 [Automount]
 Where={{ item.value.mount }}
-TimeoutIdleSec=60
+TimeoutIdleSec=300
+# Add timeout for mount operations
+DirectoryMode=0755
 
 [Install]
-WantedBy=default.target
+WantedBy=remote-fs.target
+# Change from default.target to remote-fs.target for better dependency handling

@@ -9,5 +9,7 @@
     name: "{{ item.value.safe_name }}.automount"
     enabled: true
     daemon_reload: true
+    # Don't start immediately - let automount handle it
+    state: stopped
   loop: "{{ nfs.mounts | dict2items }}"
   listen: 'Restart NFS automount.'
