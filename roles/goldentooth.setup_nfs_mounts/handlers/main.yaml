@@ -1,0 +1,13 @@
+---
+- name: 'Reload systemd daemon'
+  ansible.builtin.systemd:
+    daemon_reload: true
+  listen: 'Restart NFS mount.'
+
+- name: 'Enable NFS automounts.'
+  ansible.builtin.systemd:
+    name: "{{ item.value.safe_name }}.automount"
+    enabled: true
+    daemon_reload: true
+  loop: "{{ nfs.mounts | dict2items }}"
+  listen: 'Restart NFS automount.'

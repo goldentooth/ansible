@@ -215,6 +215,12 @@ nfs:
       safe_name: 'mnt-nfs'
       type: 'nfs'
       options: {}
+    gpu_storage:
+      share: "{{ hostvars['velaryon'].ipv4_address }}:/mnt/gpu-storage"
+      mount: '/mnt/gpu-storage'
+      safe_name: 'mnt-gpu\x2dstorage'
+      type: 'nfs'
+      options: {}
 
 # Python data:
 python:

@@ -8,3 +8,10 @@ prompt:
     tertiary: 66
   emoji: 🐠
 host_index: 23
+
+# #############################################################################
+# Variables for vendored roles.
+# #############################################################################
+
+nfs_exports:
+- "/mnt/gpu-storage 10.4.0.0/20(rw,sync,no_root_squash,no_subtree_check)"

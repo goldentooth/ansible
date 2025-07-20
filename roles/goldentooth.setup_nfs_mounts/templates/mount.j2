@@ -5,7 +5,11 @@ Description=Mount {{ item.key }}
 What={{ item.value.share }}
 Where={{ item.value.mount }}
 Type={{ item.value.type }}
+{% if item.value.options -%}
 Options={{ item.value.options | join(',') }}
+{% else -%}
+Options=defaults
+{% endif %}
 
 [Install]
 WantedBy=default.target

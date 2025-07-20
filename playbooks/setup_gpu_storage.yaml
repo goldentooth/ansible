@@ -1,0 +1,41 @@
+---
+# Setup GPU storage on Velaryon with NFS export
+- name: 'Setup Velaryon GPU storage and NFS export'
+  hosts: 'velaryon'
+  become: true
+  tasks:
+    - name: 'Ensure GPU storage mount point exists'
+      ansible.builtin.file:
+        path: '/mnt/gpu-storage'
+        state: 'directory'
+        owner: 'root'
+        group: 'root'
+        mode: '0755'
+
+    - name: 'Check if GPU storage is mounted'
+      ansible.builtin.command:
+        cmd: 'mountpoint -q /mnt/gpu-storage'
+      register: gpu_storage_mounted
+      failed_when: false
+      changed_when: false
+
+    - name: 'Mount GPU storage if not already mounted'
+      ansible.builtin.mount:
+        src: 'UUID=5bc38d5b-a7a4-426e-acdb-e5caf0a809d9'
+        path: '/mnt/gpu-storage'
+        fstype: 'ext4'
+        opts: 'defaults'
+        state: 'mounted'
+      when: gpu_storage_mounted.rc != 0
+
+- name: 'Configure NFS exports on Velaryon'
+  hosts: 'velaryon'
+  become: true
+  roles:
+    - 'geerlingguy.nfs'
+
+- name: 'Setup NFS mounts on all nodes'
+  hosts: 'all'
+  become: true
+  roles:
+    - 'goldentooth.setup_nfs_mounts'

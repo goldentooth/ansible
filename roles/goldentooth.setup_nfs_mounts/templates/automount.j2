@@ -5,6 +5,7 @@ Before=umount.target remote-fs.target
 
 [Automount]
 Where={{ item.value.mount }}
+TimeoutIdleSec=60
 
 [Install]
 WantedBy=default.target

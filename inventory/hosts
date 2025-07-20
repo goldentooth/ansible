@@ -176,6 +176,7 @@ all:
     nfs_server:
       hosts:
         allyrion:
+        velaryon:
 
     # -----------------------------------
     # Prometheus
