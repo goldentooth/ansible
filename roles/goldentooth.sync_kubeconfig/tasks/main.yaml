@@ -1,0 +1,90 @@
+---
+- name: Check if kubeconfig source exists on control plane nodes
+  stat:
+    path: "{{ kubeconfig_source_path }}"
+  register: kubeconfig_source_stat
+  when: 
+    - inventory_hostname != 'localhost'
+    - "'k8s_control_plane' in group_names"
+
+- name: Fail if kubeconfig source doesn't exist on control plane nodes
+  fail:
+    msg: "Kubeconfig source file {{ kubeconfig_source_path }} not found on control plane"
+  when: 
+    - inventory_hostname != 'localhost'
+    - "'k8s_control_plane' in group_names"
+    - not kubeconfig_source_stat.stat.exists
+
+- name: Fetch kubeconfig from first control plane node to local machine
+  fetch:
+    src: "{{ kubeconfig_source_path }}"
+    dest: "/tmp/kubeconfig-{{ cluster_name }}"
+    flat: true
+  when: 
+    - inventory_hostname == groups['k8s_control_plane'][0]
+  run_once: true
+
+- name: Create .kube directory for regular user
+  file:
+    path: "/home/{{ regular_user }}/.kube"
+    state: directory
+    mode: '0755'
+    owner: "{{ regular_user }}"
+    group: "{{ regular_user }}"
+  when: inventory_hostname != 'localhost'
+
+- name: Create .kube directory for root user
+  file:
+    path: "/root/.kube"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  when: inventory_hostname != 'localhost'
+
+- name: Copy kubeconfig to regular user
+  copy:
+    src: "/tmp/kubeconfig-{{ cluster_name }}"
+    dest: "/home/{{ regular_user }}/.kube/config"
+    mode: '0600'
+    owner: "{{ regular_user }}"
+    group: "{{ regular_user }}"
+  when: inventory_hostname != 'localhost'
+
+- name: Copy kubeconfig to root user
+  copy:
+    src: "/tmp/kubeconfig-{{ cluster_name }}"
+    dest: "/root/.kube/config"
+    mode: '0600'
+    owner: root
+    group: root
+  when: inventory_hostname != 'localhost'
+
+- name: Sync kubeconfig to local machine
+  block:
+    - name: Create local .kube directory
+      file:
+        path: "~/.kube"
+        state: directory
+        mode: '0755'
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+    - name: Copy kubeconfig to local machine
+      copy:
+        src: "/tmp/kubeconfig-{{ cluster_name }}"
+        dest: "{{ local_kubeconfig_path }}"
+        mode: '0600'
+      delegate_to: localhost
+      become: false
+      run_once: true
+  when: sync_to_local | bool
+
+- name: Clean up temporary kubeconfig file
+  file:
+    path: "/tmp/kubeconfig-{{ cluster_name }}"
+    state: absent
+  delegate_to: localhost
+  become: false
+  run_once: true

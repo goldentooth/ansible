@@ -1,0 +1,14 @@
+---
+# Default variables for goldentooth.sync_kubeconfig role
+
+# Source kubeconfig file path (typically on control plane node)
+kubeconfig_source_path: "/etc/kubernetes/admin.conf"
+
+# Regular user to sync kubeconfig to
+regular_user: "nathan"
+
+# Whether to sync kubeconfig to local machine
+sync_to_local: true
+
+# Local kubeconfig path  
+local_kubeconfig_path: "~/.kube/config"
