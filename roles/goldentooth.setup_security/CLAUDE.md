@@ -23,6 +23,7 @@ This role configures security settings for cluster nodes including SSH hardening
 - Firewall setup and rules
 - System security hardening
 - Security monitoring setup
+- APT package blocking (prevents Docker installation that conflicts with Kubernetes)
 
 ## Dependencies
 

@@ -2,3 +2,56 @@
 - name: 'Setup security.'
   ansible.builtin.import_role:
     name: 'geerlingguy.security'
+
+- name: 'Block Docker installation to prevent conflicts with Kubernetes containerd'
+  ansible.builtin.copy:
+    dest: '/etc/apt/preferences.d/block-docker'
+    mode: '0644'
+    owner: 'root'
+    group: 'root'
+    content: |
+      # Block Docker installation to prevent conflicts with Kubernetes containerd
+      # Docker packages can break the containerd installation used by Kubernetes
+      # This preference file prevents accidental installation of Docker
+      
+      Package: docker-ce
+      Pin: origin ""
+      Pin-Priority: -1
+      
+      Package: docker-ce-cli
+      Pin: origin ""
+      Pin-Priority: -1
+      
+      Package: docker-ce-rootless-extras
+      Pin: origin ""
+      Pin-Priority: -1
+      
+      Package: docker-buildx-plugin
+      Pin: origin ""
+      Pin-Priority: -1
+      
+      Package: docker-compose-plugin
+      Pin: origin ""
+      Pin-Priority: -1
+      
+      Package: docker.io
+      Pin: origin ""
+      Pin-Priority: -1
+      
+      Package: docker-compose
+      Pin: origin ""
+      Pin-Priority: -1
+      
+      Package: docker-registry
+      Pin: origin ""
+      Pin-Priority: -1
+      
+      Package: docker-doc
+      Pin: origin ""
+      Pin-Priority: -1
+      
+      # Also block the older containerd.io package that comes with Docker
+      # Kubernetes should use the standard containerd package instead
+      Package: containerd.io
+      Pin: origin ""
+      Pin-Priority: -1
