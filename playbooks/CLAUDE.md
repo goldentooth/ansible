@@ -34,7 +34,8 @@ This directory contains Ansible playbooks that define the high-level orchestrati
 - `setup_consul.yaml`: Setup Consul service mesh
 - `setup_nomad.yaml`: Setup Nomad workload orchestration
 - `setup_vault.yaml`: Setup HashiCorp Vault secrets management
-- `bootstrap_consul_acl.yaml`: Bootstrap Consul ACL system
+- `bootstrap_consul.yaml`: Bootstrap Consul (generate gossip key and ACL management token)
+- `setup_consul_acl.yaml`: Setup Consul ACL policies and tokens
 
 ### Certificate Rotation
 - `rotate_consul_certs.yaml`: Rotate Consul TLS certificates

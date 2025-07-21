@@ -1,7 +1,7 @@
 datacenter = "{{ consul.datacenter }}"
 domain = "{{ consul.domain }}"
 data_dir = "{{ consul.opt_path }}"
-encrypt = "{{ gossip_key.stdout }}"
+encrypt = "{{ secret_vault.consul.gossip_key }}"
 bind_addr = "{{ ipv4_address }}"
 retry_join = {{ groups['consul_server'] | map('extract', hostvars, 'ipv4_address') | ansible.builtin.to_json }}
 

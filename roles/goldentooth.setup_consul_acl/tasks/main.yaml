@@ -1,51 +1,8 @@
 ---
-- name: 'Remove ACL bootstrap reset file if it exists.'
-  ansible.builtin.file:
-    path: "{{ consul.acl_bootstrap_reset_path }}"
-    state: 'absent'
-  changed_when: false
+# This role sets up Consul ACL policies and node tokens using the management token from vault
 
-- name: 'Bootstrap ACL on server nodes.'
+- name: 'Setup ACL policies and tokens on server nodes.'
   block:
-
-    - name: 'Attempt to perform ACL bootstrap.'
-      ansible.builtin.shell:
-        cmd: 'consul acl bootstrap'
-      register: 'bootstrap_result'
-
-    - name: 'Extract SecretID from successful bootstrap.'
-      ansible.builtin.set_fact:
-        consul_mgmt_token: "{{ bootstrap_result.stdout | regex_search('SecretID:\\s+([a-f0-9\\-]+)', '\\1') | first }}"
-
-  rescue:
-
-    - name: 'Extract reset index.'
-      ansible.builtin.set_fact:
-        reset_index: "{{ bootstrap_result.stderr | regex_search('reset index: (\\d+)', '\\1') | first }}"
-      when: "'reset index' in bootstrap_result.stderr"
-
-    - name: 'Write the ACL bootstrap reset index to acl-bootstrap-reset.'
-      ansible.builtin.copy:
-        content: "{{ reset_index }}"
-        dest: "{{ consul.acl_bootstrap_reset_path }}"
-      delegate_to: "{{ server }}"
-      loop: "{{ groups['consul_server'] }}"
-      loop_control:
-        loop_var: 'server'
-
-    - name: 'Attempt (again) to perform ACL bootstrap.'
-      ansible.builtin.shell:
-        cmd: 'consul acl bootstrap'
-      register: 'bootstrap_result'
-
-    - name: 'Extract SecretID from successful bootstrap.'
-      ansible.builtin.set_fact:
-        consul_mgmt_token: "{{ bootstrap_result.stdout | regex_search('SecretID:\\s+([a-f0-9\\-]+)', '\\1') | first }}"
-
-    - name: 'Clear host errors.'
-      ansible.builtin.meta: 'clear_host_errors'
-
-  always:
 
     - name: 'Create temporary directory to hold policies.'
       ansible.builtin.tempfile:
@@ -82,7 +39,7 @@
           consul acl policy delete \
             -name "{{ file.path | basename | split('.') | first }}"
       environment:
-        CONSUL_HTTP_TOKEN: "{{ consul_mgmt_token }}"
+        CONSUL_HTTP_TOKEN: "{{ secret_vault.consul.mgmt_token }}"
       failed_when: false
       changed_when: false
       loop: "{{ acl_policy_files.files }}"
@@ -97,7 +54,7 @@
             -rules @policies/{{ file.path | basename }}
         chdir: "{{ temp_policies_dir.path }}"
       environment:
-        CONSUL_HTTP_TOKEN: "{{ consul_mgmt_token }}"
+        CONSUL_HTTP_TOKEN: "{{ secret_vault.consul.mgmt_token }}"
       loop: "{{ acl_policy_files.files }}"
       loop_control:
         loop_var: 'file'
@@ -110,14 +67,14 @@
             -policy-name node-policy
         chdir: "{{ temp_policies_dir.path }}"
       environment:
-        CONSUL_HTTP_TOKEN: "{{ consul_mgmt_token }}"
+        CONSUL_HTTP_TOKEN: "{{ secret_vault.consul.mgmt_token }}"
       register: 'node_token_result'
 
     - name: 'Extract SecretID from node token creation.'
       ansible.builtin.set_fact:
         consul_node_token: "{{ node_token_result.stdout | regex_search('SecretID:\\s+([a-f0-9\\-]+)', '\\1') | first }}"
 
-    - name: 'Create the node token with the newly created node policy.'
+    - name: 'Create the node CLI token with the newly created node-cli policy.'
       ansible.builtin.shell:
         cmd: |
           consul acl token create \
@@ -125,7 +82,7 @@
             -policy-name node-cli-policy
         chdir: "{{ temp_policies_dir.path }}"
       environment:
-        CONSUL_HTTP_TOKEN: "{{ consul_mgmt_token }}"
+        CONSUL_HTTP_TOKEN: "{{ secret_vault.consul.mgmt_token }}"
       register: 'node_cli_token_result'
 
     - name: 'Extract SecretID from cli token creation.'
@@ -134,12 +91,6 @@
 
   when: "inventory_hostname in groups['consul_server']"
   run_once: true
-
-- name: 'Remove ACL bootstrap reset file if it exists.'
-  ansible.builtin.file:
-    path: "{{ consul.acl_bootstrap_reset_path }}"
-    state: 'absent'
-  changed_when: false
 
 - name: 'Setup all Consul servers.'
   block:
@@ -150,18 +101,19 @@
           consul acl set-agent-token \
             agent "{{ consul_node_token }}"
       environment:
-        CONSUL_HTTP_TOKEN: "{{ consul_mgmt_token }}"
+        CONSUL_HTTP_TOKEN: "{{ secret_vault.consul.mgmt_token }}"
       notify:
         - 'Restart Consul service.'
 
   when: "inventory_hostname in groups['consul_server']"
 
-- name: 'Add the node CLI token to ~/.bashrc.'
-  ansible.builtin.lineinfile:
-    path: '~/.bashrc'
-    regexp: '^export CONSUL_HTTP_TOKEN.*'
-    line: "export CONSUL_HTTP_TOKEN={{ consul_node_cli_token }}"
-    state: 'present'
+- name: 'Set Consul ACL token system-wide.'
+  ansible.builtin.template:
+    src: 'consul-acl-env.sh.j2'
+    dest: '/etc/profile.d/consul-acl-env.sh'
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
 
 - name: 'Setup all Consul clients.'
   block:
@@ -174,7 +126,7 @@
             -node-identity "{{ clean_hostname }}:{{ consul.datacenter }}"
       delegate_to: "{{ groups['consul_server'] | first }}"
       environment:
-        CONSUL_HTTP_TOKEN: "{{ consul_mgmt_token }}"
+        CONSUL_HTTP_TOKEN: "{{ secret_vault.consul.mgmt_token }}"
       register: 'client_node_token_result'
 
     - name: 'Extract SecretID from client node token creation.'

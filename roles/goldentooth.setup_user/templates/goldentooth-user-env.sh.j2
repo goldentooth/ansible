@@ -1,0 +1,12 @@
+#!/bin/bash
+# Goldentooth user environment - system-wide configuration
+
+# Add uv/uvx to PATH (note: expands for each user)
+export PATH="$HOME/.local/bin:$PATH"
+
+# Anthropic API key for goldentooth-agent
+export ANTHROPIC_API_KEY="{{ secret_vault.anthropic.api_key }}"
+
+# Goldentooth Agent aliases
+alias goldentooth-agent="uvx --from git+https://github.com/goldentooth/agent gta"
+alias gta="uvx --from git+https://github.com/goldentooth/agent gta"

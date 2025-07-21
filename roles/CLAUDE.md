@@ -43,7 +43,8 @@ All custom roles follow the `goldentooth.*` naming convention:
 - `goldentooth.setup_consul`: Consul service mesh setup
 - `goldentooth.setup_nomad`: Nomad orchestration setup
 - `goldentooth.setup_vault`: Vault secrets management setup
-- `goldentooth.bootstrap_consul_acl`: Bootstrap Consul ACL system
+- `goldentooth.bootstrap_consul`: Bootstrap Consul (generate gossip key and ACL management token)
+- `goldentooth.setup_consul_acl`: Setup Consul ACL policies and node tokens
 
 #### Kubernetes
 - `goldentooth.bootstrap_k8s`: Bootstrap Kubernetes cluster

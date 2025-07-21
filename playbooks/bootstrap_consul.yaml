@@ -1,0 +1,13 @@
+# Description: Bootstrap Consul (gossip key and ACL system).
+
+- name: 'Bootstrap Consul (gossip key and ACL system).'
+  hosts: 'consul'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.bootstrap_consul' }
+  handlers:
+    - name: 'Restart Consul service.'
+      ansible.builtin.systemd_service:
+        name: 'consul'
+        state: 'restarted'
+        enabled: true

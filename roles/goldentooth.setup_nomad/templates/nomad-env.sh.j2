@@ -1,0 +1,6 @@
+#!/bin/bash
+# Nomad environment variables and shell completion for all users
+export NOMAD_ADDR="https://{{ ipv4_address }}:4646"
+export NOMAD_CACERT="{{ step_ca.root_cert_path }}"
+export NOMAD_CLIENT_CERT="{{ nomad.cli_cert_path }}"
+export NOMAD_CLIENT_KEY="{{ nomad.cli_key_path }}"

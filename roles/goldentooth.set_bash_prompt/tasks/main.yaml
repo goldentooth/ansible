@@ -2,21 +2,26 @@
 - name: 'Setup Local Modifications to Bash Prompt'
   block:
 
-    - name: 'Copy Bash prompt injection script.'
+    - name: 'Set up bash prompt system-wide.'
+      ansible.builtin.template:
+        src: 'bash-prompt-env.sh.j2'
+        dest: '/etc/profile.d/bash-prompt-env.sh'
+        owner: 'root'
+        group: 'root'
+        mode: '0644'
+
+    - name: 'Copy Bash prompt injection script system-wide.'
       ansible.builtin.copy:
         src: "{{ role_path }}/files/bash_prompt.sh"
-        dest: '~/.bash_prompt'
-        mode: '0755'
+        dest: '/etc/bash_prompt.sh'
+        owner: 'root'
+        group: 'root'
+        mode: '0644'
 
-    - name: 'Copy Bash prompt template script.'
+    - name: 'Copy Bash prompt template script system-wide.'
       ansible.builtin.template:
         src: "{{ role_path }}/templates/bash_prompt_local.sh.j2"
-        dest: '~/.bash_prompt_local'
-        mode: '0755'
-
-    - name: 'Inject Bash prompt into user profile.'
-      ansible.builtin.lineinfile:
-        path: '~/.bashrc'
-        line: '[ -f .bash_prompt ] && . .bash_prompt'
-        regexp: '^\[ -f .bash_prompt \].*'
-        state: 'present'
+        dest: '/etc/bash_prompt_local.sh'
+        owner: 'root'
+        group: 'root'
+        mode: '0644'

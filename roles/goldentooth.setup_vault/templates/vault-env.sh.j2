@@ -1,0 +1,6 @@
+#!/bin/bash
+# Vault environment variables for all users
+export VAULT_ADDR="https://{{ ipv4_address }}:8200"
+export VAULT_CLIENT_CERT="{{ vault.cert_path }}"
+export VAULT_CLIENT_KEY="{{ vault.key_path }}"
+export VAULT_CACERT="{{ step_ca.root_cert_path }}"

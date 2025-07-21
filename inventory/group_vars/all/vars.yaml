@@ -46,6 +46,7 @@ my:
 #     access_key_id: <string>
 #     secret_access_key: <string>
 #   consul:
+#     gossip_key: <string>
 #     mgmt_token: <string>
 #   step_ca:
 #     passwords:
@@ -342,7 +343,7 @@ nomad:
 step_ca:
   # The server running step-ca (Certificate Authority)
   server: "{{ groups['step_ca'] | first }}"
-  
+
   # CA-specific configuration (used when setting up/managing the CA itself)
   ca:
     bind_address: "{{ ipv4_address }}:9443"
@@ -360,14 +361,14 @@ step_ca:
     root_cert_path: '/etc/step-ca/certs/root_ca.crt'
     sans: "{{ host.fqdn }},{{ node.fqdn }},{{ ipv4_address }}"
     user: 'step'
-  
+
   # Step CLI configuration
   executable: 'step'
-  
+
   # CA certificate paths on client nodes
   root_cert_path: "/etc/ssl/certs/{{ cluster.name }}.pem"
   shared_cert_path: "/usr/local/share/ca-certificates/{{ cluster.name }}.crt"
-  
+
   # Default provisioner configuration for certificate issuance/renewal
   # Used by client nodes when requesting certificates from the CA
   default_provisioner:
@@ -600,7 +601,7 @@ blackbox_http_auth_targets:
 blackbox_api_targets:
   # Direct IP access for immediate testing
   - "http://10.4.0.11:8500/v1/status/leader"  # Consul leader (bettley)
-  - "http://10.4.0.11:8200/v1/sys/health"     # Vault health (bettley) 
+  - "http://10.4.0.11:8200/v1/sys/health"     # Vault health (bettley)
   - "http://10.4.0.11:4646/v1/status/leader"  # Nomad leader (bettley)
   - "http://10.4.0.18:3100/ready"             # Loki ready (inchfield)
   # Future domain-based targets (when DNS is configured)
@@ -720,6 +721,38 @@ prometheus_scrape_configs:
       ca_file: "{{ step_ca.root_cert_path }}"
       cert_file: "/etc/prometheus/certs/nomad-client.crt"
       key_file: "/etc/prometheus/certs/nomad-client.key"
+    relabel_configs:
+      - source_labels: [instance]
+        target_label: instance
+        regex: '([^:]+):\d+'
+        replacement: '${1}'
+  - job_name: 'consul'
+    metrics_path: '/v1/agent/metrics'
+    params:
+      format: ['prometheus']
+    static_configs:
+      - targets:
+          - "{{ groups['consul_server'][0] }}:8500"  # bettley (server)
+          - "{{ groups['consul_server'][1] }}:8500"  # cargyll (server)
+          - "{{ groups['consul_server'][2] }}:8500"  # dalt (server)
+    scheme: 'http'
+    relabel_configs:
+      - source_labels: [instance]
+        target_label: instance
+        regex: '([^:]+):\d+'
+        replacement: '${1}'
+  - job_name: 'vault'
+    metrics_path: '/v1/sys/metrics'
+    params:
+      format: ['prometheus']
+    static_configs:
+      - targets:
+          - "{{ groups['vault'][0] }}:8200"  # bettley (server)
+          - "{{ groups['vault'][1] }}:8200"  # cargyll (server)
+          - "{{ groups['vault'][2] }}:8200"  # dalt (server)
+    scheme: 'https'
+    tls_config:
+      ca_file: "{{ step_ca.root_cert_path }}"
     relabel_configs:
       - source_labels: [instance]
         target_label: instance

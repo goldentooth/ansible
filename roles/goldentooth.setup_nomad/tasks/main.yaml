@@ -67,25 +67,13 @@
   notify:
     - 'Restart Nomad service.'
 
-- name: 'Set Nomad environment variables in ~/.bashrc.'
-  ansible.builtin.lineinfile:
-    path: '~/.bashrc'
-    regexp: "^export {{ variable.name }}"
-    line: "export {{ variable.name }}={{ variable.value}}"
+- name: 'Set Nomad environment variables system-wide.'
+  ansible.builtin.template:
+    src: 'nomad-env.sh.j2'
+    dest: '/etc/profile.d/nomad-env.sh'
     owner: 'root'
     group: 'root'
     mode: '0644'
-  loop:
-    - name: 'NOMAD_ADDR'
-      value: "https://{{ ipv4_address }}:4646"
-    - name: 'NOMAD_CACERT'
-      value: "{{ step_ca.root_cert_path }}"
-    - name: 'NOMAD_CLIENT_CERT'
-      value: "{{ nomad.cli_cert_path }}"
-    - name: 'NOMAD_CLIENT_KEY'
-      value: "{{ nomad.cli_key_path }}"
-  loop_control:
-    loop_var: 'variable'
 
 - name: 'Ensure Nomad service directory exists.'
   ansible.builtin.file:
@@ -133,9 +121,9 @@
   notify:
     - 'Trigger systemd daemon-reload.'
 
-- name: 'Add Nomad-relevant line in ~/.bashrc.'
+- name: 'Add Nomad bash completion system-wide.'
   ansible.builtin.lineinfile:
-    path: '~/.bashrc'
+    path: '/etc/profile.d/nomad-env.sh'
     line: 'complete -C /usr/bin/nomad nomad'
-    regexp: '^complete -C \/usr\/bin\/nomad nomad'
+    regexp: '^complete -C .*nomad nomad'
     state: 'present'

@@ -51,23 +51,13 @@
   notify:
     - 'Restart Vault service.'
 
-- name: 'Set Vault environment variables in ~/.bashrc.'
-  ansible.builtin.lineinfile:
-    path: '~/.bashrc'
-    regexp: "^export {{ variable.name }}"
-    line: "export {{ variable.name }}={{ variable.value}}"
+- name: 'Set Vault environment variables system-wide.'
+  ansible.builtin.template:
+    src: 'vault-env.sh.j2'
+    dest: '/etc/profile.d/vault-env.sh'
     owner: 'root'
     group: 'root'
     mode: '0644'
-  loop:
-    - name: 'VAULT_ADDR'
-      value: "https://{{ ipv4_address }}:8200"
-    - name: 'VAULT_CLIENT_CERT'
-      value: "{{ vault.cert_path }}"
-    - name: 'VAULT_CLIENT_KEY'
-      value: "{{ vault.key_path }}"
-  loop_control:
-    loop_var: 'variable'
 
 - name: 'Ensure Vault service directory exists.'
   ansible.builtin.file:

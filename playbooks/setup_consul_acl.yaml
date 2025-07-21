@@ -1,10 +1,10 @@
-# Description: Bootstrap Consul ACL.
+# Description: Setup Consul ACL policies and tokens.
 
-- name: 'Bootstrap Consul ACL.'
+- name: 'Setup Consul ACL policies and tokens.'
   hosts: 'consul'
   remote_user: 'root'
   roles:
-    - { role: 'goldentooth.bootstrap_consul_acl' }
+    - { role: 'goldentooth.setup_consul_acl' }
   handlers:
     - name: 'Restart Consul service.'
       ansible.builtin.systemd_service:

@@ -1,16 +1,4 @@
 ---
-- name: 'Remove any existing gossip key.'
-  ansible.builtin.file:
-    path: "{{ consul.opt_path }}/serf/local.keyring"
-    state: 'absent'
-
-- name: 'Generate the gossip encryption key.'
-  ansible.builtin.command:
-    cmd: 'consul keygen'
-  no_log: true
-  run_once: true
-  register: 'gossip_key'
-
 - name: 'Setup Consul on server nodes.'
   block:
 
@@ -58,18 +46,10 @@
 - name: 'Update configuration for all nodes.'
   ansible.builtin.include_tasks: 'update_config.yaml'
 
-- name: 'Set Consul environment variables in ~/.bashrc.'
-  ansible.builtin.lineinfile:
-    path: '~/.bashrc'
-    regexp: "^export {{ variable.name }}"
-    line: "export {{ variable.name }}={{ variable.value }}"
+- name: 'Set Consul environment variables system-wide.'
+  ansible.builtin.template:
+    src: 'consul-env.sh.j2'
+    dest: '/etc/profile.d/consul-env.sh'
     owner: 'root'
     group: 'root'
     mode: '0644'
-  loop:
-    - name: 'CONSUL_HTTP_ADDR'
-      value: "http://{{ ipv4_address }}:8500"
-    - name: 'CONSUL_HTTP_TOKEN'
-      value: "{{ consul_agent_token }}"
-  loop_control:
-    loop_var: 'variable'
