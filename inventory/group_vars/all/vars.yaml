@@ -697,17 +697,83 @@ prometheus_scrape_configs:
     scheme: 'https'
     tls_config:
       ca_file: "{{ step_ca.root_cert_path }}"
-# Temporarily removed blackbox configs to debug
-  - job_name: 'unknown'
-    file_sd_configs:
-      - files:
-          - "/etc/prometheus/file_sd/*.yaml"
-          - "/etc/prometheus/file_sd/*.json"
+  - job_name: 'nomad'
+    metrics_path: '/v1/metrics'
+    params:
+      format: ['prometheus']
+    static_configs:
+      - targets:
+          - "10.4.0.11:4646"  # bettley (server)
+          - "10.4.0.12:4646"  # cargyll (server)
+          - "10.4.0.13:4646"  # dalt (server)
+          - "10.4.0.14:4646"  # erenford (client)
+          - "10.4.0.15:4646"  # fenn (client)
+          - "10.4.0.16:4646"  # gardener (client)
+          - "10.4.0.17:4646"  # harlton (client)
+          - "10.4.0.18:4646"  # inchfield (client)
+          - "10.4.0.19:4646"  # jast (client)
+          - "10.4.0.20:4646"  # karstark (client)
+          - "10.4.0.21:4646"  # lipps (client)
+          - "10.4.0.30:4646"  # velaryon (client)
+    scheme: 'https'
+    tls_config:
+      ca_file: "{{ step_ca.root_cert_path }}"
+      cert_file: "/etc/prometheus/certs/nomad-client.crt"
+      key_file: "/etc/prometheus/certs/nomad-client.key"
     relabel_configs:
       - source_labels: [instance]
         target_label: instance
         regex: '([^:]+):\d+'
         replacement: '${1}'
+# Blackbox exporter jobs
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    file_sd_configs:
+      - files:
+          - "/etc/prometheus/file_sd/blackbox_targets.yaml"
+    relabel_configs:
+      # Use the target URL as the __param_target for blackbox exporter
+      - source_labels: [__address__]
+        target_label: __param_target
+      # Set the actual target to the blackbox exporter
+      - target_label: __address__
+        replacement: '{{ groups["prometheus"] | first }}:{{ blackbox_exporter_port }}'
+      # Preserve the original target as instance label
+      - source_labels: [__param_target]
+        target_label: instance
+      # Map job labels to correct blackbox modules
+      - source_labels: [job]
+        target_label: __param_module
+        regex: 'blackbox-http$'
+        replacement: 'http_2xx'
+      - source_labels: [job]
+        target_label: __param_module
+        regex: 'blackbox-https-internal'
+        replacement: 'https_2xx_internal'
+      - source_labels: [job]
+        target_label: __param_module
+        regex: 'blackbox-https-external'
+        replacement: 'https_2xx_external'
+      - source_labels: [job]
+        target_label: __param_module
+        regex: 'blackbox-tcp'
+        replacement: 'tcp_connect'
+      - source_labels: [job]
+        target_label: __param_module
+        regex: 'blackbox-dns'
+        replacement: 'dns_query'
+      - source_labels: [job]
+        target_label: __param_module
+        regex: 'blackbox-icmp'
+        replacement: 'icmp_ping'
+      - source_labels: [job]
+        target_label: __param_module
+        regex: 'blackbox-http-auth'
+        replacement: 'http_2xx_auth'
+      - source_labels: [job]
+        target_label: __param_module
+        regex: 'blackbox-api'
+        replacement: 'https_api_2xx'
 
 # List of folders where ansible will look for files containing custom scrape
 # config configuration files which will be copied to

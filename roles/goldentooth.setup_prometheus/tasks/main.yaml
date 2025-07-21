@@ -1,4 +1,43 @@
 ---
+- name: 'Ensure directory for Prometheus client certificates exists.'
+  ansible.builtin.file:
+    path: "/etc/prometheus/certs"
+    state: 'directory'
+    owner: 'prometheus'
+    group: 'prometheus'
+    mode: '0755'
+
+- name: 'Generate Prometheus client certificate for Nomad metrics.'
+  ansible.builtin.shell:
+    cmd: |
+      {{ step_ca.executable }} \
+        ca certificate \
+        "prometheus.client.nomad" \
+        "/etc/prometheus/certs/nomad-client.crt" \
+        "/etc/prometheus/certs/nomad-client.key" \
+        --provisioner="{{ step_ca.default_provisioner.name }}" \
+        --password-file="{{ step_ca.default_provisioner.password_path }}" \
+        --san="prometheus.client.nomad" \
+        --san="prometheus" \
+        --san="{{ clean_hostname }}" \
+        --san="{{ ipv4_address }}" \
+        --not-after='24h' \
+        --console \
+        --force
+  notify:
+    - 'Restart Prometheus.'
+
+- name: 'Fix permissions on Prometheus client certificates.'
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: 'file'
+    owner: 'prometheus'
+    group: 'prometheus'
+    mode: '0600'
+  loop:
+    - "/etc/prometheus/certs/nomad-client.crt"
+    - "/etc/prometheus/certs/nomad-client.key"
+
 - name: 'Render default target configs.'
   ansible.builtin.template:
     src: "{{ filename }}.j2"
