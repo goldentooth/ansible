@@ -4,30 +4,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ## Overview
 
-This role bootstraps the cluster Certificate Authority (CA) system with automated certificate renewal capabilities. It sets up systemd services and timers for automatic certificate renewal across the cluster.
+This role performs the initial bootstrapping of the cluster Certificate Authority (CA) system. It connects nodes to the Step-CA server and sets up the basic client configuration needed to interact with the cluster CA.
 
 ## Purpose
 
-- Install systemd service and timer templates for certificate renewal
-- Configure automated certificate renewal system
-- Enable certificate renewal timers on appropriate nodes
+- Bootstrap Step-CA client configuration on cluster nodes
+- Retrieve CA server information and fingerprint
+- Execute the initial `step ca bootstrap` command
+- Set up JWK provisioner password file for authentication
 
 ## Files
 
-- `files/cert-renewer@.service`: Systemd service template for certificate renewal
-- `files/cert-renewer@.timer`: Systemd timer template for automated renewal
-- `tasks/main.yaml`: Main task file
+- `tasks/main.yaml`: Main task file containing bootstrap tasks
 
 ## Key Features
 
-### Certificate Renewal System
-- Uses systemd templates for service management
-- Implements timer-based automatic renewal
-- Integrates with Step-CA for certificate issuance
-- Supports per-service certificate renewal
+### Initial CA Bootstrap
+- Retrieves CA server configuration from the Step-CA server
+- Executes `step ca bootstrap` to initialize client configuration
+- Sets up provisioner credentials for certificate requests
 
-### Service Template Pattern
-The role uses systemd template units (`@` syntax) to create reusable certificate renewal services that can be instantiated for different services (e.g., `cert-renewer@consul.service`).
+### One-Time Operation
+This role should only be run once during initial cluster setup. Subsequent CA-related operations should use `goldentooth.setup_cluster_ca` or service-specific certificate rotation roles.
 
 ## Dependencies
 

@@ -1,0 +1,13 @@
+# Description: Setup cluster Certificate Authority (CA) components and certificate renewal.
+
+- name: 'Setup cluster Certificate Authority (CA) components.'
+  hosts: 'all'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.setup_cluster_ca' }
+  handlers:
+    - name: 'Restart Consul service.'
+      ansible.builtin.systemd_service:
+        name: 'consul'
+        state: 'restarted'
+        enabled: true

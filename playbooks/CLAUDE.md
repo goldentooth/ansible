@@ -16,7 +16,8 @@ This directory contains Ansible playbooks that define the high-level orchestrati
 
 ### Certificate Authority
 - `init_cluster_ca.yaml`: Initialize Root and Intermediate Certificate Authorities
-- `bootstrap_cluster_ca.yaml`: Bootstrap cluster CA with automated certificate renewal
+- `bootstrap_cluster_ca.yaml`: Bootstrap cluster CA client configuration (one-time setup)
+- `setup_cluster_ca.yaml`: Setup cluster CA components and certificate renewal system
 - `zap_cluster_ca.yaml`: Delete the old cluster Certificate Authority
 
 ### Kubernetes Operations

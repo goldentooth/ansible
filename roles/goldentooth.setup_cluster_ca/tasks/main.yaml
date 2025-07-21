@@ -1,0 +1,49 @@
+---
+# This file was inspired by Max Hoesel's Ansible collection for Smallstep.
+# See https://github.com/maxhoesel-ansible/ansible-collection-smallstep
+
+- name: 'Retrieve current cluster CA information from CA server.'
+  ansible.builtin.slurp:
+    src: "{{ step_ca.ca.defaults_config_file_path }}"
+  register: 'step_ca_defaults_file_base64'
+  delegate_to: "{{ step_ca.server }}"
+
+- name: 'Set cluster CA defaults.'
+  ansible.builtin.set_fact:
+    step_ca_defaults: "{{ step_ca_defaults_file_base64.content | b64decode | from_json }}"
+
+- name: 'Set cluster CA information.'
+  ansible.builtin.set_fact:
+    step_ca_url: "{{ step_ca_defaults['ca-url'] }}"
+    step_ca_fingerprint: "{{ step_ca_defaults['fingerprint'] }}"
+
+- name: 'Retrieve current Step-CA certificate.'
+  ansible.builtin.slurp:
+    src: "{{ step_ca.ca.root_cert_path }}"
+  register: 'step_ca_cert_file_base64'
+  delegate_to: "{{ step_ca.server }}"
+
+- name: 'Write Step-CA certificate to shared certificates path.'
+  ansible.builtin.copy:
+    content: "{{ step_ca_cert_file_base64.content | b64decode }}"
+    dest: "{{ step_ca.shared_cert_path }}"
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+
+- name: 'Run update-ca-certificates.'
+  ansible.builtin.command:
+    cmd: 'update-ca-certificates'
+  changed_when: false
+
+- name: 'Copy cert-renewer service template.'
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/cert-renewer@.service"
+    dest: '/etc/systemd/system/cert-renewer@.service'
+    mode: '0644'
+
+- name: 'Copy cert-renewer timer template.'
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/cert-renewer@.timer"
+    dest: '/etc/systemd/system/cert-renewer@.timer'
+    mode: '0644'

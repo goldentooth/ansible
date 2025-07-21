@@ -74,8 +74,11 @@ goldentooth setup_envoy
 
 ### Certificate Management
 ```bash
-# Bootstrap cluster CA
+# Bootstrap cluster CA (one-time initial setup)
 goldentooth bootstrap_cluster_ca
+
+# Setup cluster CA components and certificate renewal
+goldentooth setup_cluster_ca
 
 # Initialize Root and Intermediate CAs
 goldentooth init_cluster_ca
