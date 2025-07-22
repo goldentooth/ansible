@@ -1,0 +1,94 @@
+---
+- name: Initialize test results
+  set_fact:
+    k8s_tests: []
+    k8s_health: false
+
+- name: Check if node is in Kubernetes cluster
+  stat:
+    path: /etc/kubernetes/admin.conf
+  register: k8s_config
+
+- name: Get Kubernetes node status
+  command: kubectl get nodes -o json
+  register: k8s_nodes_raw
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  when: 
+    - k8s_config.stat.exists
+    - inventory_hostname in groups['k8s_control_plane']
+  changed_when: false
+  ignore_errors: yes
+
+- name: Parse node information
+  set_fact:
+    k8s_nodes: "{{ k8s_nodes_raw.stdout | from_json }}"
+  when: k8s_nodes_raw is succeeded
+
+- name: Count ready nodes
+  set_fact:
+    k8s_ready_nodes: "{{ k8s_nodes.items | selectattr('status.conditions', 'defined') | map(attribute='status.conditions') | map('selectattr', 'type', 'equalto', 'Ready') | map('selectattr', 'status', 'equalto', 'True') | list | length }}"
+    k8s_node_count: "{{ k8s_nodes.items | length }}"
+  when: k8s_nodes is defined
+
+- name: Record node readiness test
+  set_fact:
+    k8s_tests: "{{ k8s_tests + [{'name': 'k8s_all_nodes_ready', 'category': 'kubernetes', 'success': (k8s_ready_nodes == k8s_node_count) | bool, 'duration': 0.5}] }}"
+  when: k8s_ready_nodes is defined
+
+- name: Check API server health
+  uri:
+    url: "https://{{ ansible_default_ipv4.address }}:6443/healthz"
+    validate_certs: no
+    timeout: 5
+  register: k8s_api
+  when: inventory_hostname in groups['k8s_control_plane']
+  ignore_errors: yes
+
+- name: Record API health test
+  set_fact:
+    k8s_tests: "{{ k8s_tests + [{'name': 'k8s_api_healthy', 'category': 'kubernetes', 'success': (k8s_api.status == 200 and k8s_api.content == 'ok') | bool, 'duration': 0.2}] }}"
+  when: k8s_api is defined
+
+- name: Check kubelet service
+  systemd:
+    name: kubelet
+  register: kubelet_service
+  when: inventory_hostname in groups['k8s']
+  ignore_errors: yes
+
+- name: Record kubelet test
+  set_fact:
+    k8s_tests: "{{ k8s_tests + [{'name': 'kubelet_service_running', 'category': 'kubernetes', 'success': (kubelet_service.status.ActiveState == 'active') | bool, 'duration': 0.1}] }}"
+  when: kubelet_service is defined
+
+- name: Check core pods
+  command: kubectl get pods -n kube-system -o json
+  register: system_pods_raw
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  when: 
+    - k8s_config.stat.exists
+    - inventory_hostname in groups['k8s_control_plane']
+  changed_when: false
+  ignore_errors: yes
+
+- name: Analyze system pods
+  set_fact:
+    running_system_pods: "{{ system_pods_raw.stdout | from_json | json_query('items[?status.phase==`Running`]') | length }}"
+    total_system_pods: "{{ system_pods_raw.stdout | from_json | json_query('items') | length }}"
+  when: system_pods_raw is succeeded
+
+- name: Record system pods test
+  set_fact:
+    k8s_tests: "{{ k8s_tests + [{'name': 'k8s_system_pods_healthy', 'category': 'kubernetes', 'success': (running_system_pods == total_system_pods) | bool, 'duration': 0.3}] }}"
+  when: running_system_pods is defined
+
+- name: Determine overall Kubernetes health
+  set_fact:
+    k8s_health: "{{ k8s_tests | selectattr('success', 'equalto', false) | list | length == 0 }}"
+
+- name: Export test results
+  set_fact:
+    test_results: "{{ (test_results | default([])) + k8s_tests }}"
+    service_health: "{{ (service_health | default({})) | combine({'kubernetes': k8s_health}) }}"

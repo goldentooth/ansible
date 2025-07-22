@@ -1,0 +1,48 @@
+---
+- name: Run system resource tests
+  hosts: all
+  gather_facts: yes
+  
+  tasks:
+    - name: Clear previous test results
+      set_fact:
+        test_results: []
+        service_health: {}
+        certificate_status: []
+        resource_usage: {}
+        
+    - name: Get system resource usage
+      include_role:
+        name: test_system_resources
+        
+    - name: Debug test results
+      debug:
+        var: test_results
+        
+    - name: Create metrics directory
+      file:
+        path: /var/lib/node_exporter/textfile_collector
+        state: directory
+        mode: '0755'
+        owner: nobody
+        group: nogroup
+      become: yes
+      
+    - name: Write Prometheus metrics
+      template:
+        src: ../templates/goldentooth_metrics.prom.j2
+        dest: /var/lib/node_exporter/textfile_collector/goldentooth-tests.prom
+        mode: '0644'
+        owner: nobody
+        group: nogroup
+      become: yes
+      
+    - name: Show metrics file content
+      command: cat /var/lib/node_exporter/textfile_collector/goldentooth-tests.prom
+      register: metrics_content
+      become: yes
+      changed_when: false
+      
+    - name: Display metrics
+      debug:
+        var: metrics_content.stdout_lines

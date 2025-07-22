@@ -1,0 +1,43 @@
+---
+- name: Get CPU usage
+  shell: |
+    top -bn1 | grep "Cpu(s)" | sed "s/.*, *\([0-9.]*\)%* id.*/\1/" | awk '{print 100 - $1}'
+  register: cpu_usage_raw
+  changed_when: false
+
+- name: Get memory usage
+  shell: |
+    free | grep Mem | awk '{print ($2-$7)/$2 * 100.0}'
+  register: mem_usage_raw
+  changed_when: false
+
+- name: Get disk usage
+  shell: |
+    df -h / | tail -1 | awk '{print $5}' | sed 's/%//'
+  register: disk_usage_raw
+  changed_when: false
+
+- name: Set resource usage facts
+  set_fact:
+    resource_usage:
+      cpu: "{{ cpu_usage_raw.stdout | float | round(2) }}"
+      memory: "{{ mem_usage_raw.stdout | float | round(2) }}"
+      disk: "{{ disk_usage_raw.stdout | float | round(2) }}"
+
+- name: Check system load
+  command: uptime
+  register: uptime_raw
+  changed_when: false
+
+- name: Parse load average
+  set_fact:
+    load_average: "{{ uptime_raw.stdout | regex_search('load average: ([0-9.]+)', '\\1') | first }}"
+
+- name: Record resource tests
+  set_fact:
+    test_results: "{{ test_results + [
+      {'name': 'cpu_usage_ok', 'category': 'system', 'success': (resource_usage.cpu | float < 90) | bool, 'duration': 0.1},
+      {'name': 'memory_usage_ok', 'category': 'system', 'success': (resource_usage.memory | float < 90) | bool, 'duration': 0.1},
+      {'name': 'disk_usage_ok', 'category': 'system', 'success': (resource_usage.disk | float < 85) | bool, 'duration': 0.1},
+      {'name': 'load_average_ok', 'category': 'system', 'success': (load_average | float < ansible_processor_vcpus * 2) | bool, 'duration': 0.1}
+    ] }}"

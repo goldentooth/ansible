@@ -1,0 +1,99 @@
+---
+- name: Run all Goldentooth cluster tests
+  hosts: all
+  gather_facts: yes
+  serial: "{{ test_batch_size | default('25%') }}"
+  
+  tasks:
+    - name: Clear previous test results
+      set_fact:
+        test_results: []
+        service_health: {}
+        certificate_status: []
+        
+    - name: Get system resource usage
+      include_role:
+        name: test_system_resources
+      tags: [always]
+      
+    - name: Test Consul
+      include_role:
+        name: test_consul
+      when: inventory_hostname in groups['consul']
+      tags: [consul, hashicorp]
+      
+    - name: Test Vault
+      include_role:
+        name: test_vault
+      when: inventory_hostname in groups['vault']
+      tags: [vault, hashicorp]
+      
+    - name: Test Kubernetes
+      include_role:
+        name: test_kubernetes
+      when: inventory_hostname in groups['k8s']
+      tags: [kubernetes, k8s]
+      
+    - name: Test Prometheus
+      include_role:
+        name: test_prometheus
+      when: inventory_hostname in groups['prometheus']
+      tags: [prometheus, observability]
+      
+    - name: Test Grafana
+      include_role:
+        name: test_grafana
+      when: inventory_hostname in groups['grafana']
+      tags: [grafana, observability]
+      
+    - name: Test storage services
+      include_role:
+        name: test_storage
+      tags: [storage]
+      
+    - name: Create metrics directory
+      file:
+        path: /var/lib/node_exporter/textfile_collector
+        state: directory
+        mode: '0755'
+        owner: nobody
+        group: nogroup
+      become: yes
+      
+    - name: Debug test results
+      debug:
+        var: test_results
+      when: test_results is defined
+      
+    - name: Write Prometheus metrics
+      template:
+        src: ../templates/goldentooth_metrics.prom.j2
+        dest: /var/lib/node_exporter/textfile_collector/goldentooth-tests.prom
+        mode: '0644'
+        owner: nobody
+        group: nogroup
+      become: yes
+      when: 
+        - test_results is defined
+        - test_results | length > 0
+      
+    - name: Ensure metrics are picked up
+      file:
+        path: /var/lib/node_exporter/textfile_collector/goldentooth-tests.prom
+        modification_time: preserve
+        access_time: now
+        state: touch
+      become: yes
+      when: test_results | length > 0
+
+- name: Aggregate test results
+  hosts: localhost
+  gather_facts: no
+  
+  tasks:
+    - name: Display test summary
+      debug:
+        msg: |
+          Test Summary:
+          Total nodes tested: {{ groups['all'] | length }}
+          Test execution completed at: {{ ansible_date_time.iso8601 }}

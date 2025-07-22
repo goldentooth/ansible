@@ -1,0 +1,78 @@
+---
+- name: Initialize test results
+  set_fact:
+    vault_tests: []
+    vault_health: false
+
+- name: Check Vault service status
+  systemd:
+    name: vault
+  register: vault_service
+  ignore_errors: yes
+
+- name: Record Vault service test
+  set_fact:
+    vault_tests: "{{ vault_tests + [{'name': 'vault_service_running', 'category': 'vault', 'success': (vault_service.status.ActiveState == 'active') | bool, 'duration': 0.1}] }}"
+
+- name: Check Vault seal status
+  uri:
+    url: "https://{{ ansible_default_ipv4.address }}:8200/v1/sys/seal-status"
+    validate_certs: no
+    timeout: 5
+  register: vault_seal
+  ignore_errors: yes
+  when: vault_service.status.ActiveState == "active"
+
+- name: Record seal status test
+  set_fact:
+    vault_tests: "{{ vault_tests + [{'name': 'vault_unsealed', 'category': 'vault', 'success': (vault_seal.json.sealed == false) | bool, 'duration': 0.2}] }}"
+  when: vault_seal is succeeded
+
+- name: Check Vault health
+  uri:
+    url: "https://{{ ansible_default_ipv4.address }}:8200/v1/sys/health"
+    validate_certs: no
+    timeout: 5
+    status_code: [200, 429, 473, 501, 503]
+  register: vault_health_check
+  ignore_errors: yes
+  when: vault_service.status.ActiveState == "active"
+
+- name: Record health check test
+  set_fact:
+    vault_tests: "{{ vault_tests + [{'name': 'vault_health_ok', 'category': 'vault', 'success': (vault_health_check.status == 200) | bool, 'duration': 0.2}] }}"
+  when: vault_health_check is defined
+
+- name: Check Vault certificate
+  stat:
+    path: /etc/vault.d/tls/vault-ca.pem
+  register: vault_ca_cert
+
+- name: Get certificate expiration
+  shell: |
+    openssl x509 -in /etc/vault.d/tls/vault-ca.pem -noout -enddate | cut -d= -f2 | xargs -I {} date -d {} +%s
+  register: vault_cert_expiry_epoch
+  when: vault_ca_cert.stat.exists
+  changed_when: false
+
+- name: Calculate days until expiry
+  set_fact:
+    vault_cert_days: "{{ ((vault_cert_expiry_epoch.stdout | default('0') | int - ansible_date_time.epoch | int) / 86400) | int }}"
+  when: 
+    - vault_cert_expiry_epoch is defined
+    - vault_cert_expiry_epoch is succeeded
+    - vault_cert_expiry_epoch.stdout is defined
+
+- name: Record certificate test
+  set_fact:
+    vault_tests: "{{ vault_tests + [{'name': 'vault_certificate_valid', 'category': 'vault', 'success': (vault_cert_days | int > 30) | bool, 'duration': 0.1}] }}"
+    certificate_status: "{{ (certificate_status | default([])) + [{'service': 'vault', 'days_remaining': vault_cert_days | default(0)}] }}"
+
+- name: Determine overall Vault health
+  set_fact:
+    vault_health: "{{ vault_tests | selectattr('success', 'equalto', false) | list | length == 0 }}"
+
+- name: Export test results
+  set_fact:
+    test_results: "{{ (test_results | default([])) + vault_tests }}"
+    service_health: "{{ (service_health | default({})) | combine({'vault': vault_health}) }}"

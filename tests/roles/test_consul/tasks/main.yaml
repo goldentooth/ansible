@@ -1,0 +1,90 @@
+---
+- name: Initialize test results
+  set_fact:
+    consul_tests: []
+    consul_health: false
+    consul_cert_days: 0
+
+- name: Check Consul service status
+  systemd:
+    name: consul
+  register: consul_service
+  ignore_errors: yes
+
+- name: Record Consul service test
+  set_fact:
+    consul_tests: "{{ consul_tests + [{'name': 'consul_service_running', 'category': 'consul', 'success': (consul_service.status.ActiveState == 'active') | bool, 'duration': 0.1}] }}"
+
+- name: Check Consul members
+  command: consul members -status=alive
+  register: consul_members_raw
+  changed_when: false
+  ignore_errors: yes
+  when: consul_service.status.ActiveState == "active"
+
+- name: Count Consul members
+  set_fact:
+    consul_member_count: "{{ consul_members_raw.stdout_lines | length - 1 }}"
+  when: consul_members_raw is succeeded
+
+- name: Verify expected Consul nodes
+  set_fact:
+    consul_members_test:
+      name: "consul_all_members_present"
+      category: "consul"
+      success: "{{ (consul_member_count | int) == (groups['consul'] | length) }}"
+      duration: 0.2
+  when: consul_member_count is defined
+
+- name: Add member count test
+  set_fact:
+    consul_tests: "{{ consul_tests + [consul_members_test] }}"
+  when: consul_members_test is defined
+
+- name: Check Consul certificate
+  stat:
+    path: /etc/consul.d/tls/consul-agent-ca.pem
+  register: consul_ca_cert
+
+- name: Get certificate expiration
+  shell: |
+    openssl x509 -in /etc/consul.d/tls/consul-agent-ca.pem -noout -enddate | cut -d= -f2 | xargs -I {} date -d {} +%s
+  register: cert_expiry_epoch
+  when: consul_ca_cert.stat.exists
+  changed_when: false
+
+- name: Calculate days until expiry
+  set_fact:
+    consul_cert_days: "{{ ((cert_expiry_epoch.stdout | default('0') | int - ansible_date_time.epoch | int) / 86400) | int }}"
+  when: 
+    - cert_expiry_epoch is defined
+    - cert_expiry_epoch is succeeded
+    - cert_expiry_epoch.stdout is defined
+
+- name: Record certificate test
+  set_fact:
+    consul_tests: "{{ consul_tests + [{'name': 'consul_certificate_valid', 'category': 'consul', 'success': (consul_cert_days | int > 30) | bool, 'duration': 0.1}] }}"
+
+- name: Check Consul API health
+  uri:
+    url: "https://127.0.0.1:8501/v1/status/leader"
+    validate_certs: no
+    timeout: 5
+  register: consul_api
+  ignore_errors: yes
+  when: consul_service.status.ActiveState == "active"
+
+- name: Record API test
+  set_fact:
+    consul_tests: "{{ consul_tests + [{'name': 'consul_api_responding', 'category': 'consul', 'success': (consul_api.status == 200) | bool, 'duration': 0.3}] }}"
+  when: consul_api is defined
+
+- name: Determine overall Consul health
+  set_fact:
+    consul_health: "{{ consul_tests | selectattr('success', 'equalto', false) | list | length == 0 }}"
+
+- name: Export test results
+  set_fact:
+    test_results: "{{ (test_results | default([])) + consul_tests }}"
+    service_health: "{{ (service_health | default({})) | combine({'consul': consul_health}) }}"
+    certificate_status: "{{ (certificate_status | default([])) + [{'service': 'consul', 'days_remaining': consul_cert_days | int}] }}"

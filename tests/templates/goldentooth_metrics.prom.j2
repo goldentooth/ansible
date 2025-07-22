@@ -1,0 +1,44 @@
+# HELP goldentooth_test_success Test execution success (1=pass, 0=fail)
+# TYPE goldentooth_test_success gauge
+{% for test in test_results %}
+goldentooth_test_success{test="{{ test.name }}",category="{{ test.category }}",node="{{ inventory_hostname }}"} {{ test.success | int }}
+{% endfor %}
+
+# HELP goldentooth_test_duration_seconds Test execution duration
+# TYPE goldentooth_test_duration_seconds gauge
+{% for test in test_results %}
+goldentooth_test_duration_seconds{test="{{ test.name }}",category="{{ test.category }}",node="{{ inventory_hostname }}"} {{ test.duration }}
+{% endfor %}
+
+# HELP goldentooth_service_health Service health status (1=healthy, 0=unhealthy)
+# TYPE goldentooth_service_health gauge
+{% for service, health in service_health.items() %}
+goldentooth_service_health{service="{{ service }}",node="{{ inventory_hostname }}"} {{ health | int }}
+{% endfor %}
+
+# HELP goldentooth_certificate_expiry_days Days until certificate expiry
+# TYPE goldentooth_certificate_expiry_days gauge
+{% for cert in certificate_status %}
+goldentooth_certificate_expiry_days{service="{{ cert.service }}",node="{{ inventory_hostname }}"} {{ cert.days_remaining }}
+{% endfor %}
+
+# HELP goldentooth_cluster_member_count Number of members in cluster
+# TYPE goldentooth_cluster_member_count gauge
+{% if consul_member_count is defined %}
+goldentooth_cluster_member_count{service="consul"} {{ consul_member_count }}
+{% endif %}
+{% if k8s_node_count is defined %}
+goldentooth_cluster_member_count{service="kubernetes"} {{ k8s_node_count }}
+{% endif %}
+
+# HELP goldentooth_node_resource_usage Resource usage percentage
+# TYPE goldentooth_node_resource_usage gauge
+{% if resource_usage is defined %}
+goldentooth_node_resource_usage{resource="cpu",node="{{ inventory_hostname }}"} {{ resource_usage.cpu }}
+goldentooth_node_resource_usage{resource="memory",node="{{ inventory_hostname }}"} {{ resource_usage.memory }}
+goldentooth_node_resource_usage{resource="disk",node="{{ inventory_hostname }}"} {{ resource_usage.disk }}
+{% endif %}
+
+# HELP goldentooth_test_timestamp_seconds Unix timestamp of test execution
+# TYPE goldentooth_test_timestamp_seconds gauge
+goldentooth_test_timestamp_seconds{node="{{ inventory_hostname }}"} {{ ansible_date_time.epoch }}
