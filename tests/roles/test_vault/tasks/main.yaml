@@ -17,11 +17,14 @@
 - name: Check Vault seal status
   uri:
     url: "https://{{ ansible_default_ipv4.address }}:8200/v1/sys/seal-status"
+    client_cert: /opt/vault/tls/tls.crt
+    client_key: /opt/vault/tls/tls.key
     validate_certs: no
     timeout: 5
   register: vault_seal
   ignore_errors: yes
   when: vault_service.status.ActiveState == "active"
+  become: true
 
 - name: Record seal status test
   set_fact:
@@ -31,12 +34,15 @@
 - name: Check Vault health
   uri:
     url: "https://{{ ansible_default_ipv4.address }}:8200/v1/sys/health"
+    client_cert: /opt/vault/tls/tls.crt
+    client_key: /opt/vault/tls/tls.key
     validate_certs: no
     timeout: 5
     status_code: [200, 429, 473, 501, 503]
   register: vault_health_check
   ignore_errors: yes
   when: vault_service.status.ActiveState == "active"
+  become: true
 
 - name: Record health check test
   set_fact:
