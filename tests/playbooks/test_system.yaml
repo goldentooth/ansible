@@ -26,7 +26,7 @@
         mode: '0755'
         owner: nobody
         group: nogroup
-      become: yes
+      become: true
       
     - name: Write Prometheus metrics
       template:
@@ -35,12 +35,12 @@
         mode: '0644'
         owner: nobody
         group: nogroup
-      become: yes
+      become: true
       
     - name: Show metrics file content
       command: cat /var/lib/node_exporter/textfile_collector/goldentooth-tests.prom
       register: metrics_content
-      become: yes
+      become: true
       changed_when: false
       
     - name: Display metrics

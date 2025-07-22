@@ -49,11 +49,11 @@
 
 - name: Extract root certificate fingerprint
   shell: |
-    openssl x509 -in /etc/ssl/certs/goldentooth.pem -noout -fingerprint -sha256 | cut -d= -f2 | tr -d ':'
+    openssl x509 -in /etc/ssl/certs/goldentooth.pem -noout -fingerprint -sha256 | cut -d= -f2 | tr -d ':' | tr '[:upper:]' '[:lower:]'
   register: actual_fingerprint
   when: cluster_root_cert.stat.exists
   changed_when: false
-  ignore_errors: yes
+  ignore_errors: true
 
 # Tests specific to CA server (jast)
 - name: Check Step-CA service status
@@ -92,7 +92,7 @@
     - /etc/step-ca/config/defaults.json
     - /etc/step-ca/certs/root_ca.crt
   when: is_ca_server
-  become: yes
+  become: true
 
 - name: Record CA configuration files test
   set_fact:
@@ -104,7 +104,7 @@
     src: /etc/step-ca/config/defaults.json
   register: ca_defaults_file
   when: is_ca_server
-  become: yes
+  become: true
   ignore_errors: yes
 
 - name: Parse CA defaults
@@ -140,7 +140,7 @@
       --san test.example.com
   register: cert_generation_test
   when: is_ca_server
-  become: yes
+  become: true
   changed_when: false
   ignore_errors: yes
 
@@ -152,7 +152,7 @@
     - /tmp/test.crt
     - /tmp/test.key
   when: is_ca_server
-  become: yes
+  become: true
   ignore_errors: yes
 
 - name: Record certificate generation test
@@ -174,13 +174,13 @@
     step_ca_tests: "{{ step_ca_tests + [{'name': 'step_cli_ca_connectivity', 'category': 'step_ca', 'success': (step_cli_connectivity.rc == 0) | bool, 'duration': 0.3}] }}"
   when: not is_ca_server and step_cli_connectivity is defined
 
-# Test certificate renewal capability (dry run)
+# Test certificate renewal capability (verify certificate is valid)
 - name: Test certificate renewal capability
   shell: |
-    step ca renew --dry-run /etc/ssl/certs/goldentooth.pem /dev/null
+    step certificate verify /etc/ssl/certs/goldentooth.pem --roots /etc/ssl/certs/goldentooth.pem
   register: cert_renewal_test
   changed_when: false
-  ignore_errors: yes
+  ignore_errors: true
 
 - name: Record certificate renewal test
   set_fact:

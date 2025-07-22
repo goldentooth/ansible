@@ -1,0 +1,83 @@
+---
+- name: Calculate test summary
+  set_fact:
+    total_tests: "{{ test_results | length }}"
+    passed_tests: "{{ test_results | selectattr('success', 'equalto', true) | list | length }}"
+    failed_tests: "{{ test_results | selectattr('success', 'equalto', false) | list | length }}"
+
+- name: Calculate pass rate
+  set_fact:
+    pass_rate: "{{ ((passed_tests | int / total_tests | int) * 100) | round(1) if total_tests | int > 0 else 0 }}"
+
+- name: Collect failed test details
+  set_fact:
+    failed_test_details: "{{ test_results | selectattr('success', 'equalto', false) | list }}"
+
+- name: Display comprehensive test report
+  debug:
+    msg: |
+      
+      ═══════════════════════════════════════════════════════════════════════
+                            GOLDENTOOTH TEST REPORT
+      ═══════════════════════════════════════════════════════════════════════
+      Node: {{ inventory_hostname }}
+      Time: {{ ansible_date_time.iso8601 }}
+      
+      SUMMARY: {{ total_tests }} total │ {{ passed_tests }} passed │ {{ failed_tests }} failed │ {{ pass_rate }}% pass rate
+      
+      {% if failed_test_details | length > 0 %}
+      FAILED TESTS:
+      {% for test in failed_test_details %}
+      ❌ {{ test.name }} ({{ test.category }}) - {{ test.duration }}s
+      {% endfor %}
+      {% endif %}
+      
+      SERVICE HEALTH:
+      {% for service, health in (service_health | default({})).items() %}
+      {{ "✅" if health else "❌" }} {{ service.upper() }}: {{ "HEALTHY" if health else "UNHEALTHY" }}
+      {% endfor %}
+      
+      {% if certificate_status is defined and certificate_status | length > 0 %}
+      CERTIFICATE STATUS:
+      {% for cert in certificate_status %}
+      📜 {{ cert.service }}: {{ cert.days_remaining }} days remaining
+      {% endfor %}
+      {% endif %}
+      ═══════════════════════════════════════════════════════════════════════
+
+- name: Write JSON test report for parsing
+  copy:
+    content: |
+      {
+        "node": "{{ inventory_hostname }}",
+        "timestamp": "{{ ansible_date_time.iso8601 }}",
+        "summary": {
+          "total_tests": {{ total_tests }},
+          "passed_tests": {{ passed_tests }},
+          "failed_tests": {{ failed_tests }},
+          "pass_rate": {{ pass_rate }}
+        },
+        "failed_tests": {{ failed_test_details | to_json }},
+        "service_health": {{ service_health | default({}) | to_json }},
+        "certificate_status": {{ certificate_status | default([]) | to_json }}
+      }
+    dest: "/tmp/goldentooth-test-report-{{ inventory_hostname }}-{{ ansible_date_time.epoch }}.json"
+    mode: '0644'
+  become: true
+
+- name: Display debugging info for failed tests
+  debug:
+    msg: |
+      
+      🔧 DEBUGGING INFO:
+      
+      Detailed report: /tmp/goldentooth-test-report-{{ inventory_hostname }}-{{ ansible_date_time.epoch }}.json
+      
+      Check metrics: grep "{{ failed_test_details | map(attribute='name') | join('\\|') }}" /var/lib/node_exporter/textfile_collector/goldentooth-tests.prom
+      
+      Failed tests to investigate:
+      {% for test in failed_test_details %}
+      - {{ test.name }}: {{ test.category }} category
+      {% endfor %}
+      
+  when: failed_test_details | length > 0
