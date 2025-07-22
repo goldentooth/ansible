@@ -1,0 +1,7 @@
+# Description: Setup bash prompts.
+
+- name: 'Setup the Bash prompt.'
+  hosts: 'all'
+  roles:
+    - { role: 'goldentooth.setup_bash_prompt' }
+  remote_user: 'root'

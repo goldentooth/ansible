@@ -1,0 +1,21 @@
+---
+# Handlers for goldentooth.setup_mcp_server role
+
+- name: restart goldentooth-mcp
+  systemd:
+    name: "{{ mcp_server_service_name }}"
+    state: restarted
+    daemon_reload: true
+  become: true
+
+- name: reload systemd
+  systemd:
+    daemon_reload: true
+  become: true
+
+- name: start goldentooth-mcp
+  systemd:
+    name: "{{ mcp_server_service_name }}"
+    state: started
+    enabled: true
+  become: true

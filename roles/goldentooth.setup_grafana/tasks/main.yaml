@@ -138,3 +138,11 @@
   changed_when: false
   notify:
     - 'Restart Grafana service.'
+
+- name: 'Ensure Grafana database file has correct ownership.'
+  ansible.builtin.file:
+    path: '/var/lib/grafana/grafana.db'
+    owner: 'grafana'
+    group: 'grafana'
+    mode: '0640'
+  ignore_errors: true  # File may not exist on fresh installations

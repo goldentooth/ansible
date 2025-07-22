@@ -1,0 +1,23 @@
+---
+# Default variables for goldentooth.setup_mcp_server role
+
+# Service configuration
+mcp_server_user: mcp
+mcp_server_group: mcp
+mcp_server_install_dir: /usr/local/bin
+mcp_server_binary_name: goldentooth-mcp
+mcp_server_service_name: goldentooth-mcp
+
+# GitHub repository configuration
+mcp_server_github_repo: goldentooth/mcp-server
+mcp_server_github_api_url: "https://api.github.com/repos/{{ mcp_server_github_repo }}"
+
+# Service configuration
+mcp_server_log_level: info
+mcp_server_restart_policy: on-failure
+mcp_server_restart_delay: 5s
+mcp_server_memory_limit: 256M
+mcp_server_cpu_quota: 50%
+
+# Working directory
+mcp_server_working_dir: /var/lib/goldentooth-mcp

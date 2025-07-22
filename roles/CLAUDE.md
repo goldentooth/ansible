@@ -60,6 +60,9 @@ All custom roles follow the `goldentooth.*` naming convention:
 - `goldentooth.setup_vector`: Vector log shipping setup
 - `goldentooth.setup_node_homepages`: Node status pages
 
+#### Cluster Management
+- `goldentooth.setup_mcp_server`: Deploy and manage Goldentooth MCP server
+
 #### Storage & Networking
 - `goldentooth.setup_nfs_mounts`: NFS mount configuration
 - `goldentooth.setup_zfs`: ZFS storage setup

@@ -70,6 +70,7 @@ goldentooth setup_loki
 goldentooth setup_prometheus
 goldentooth setup_docker
 goldentooth setup_envoy
+goldentooth setup_mcp_server
 ```
 
 ### Certificate Management
