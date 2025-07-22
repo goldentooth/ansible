@@ -1,0 +1,15 @@
+service_prefix "" {
+  policy = "read"
+}
+
+service "authelia" {
+  policy = "write"
+}
+
+node_prefix "" {
+  policy = "read"
+}
+
+session_prefix "" {
+  policy = "read"
+}

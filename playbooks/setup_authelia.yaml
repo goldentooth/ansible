@@ -1,0 +1,19 @@
+---
+- name: Setup Authelia authentication server
+  hosts: "{{ target_hosts | default('authelia') }}"
+  become: yes
+  vars:
+  tasks:
+    - name: Include Authelia setup role
+      ansible.builtin.include_role:
+        name: goldentooth.setup_authelia
+      vars:
+        # Override defaults if needed
+        authelia_domain: "{{ goldentooth_domain | default('goldentooth.net') }}"
+        authelia_oidc_enabled: true
+        
+        # Generate secrets - using simple defaults for testing
+        authelia_jwt_secret: "thisisaverylongsecretkeythatshouldbeatleast64characterslongforjwt"
+        authelia_session_secret: "thisisaverylongsessionsecrethatshouldbeatleast64characterslong"
+        authelia_storage_encryption_key: "thisstorageencryptionkeyneedstobeatleast64characterslong"
+        authelia_oidc_hmac_secret: "thisisaverylongoidchmacsecrethatshouldbeatleast64characterslong"

@@ -1,0 +1,26 @@
+{
+  "Name": "authelia",
+  "ID": "authelia-{{ ansible_hostname }}",
+  "Address": "{{ ansible_default_ipv4.address }}",
+  "Port": {{ authelia_port }},
+  "Tags": [
+      "auth",
+      "oidc",
+      "sso",
+      "authentication",
+      "goldentooth"
+  ],
+  "Meta": {
+      "version": "{{ authelia_version }}",
+      "environment": "production", 
+      "domain": "{{ authelia_domain }}",
+      "service_type": "authentication",
+      "cluster": "goldentooth",
+      "hostname": "{{ ansible_hostname }}"
+  },
+  "Check": {
+    "HTTP": "http://localhost:{{ authelia_port }}/api/health",
+    "Interval": "30s",
+    "Timeout": "10s"
+  }
+}

@@ -89,6 +89,7 @@
       ansible.builtin.set_fact:
         consul_node_cli_token: "{{ node_cli_token_result.stdout | regex_search('SecretID:\\s+([a-f0-9\\-]+)', '\\1') | first }}"
 
+
   when: "inventory_hostname in groups['consul_server']"
   run_once: true
 

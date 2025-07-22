@@ -1,0 +1,41 @@
+---
+###############################################################
+#                         Users Database                      #
+###############################################################
+
+# This file can be used if you do not have an LDAP set up.
+
+# List of users
+users:
+  admin:
+    disabled: false
+    displayname: "Administrator"
+    password: "$argon2id$v=19$m=65536,t=3,p=4$BpLnfgDsc2WD8F2q$o/vzA4myCqZZ36bUGsDY//8mKUYNZZaR0t4MFFSs+iM"
+    email: admin@{{ authelia_domain }}
+    groups:
+      - admins
+      - users
+
+  # MCP service account for automated access
+  mcp-service:
+    disabled: false
+    displayname: "MCP Service Account"
+    password: "$argon2id$v=19$m=65536,t=3,p=4$Y2hhbmdlbWVwYXNzd29yZA$o/vzA4myCqZZ36bUGsDY//8mKUYNZZaR0t4MFFSs+iM"
+    email: mcp@{{ authelia_domain }}
+    groups:
+      - services
+      - api-access
+
+# Groups
+groups:
+  admins:
+    displayname: "Administrators"
+
+  users:
+    displayname: "Users"
+
+  services:
+    displayname: "Service Accounts"
+
+  api-access:
+    displayname: "API Access"

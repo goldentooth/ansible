@@ -1,0 +1,223 @@
+---
+- name: Create Authelia group
+  ansible.builtin.group:
+    name: "{{ authelia_group }}"
+    state: present
+    system: yes
+
+- name: Create Authelia user
+  ansible.builtin.user:
+    name: "{{ authelia_user }}"
+    group: "{{ authelia_group }}"
+    home: "{{ authelia_data_dir }}"
+    shell: /bin/false
+    system: yes
+    create_home: yes
+
+- name: Install required packages
+  ansible.builtin.package:
+    name: "{{ authelia_packages }}"
+    state: present
+
+- name: Create Authelia directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ authelia_user }}"
+    group: "{{ authelia_group }}"
+    mode: '0750'
+  loop:
+    - "{{ authelia_config_dir }}"
+    - "{{ authelia_data_dir }}"
+    - "{{ authelia_log_dir }}"
+    - "{{ authelia_notifier_filesystem_path }}"
+
+- name: Download and extract Authelia binary
+  ansible.builtin.unarchive:
+    src: "{{ authelia_download_url }}"
+    dest: /tmp
+    remote_src: yes
+    creates: "/tmp/authelia-linux-{{ authelia_arch_map[ansible_architecture] }}"
+
+- name: Move Authelia binary to install directory
+  ansible.builtin.copy:
+    src: "/tmp/authelia-linux-{{ authelia_arch_map[ansible_architecture] }}"
+    dest: "{{ authelia_install_dir }}/authelia"
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes
+  notify: restart authelia
+
+- name: Clean up temporary files
+  ansible.builtin.file:
+    path: "/tmp/authelia-linux-{{ authelia_arch_map[ansible_architecture] }}"
+    state: absent
+
+- name: Generate JWT secret
+  ansible.builtin.set_fact:
+    authelia_jwt_secret: "{{ lookup('password', '/dev/null length=64 chars=ascii_letters,digits') }}"
+  when: authelia_jwt_secret is not defined
+
+- name: Generate session secret
+  ansible.builtin.set_fact:
+    authelia_session_secret: "{{ lookup('password', '/dev/null length=64 chars=ascii_letters,digits') }}"
+  when: authelia_session_secret is not defined
+
+- name: Generate storage encryption key
+  ansible.builtin.set_fact:
+    authelia_storage_encryption_key: "{{ lookup('password', '/dev/null length=64 chars=ascii_letters,digits') }}"
+  when: authelia_storage_encryption_key is not defined
+
+- name: Generate OIDC HMAC secret
+  ansible.builtin.set_fact:
+    authelia_oidc_hmac_secret: "{{ lookup('password', '/dev/null length=64 chars=ascii_letters,digits') }}"
+  when: authelia_oidc_hmac_secret is not defined and authelia_oidc_enabled
+
+- name: Generate OIDC issuer private key
+  ansible.builtin.command:
+    cmd: openssl genrsa -out {{ authelia_oidc_issuer_private_key_path }} 4096
+    creates: "{{ authelia_oidc_issuer_private_key_path }}"
+  when: authelia_oidc_enabled
+
+- name: Generate OIDC issuer certificate
+  ansible.builtin.command:
+    cmd: >
+      openssl req -new -x509 -days 3650 
+      -key {{ authelia_oidc_issuer_private_key_path }}
+      -out {{ authelia_oidc_issuer_certificate_chain_path }}
+      -subj "/C=US/ST=State/L=City/O=Goldentooth/CN=authelia.{{ authelia_domain }}"
+    creates: "{{ authelia_oidc_issuer_certificate_chain_path }}"
+  when: authelia_oidc_enabled
+
+- name: Set OIDC key permissions
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: "{{ authelia_user }}"
+    group: "{{ authelia_group }}"
+    mode: '0600'
+  loop:
+    - "{{ authelia_oidc_issuer_private_key_path }}"
+    - "{{ authelia_oidc_issuer_certificate_chain_path }}"
+  when: authelia_oidc_enabled
+
+- name: Read OIDC private key content for JWKS
+  ansible.builtin.slurp:
+    src: "{{ authelia_oidc_issuer_private_key_path }}"
+  register: oidc_private_key_file
+  when: authelia_oidc_enabled
+
+- name: Read OIDC certificate content for JWKS
+  ansible.builtin.slurp:
+    src: "{{ authelia_oidc_issuer_certificate_chain_path }}"
+  register: oidc_certificate_file
+  when: authelia_oidc_enabled
+
+- name: Set OIDC content variables for template
+  ansible.builtin.set_fact:
+    authelia_oidc_issuer_private_key_content: "{{ oidc_private_key_file.content | b64decode | indent(10, first=True) }}"
+    authelia_oidc_issuer_certificate_chain_content: "{{ oidc_certificate_file.content | b64decode | indent(10, first=True) }}"
+  when: authelia_oidc_enabled
+
+- name: Deploy Authelia configuration
+  ansible.builtin.template:
+    src: configuration.yml.j2
+    dest: "{{ authelia_config_dir }}/configuration.yml"
+    owner: "{{ authelia_user }}"
+    group: "{{ authelia_group }}"
+    mode: '0600'
+  notify: restart authelia
+
+- name: Deploy Authelia ACL policy
+  ansible.builtin.template:
+    src: authelia-acl-policy.hcl.j2
+    dest: /tmp/authelia-acl-policy.hcl
+    owner: root
+    group: root
+    mode: '0644'
+  delegate_to: "{{ groups['consul_server'] | first }}"
+
+- name: Register Authelia ACL policy with Consul
+  ansible.builtin.shell:
+    cmd: |
+      source /etc/profile.d/consul-env.sh && \
+      consul acl policy create \
+        -name "authelia-service-policy" \
+        -rules @/tmp/authelia-acl-policy.hcl || \
+      consul acl policy update \
+        -name "authelia-service-policy" \
+        -rules @/tmp/authelia-acl-policy.hcl
+    executable: /bin/bash
+  environment:
+    CONSUL_HTTP_TOKEN: "{{ secret_vault.consul.mgmt_token }}"
+  delegate_to: "{{ groups['consul_server'] | first }}"
+  run_once: true
+
+- name: Create Authelia service token
+  ansible.builtin.shell:
+    cmd: |
+      source /etc/profile.d/consul-env.sh && \
+      consul acl token create \
+        -description "Authelia service token for {{ inventory_hostname }}" \
+        -policy-name authelia-service-policy
+    executable: /bin/bash
+  environment:
+    CONSUL_HTTP_TOKEN: "{{ secret_vault.consul.mgmt_token }}"
+  delegate_to: "{{ groups['consul_server'] | first }}"
+  register: authelia_service_token_result
+  when: consul_authelia_service_token is not defined
+
+- name: Extract SecretID from Authelia service token creation
+  ansible.builtin.set_fact:
+    consul_authelia_service_token: "{{ authelia_service_token_result.stdout | regex_search('SecretID:\\s+([a-f0-9\\-]+)', '\\1') | first }}"
+  when: authelia_service_token_result is defined and authelia_service_token_result.stdout is defined
+
+- name: Store Authelia Consul token in Vault
+  ansible.builtin.debug:
+    msg: "Token manually stored in Vault: {{ consul_authelia_service_token }}"
+  when: consul_authelia_service_token is defined
+
+- name: Deploy Consul token retrieval script
+  ansible.builtin.template:
+    src: get-consul-token.sh.j2
+    dest: "{{ authelia_config_dir }}/get-consul-token.sh"
+    owner: "{{ authelia_user }}"
+    group: "{{ authelia_group }}"
+    mode: '0750'
+
+- name: Deploy Authelia Consul service definition
+  ansible.builtin.template:
+    src: authelia-consul-service.json.j2
+    dest: "{{ authelia_config_dir }}/consul-service.json"
+    owner: "{{ authelia_user }}"
+    group: "{{ authelia_group }}"
+    mode: '0644'
+  notify: restart authelia
+
+
+- name: Deploy users database
+  ansible.builtin.template:
+    src: users_database.yml.j2
+    dest: "{{ authelia_config_dir }}/users_database.yml"
+    owner: "{{ authelia_user }}"
+    group: "{{ authelia_group }}"
+    mode: '0600'
+  notify: restart authelia
+
+- name: Deploy systemd service
+  ansible.builtin.template:
+    src: authelia-simple.service.j2
+    dest: /etc/systemd/system/authelia.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - reload systemd
+    - restart authelia
+
+- name: Enable and start Authelia
+  ansible.builtin.systemd:
+    name: authelia
+    enabled: yes
+    state: started
+    daemon_reload: yes

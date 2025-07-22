@@ -1,0 +1,41 @@
+{
+  "name": "{{ consul_service_name }}",
+    "id": "{{ consul_service_name }}-{{ ansible_hostname }}",
+    "address": "{{ ansible_default_ipv4.address }}",
+    "port": {{ consul_service_port }},
+    "tags": {{ consul_service_tags | default(['goldentooth']) | to_json }},
+    "meta": {
+      "version": "{{ consul_service_version | default('unknown') }}",
+      "environment": "{{ consul_service_environment | default('production') }}", 
+      "service_type": "{{ consul_service_type | default('application') }}",
+      "cluster": "goldentooth",
+      "hostname": "{{ ansible_hostname }}"
+    },
+    "checks": [
+{% if consul_service_health_http is defined %}
+      {
+        "id": "{{ consul_service_name }}-http-health",
+        "name": "{{ consul_service_name | title }} HTTP Health Check",
+        "http": "{{ consul_service_health_http }}",
+        "method": "GET",
+        "interval": "{{ consul_service_health_interval | default('30s') }}",
+        "timeout": "{{ consul_service_health_timeout | default('10s') }}",
+        "status": "passing",
+        "notes": "HTTP health check for {{ consul_service_name }}"
+      },
+{% endif %}
+      {
+        "id": "{{ consul_service_name }}-tcp-port",
+        "name": "{{ consul_service_name | title }} TCP Port Check",
+        "tcp": "localhost:{{ consul_service_port }}",
+        "interval": "10s", 
+        "timeout": "3s",
+        "notes": "TCP port check for {{ consul_service_name }}"
+      }
+    ],
+    "enable_tag_override": false,
+    "weights": {
+      "passing": 10,
+      "warning": 1
+  }
+}

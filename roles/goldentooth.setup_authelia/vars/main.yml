@@ -1,0 +1,14 @@
+---
+# Platform-specific variables
+authelia_arch_map:
+  x86_64: "amd64"
+  aarch64: "arm64"
+  armv7l: "armhf"
+
+authelia_download_url: "https://github.com/authelia/authelia/releases/download/v{{ authelia_version }}/authelia-v{{ authelia_version }}-linux-{{ authelia_arch_map[ansible_architecture] }}.tar.gz"
+
+# Required packages
+authelia_packages:
+  - sqlite3
+  - ca-certificates
+  - tzdata

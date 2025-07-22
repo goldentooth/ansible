@@ -1,0 +1,24 @@
+---
+galaxy_info:
+  author: goldentooth
+  description: Install and configure Authelia authentication server
+  company: Goldentooth
+  license: MIT
+  min_ansible_version: 2.9
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+  galaxy_tags:
+    - authelia
+    - authentication
+    - security
+    - oidc
+    - oauth2
+
+dependencies: []

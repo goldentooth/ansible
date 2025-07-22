@@ -1,0 +1,47 @@
+[Unit]
+Description=Authelia authentication and authorization server
+Documentation=https://www.authelia.com/docs/
+After=network.target consul.service
+Wants=consul.service
+
+[Service]
+Type=simple
+User={{ authelia_user }}
+Group={{ authelia_group }}
+EnvironmentFile={{ authelia_config_dir }}/consul.env
+ExecStartPre=/bin/bash -c 'until curl -s $CONSUL_HTTP_ADDR/v1/status/leader; do sleep 1; done'
+ExecStartPre=/bin/bash -c 'curl -X PUT $CONSUL_HTTP_ADDR/v1/agent/service/register \
+  -H "X-Consul-Token: $CONSUL_AUTHELIA_SERVICE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d @{{ authelia_config_dir }}/consul-service.json'
+ExecStart={{ authelia_install_dir }}/authelia --config {{ authelia_config_dir }}/configuration.yml
+ExecStopPost=/bin/bash -c 'curl -X PUT $CONSUL_HTTP_ADDR/v1/agent/service/deregister/authelia-{{ ansible_hostname }} \
+  -H "X-Consul-Token: $CONSUL_AUTHELIA_SERVICE_TOKEN" || true'
+Restart=on-failure
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=authelia
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths={{ authelia_data_dir }} {{ authelia_log_dir }}
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+PrivateDevices=true
+
+# Resource limits
+LimitNOFILE=65536
+MemoryLimit=512M
+CPUQuota=200%
+
+[Install]
+WantedBy=multi-user.target

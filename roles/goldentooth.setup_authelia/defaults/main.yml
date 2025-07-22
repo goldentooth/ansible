@@ -1,0 +1,70 @@
+---
+# Authelia installation defaults
+authelia_version: "4.38.10"
+authelia_user: "authelia"
+authelia_group: "authelia"
+authelia_config_dir: "/etc/authelia"
+authelia_data_dir: "/var/lib/authelia"
+authelia_log_dir: "/var/log/authelia"
+authelia_install_dir: "/usr/local/bin"
+
+# Network configuration
+authelia_host: "0.0.0.0"
+authelia_port: 9091
+authelia_metrics_port: 9959
+
+# Domain configuration
+authelia_domain: "goldentooth.net"
+authelia_default_redirection_url: "https://auth.{{ authelia_domain }}"
+
+# Session configuration
+authelia_session_domain: "{{ authelia_domain }}"
+authelia_session_expiration: "1h"
+authelia_session_inactivity: "5m"
+authelia_session_remember_me_duration: "1M"
+
+# Storage backend (using SQLite for simplicity, can switch to PostgreSQL)
+authelia_storage_backend: "sqlite"
+authelia_storage_path: "{{ authelia_data_dir }}/db.sqlite3"
+
+# Notification method (filesystem for testing, can switch to SMTP)
+authelia_notifier_filesystem_path: "{{ authelia_data_dir }}/notifications"
+
+# OIDC configuration
+authelia_oidc_enabled: true
+authelia_oidc_issuer_certificate_chain_path: "{{ authelia_config_dir }}/oidc.crt"
+authelia_oidc_issuer_private_key_path: "{{ authelia_config_dir }}/oidc.key"
+
+# Access control default policy  
+authelia_default_policy: "one_factor"
+
+# Required packages
+authelia_packages:
+  - unzip
+  - openssl
+  - sqlite3
+
+# Architecture mapping for binary downloads
+authelia_arch_map:
+  "aarch64": "arm64"
+  "x86_64": "amd64"
+  "armv7l": "arm32v7"
+
+# Download URL template
+authelia_download_url: "https://github.com/authelia/authelia/releases/download/v{{ authelia_version }}/authelia-v{{ authelia_version }}-linux-{{ authelia_arch_map[ansible_architecture] }}.tar.gz"
+
+# Password policy
+authelia_password_policy_min_length: 12
+authelia_password_policy_max_length: 128
+authelia_password_policy_require_uppercase: true
+authelia_password_policy_require_lowercase: true
+authelia_password_policy_require_number: true
+authelia_password_policy_require_special: true
+
+# Duo configuration (optional)
+authelia_duo_enabled: false
+
+# Redis configuration (optional, for HA setup)
+authelia_redis_enabled: false
+authelia_redis_host: "localhost"
+authelia_redis_port: 6379
