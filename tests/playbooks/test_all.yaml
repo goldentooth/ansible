@@ -46,6 +46,11 @@
       when: inventory_hostname in groups['grafana']
       tags: [grafana, observability]
       
+    - name: Test Step-CA certificate authority
+      include_role:
+        name: test_step_ca
+      tags: [step_ca, certificates, pki]
+      
     - name: Test storage services
       include_role:
         name: test_storage

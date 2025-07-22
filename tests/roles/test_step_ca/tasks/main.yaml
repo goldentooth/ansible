@@ -1,0 +1,198 @@
+---
+- name: Initialize Step-CA test results
+  set_fact:
+    step_ca_tests: []
+    step_ca_health: false
+    step_ca_cert_days: 0
+
+- name: Check if this is the Step-CA server
+  set_fact:
+    is_ca_server: "{{ inventory_hostname in groups['step_ca'] }}"
+
+# Tests for all nodes
+- name: Check cluster root certificate exists
+  stat:
+    path: /etc/ssl/certs/goldentooth.pem
+  register: cluster_root_cert
+
+- name: Record root certificate presence test
+  set_fact:
+    step_ca_tests: "{{ step_ca_tests + [{'name': 'root_certificate_present', 'category': 'step_ca', 'success': cluster_root_cert.stat.exists | bool, 'duration': 0.1}] }}"
+
+- name: Get root certificate details
+  shell: |
+    openssl x509 -in /etc/ssl/certs/goldentooth.pem -noout -enddate -fingerprint -sha256 -subject
+  register: root_cert_details
+  when: cluster_root_cert.stat.exists
+  changed_when: false
+  ignore_errors: yes
+
+- name: Parse root certificate expiration
+  shell: |
+    openssl x509 -in /etc/ssl/certs/goldentooth.pem -noout -enddate | cut -d= -f2 | xargs -I {} date -d {} +%s
+  register: root_cert_expiry_epoch
+  when: cluster_root_cert.stat.exists
+  changed_when: false
+  ignore_errors: yes
+
+- name: Calculate days until root certificate expiry
+  set_fact:
+    step_ca_cert_days: "{{ ((root_cert_expiry_epoch.stdout | default('0') | int - ansible_date_time.epoch | int) / 86400) | int }}"
+  when: 
+    - root_cert_expiry_epoch is defined
+    - root_cert_expiry_epoch is succeeded
+    - root_cert_expiry_epoch.stdout is defined
+
+- name: Record root certificate expiry test
+  set_fact:
+    step_ca_tests: "{{ step_ca_tests + [{'name': 'root_certificate_valid', 'category': 'step_ca', 'success': (step_ca_cert_days | int > 30) | bool, 'duration': 0.1}] }}"
+
+- name: Extract root certificate fingerprint
+  shell: |
+    openssl x509 -in /etc/ssl/certs/goldentooth.pem -noout -fingerprint -sha256 | cut -d= -f2 | tr -d ':'
+  register: actual_fingerprint
+  when: cluster_root_cert.stat.exists
+  changed_when: false
+  ignore_errors: yes
+
+# Tests specific to CA server (jast)
+- name: Check Step-CA service status
+  systemd:
+    name: step-ca
+  register: step_ca_service
+  when: is_ca_server
+  ignore_errors: yes
+
+- name: Record Step-CA service test
+  set_fact:
+    step_ca_tests: "{{ step_ca_tests + [{'name': 'step_ca_service_running', 'category': 'step_ca', 'success': (step_ca_service.status.ActiveState == 'active') | bool, 'duration': 0.1}] }}"
+  when: is_ca_server
+
+- name: Check Step-CA API health
+  uri:
+    url: "https://{{ ansible_default_ipv4.address }}:9443/health"
+    method: GET
+    validate_certs: no
+    timeout: 5
+  register: step_ca_api_health
+  when: is_ca_server
+  ignore_errors: yes
+
+- name: Record Step-CA API health test
+  set_fact:
+    step_ca_tests: "{{ step_ca_tests + [{'name': 'step_ca_api_healthy', 'category': 'step_ca', 'success': (step_ca_api_health.status == 200) | bool, 'duration': 0.2}] }}"
+  when: is_ca_server and step_ca_api_health is defined
+
+- name: Check CA configuration files exist
+  stat:
+    path: "{{ item }}"
+  register: ca_config_files
+  loop:
+    - /etc/step-ca/config/ca.json
+    - /etc/step-ca/config/defaults.json
+    - /etc/step-ca/certs/root_ca.crt
+  when: is_ca_server
+  become: yes
+
+- name: Record CA configuration files test
+  set_fact:
+    step_ca_tests: "{{ step_ca_tests + [{'name': 'ca_config_files_present', 'category': 'step_ca', 'success': (ca_config_files.results | selectattr('stat.exists', 'equalto', false) | list | length == 0) | bool, 'duration': 0.1}] }}"
+  when: is_ca_server and ca_config_files is defined
+
+- name: Read CA defaults file for fingerprint verification
+  slurp:
+    src: /etc/step-ca/config/defaults.json
+  register: ca_defaults_file
+  when: is_ca_server
+  become: yes
+  ignore_errors: yes
+
+- name: Parse CA defaults
+  set_fact:
+    ca_defaults: "{{ ca_defaults_file.content | b64decode | from_json }}"
+  when: is_ca_server and ca_defaults_file is succeeded
+
+- name: Extract expected fingerprint from CA config
+  set_fact:
+    expected_fingerprint: "{{ ca_defaults.fingerprint | replace(':', '') }}"
+  when: is_ca_server and ca_defaults is defined
+
+- name: Compare certificate fingerprints
+  set_fact:
+    fingerprint_matches: "{{ actual_fingerprint.stdout | default('') == expected_fingerprint | default('') }}"
+  when: 
+    - is_ca_server
+    - actual_fingerprint is defined
+    - expected_fingerprint is defined
+
+- name: Record fingerprint verification test
+  set_fact:
+    step_ca_tests: "{{ step_ca_tests + [{'name': 'root_certificate_fingerprint_valid', 'category': 'step_ca', 'success': fingerprint_matches | default(false) | bool, 'duration': 0.1}] }}"
+  when: is_ca_server
+
+# Test certificate generation capability
+- name: Test certificate generation
+  shell: |
+    step ca certificate test.example.com /tmp/test.crt /tmp/test.key \
+      --provisioner default \
+      --password-file /root/.step/jwk_provisioner_password.txt \
+      --not-after 1h \
+      --san test.example.com
+  register: cert_generation_test
+  when: is_ca_server
+  become: yes
+  changed_when: false
+  ignore_errors: yes
+
+- name: Clean up test certificate files
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/test.crt
+    - /tmp/test.key
+  when: is_ca_server
+  become: yes
+  ignore_errors: yes
+
+- name: Record certificate generation test
+  set_fact:
+    step_ca_tests: "{{ step_ca_tests + [{'name': 'certificate_generation_works', 'category': 'step_ca', 'success': (cert_generation_test.rc == 0) | bool, 'duration': 0.5}] }}"
+  when: is_ca_server and cert_generation_test is defined
+
+# Test step CLI connectivity from client nodes
+- name: Test step CLI connectivity to CA
+  shell: |
+    step ca health --ca-url https://{{ groups['step_ca'] | first }}:9443
+  register: step_cli_connectivity
+  when: not is_ca_server
+  changed_when: false
+  ignore_errors: yes
+
+- name: Record step CLI connectivity test
+  set_fact:
+    step_ca_tests: "{{ step_ca_tests + [{'name': 'step_cli_ca_connectivity', 'category': 'step_ca', 'success': (step_cli_connectivity.rc == 0) | bool, 'duration': 0.3}] }}"
+  when: not is_ca_server and step_cli_connectivity is defined
+
+# Test certificate renewal capability (dry run)
+- name: Test certificate renewal capability
+  shell: |
+    step ca renew --dry-run /etc/ssl/certs/goldentooth.pem /dev/null
+  register: cert_renewal_test
+  changed_when: false
+  ignore_errors: yes
+
+- name: Record certificate renewal test
+  set_fact:
+    step_ca_tests: "{{ step_ca_tests + [{'name': 'certificate_renewal_capable', 'category': 'step_ca', 'success': (cert_renewal_test.rc == 0) | bool, 'duration': 0.3}] }}"
+  when: cert_renewal_test is defined
+
+- name: Determine overall Step-CA health
+  set_fact:
+    step_ca_health: "{{ step_ca_tests | selectattr('success', 'equalto', false) | list | length == 0 }}"
+
+- name: Export Step-CA test results
+  set_fact:
+    test_results: "{{ (test_results | default([])) + step_ca_tests }}"
+    service_health: "{{ (service_health | default({})) | combine({'step_ca': step_ca_health}) }}"
+    certificate_status: "{{ (certificate_status | default([])) + [{'service': 'step_ca_root', 'days_remaining': step_ca_cert_days | int}] }}"

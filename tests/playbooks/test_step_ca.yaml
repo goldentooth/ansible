@@ -1,0 +1,47 @@
+---
+- name: Run Step-CA certificate authority tests
+  hosts: all
+  gather_facts: yes
+  
+  tasks:
+    - name: Clear previous test results
+      set_fact:
+        test_results: []
+        service_health: {}
+        certificate_status: []
+        
+    - name: Test Step-CA certificate authority
+      include_role:
+        name: test_step_ca
+        
+    - name: Debug Step-CA test results
+      debug:
+        var: test_results
+        
+    - name: Create metrics directory
+      file:
+        path: /var/lib/node_exporter/textfile_collector
+        state: directory
+        mode: '0755'
+        owner: nobody
+        group: nogroup
+      become: yes
+      
+    - name: Write Prometheus metrics
+      template:
+        src: ../templates/goldentooth_metrics.prom.j2
+        dest: /var/lib/node_exporter/textfile_collector/goldentooth-tests.prom
+        mode: '0644'
+        owner: nobody
+        group: nogroup
+      become: yes
+      
+    - name: Show Step-CA test summary
+      debug:
+        msg: |
+          Step-CA Test Summary for {{ inventory_hostname }}:
+          Total tests: {{ test_results | length }}
+          Passed: {{ test_results | selectattr('success', 'equalto', true) | list | length }}
+          Failed: {{ test_results | selectattr('success', 'equalto', false) | list | length }}
+          Overall health: {{ service_health.step_ca | default('unknown') }}
+          Root cert days remaining: {{ certificate_status | selectattr('service', 'equalto', 'step_ca_root') | map(attribute='days_remaining') | first | default('unknown') }}
