@@ -161,13 +161,28 @@
   when: is_ca_server and cert_generation_test is defined
 
 # Test step CLI connectivity from client nodes
-- name: Test step CLI connectivity to CA
+- name: Test step CLI connectivity to CA (try multiple connection methods)
   shell: |
-    step ca health --ca-url https://{{ groups['step_ca'] | first }}:9443
+    # Try FQDN first (most reliable)
+    if step ca health --ca-url https://{{ groups['step_ca'] | first }}.{{ cluster.domain }}:9443 --root /etc/ssl/certs/goldentooth.pem; then
+      echo "SUCCESS: FQDN connection"
+      exit 0
+    # Try IP address as fallback
+    elif step ca health --ca-url https://{{ hostvars[groups['step_ca'] | first]['ansible_default_ipv4']['address'] }}:9443 --root /etc/ssl/certs/goldentooth.pem; then
+      echo "SUCCESS: IP connection"  
+      exit 0
+    # Try short hostname (if SAN is configured)
+    elif step ca health --ca-url https://{{ groups['step_ca'] | first }}:9443 --root /etc/ssl/certs/goldentooth.pem; then
+      echo "SUCCESS: Short hostname connection"
+      exit 0
+    else
+      echo "FAILED: All connection methods failed"
+      exit 1
+    fi
   register: step_cli_connectivity
   when: not is_ca_server
   changed_when: false
-  ignore_errors: yes
+  ignore_errors: true
 
 - name: Record step CLI connectivity test
   set_fact:

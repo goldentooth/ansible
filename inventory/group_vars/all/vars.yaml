@@ -359,7 +359,7 @@ step_ca:
       root: "/etc/step-ca/.password_root.txt"
     name: "{{ cluster.name }}"
     root_cert_path: '/etc/step-ca/certs/root_ca.crt'
-    sans: "{{ host.fqdn }},{{ node.fqdn }},{{ ipv4_address }}"
+    sans: "{{ clean_hostname }},{{ host.fqdn }},{{ node.fqdn }},{{ ipv4_address }}"
     user: 'step'
 
   # Step CLI configuration
