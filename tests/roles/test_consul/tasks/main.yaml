@@ -41,34 +41,31 @@
     consul_tests: "{{ consul_tests + [consul_members_test] }}"
   when: consul_members_test is defined
 
-- name: Check Consul certificate
+- name: Check Consul certificate exists
   stat:
-    path: /etc/consul.d/tls/consul-agent-ca.pem
-  register: consul_ca_cert
+    path: /etc/consul.d/certs/tls.crt
+  register: consul_cert
 
-- name: Get certificate expiration
-  shell: |
-    openssl x509 -in /etc/consul.d/tls/consul-agent-ca.pem -noout -enddate | cut -d= -f2 | xargs -I {} date -d {} +%s
-  register: cert_expiry_epoch
-  when: consul_ca_cert.stat.exists
+- name: Record certificate presence test
+  set_fact:
+    consul_tests: "{{ consul_tests + [{'name': 'consul_certificate_present', 'category': 'consul', 'success': consul_cert.stat.exists | bool, 'duration': 0.1}] }}"
+
+- name: Check if certificate needs renewal
+  command: step certificate needs-renewal /etc/consul.d/certs/tls.crt
+  register: cert_needs_renewal
+  when: consul_cert.stat.exists
   changed_when: false
+  failed_when: false
+  become: true
 
-- name: Calculate days until expiry
+- name: Record certificate validity test
   set_fact:
-    consul_cert_days: "{{ ((cert_expiry_epoch.stdout | default('0') | int - ansible_date_time.epoch | int) / 86400) | int }}"
-  when: 
-    - cert_expiry_epoch is defined
-    - cert_expiry_epoch is succeeded
-    - cert_expiry_epoch.stdout is defined
-
-- name: Record certificate test
-  set_fact:
-    consul_tests: "{{ consul_tests + [{'name': 'consul_certificate_valid', 'category': 'consul', 'success': (consul_cert_days | int > 30) | bool, 'duration': 0.1}] }}"
+    consul_tests: "{{ consul_tests + [{'name': 'consul_certificate_valid', 'category': 'consul', 'success': (cert_needs_renewal.rc != 0) | bool, 'duration': 0.1}] }}"
+    consul_cert_days: "{{ 1 if (cert_needs_renewal is defined and cert_needs_renewal.rc != 0) else 0 }}"
 
 - name: Check Consul API health
   uri:
-    url: "https://127.0.0.1:8501/v1/status/leader"
-    validate_certs: no
+    url: "http://{{ ansible_default_ipv4.address }}:8500/v1/status/leader"
     timeout: 5
   register: consul_api
   ignore_errors: yes

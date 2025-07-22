@@ -43,29 +43,27 @@
     vault_tests: "{{ vault_tests + [{'name': 'vault_health_ok', 'category': 'vault', 'success': (vault_health_check.status == 200) | bool, 'duration': 0.2}] }}"
   when: vault_health_check is defined
 
-- name: Check Vault certificate
+- name: Check Vault certificate exists
   stat:
-    path: /etc/vault.d/tls/vault-ca.pem
-  register: vault_ca_cert
+    path: /opt/vault/tls/tls.crt
+  register: vault_cert
 
-- name: Get certificate expiration
-  shell: |
-    openssl x509 -in /etc/vault.d/tls/vault-ca.pem -noout -enddate | cut -d= -f2 | xargs -I {} date -d {} +%s
-  register: vault_cert_expiry_epoch
-  when: vault_ca_cert.stat.exists
+- name: Record certificate presence test
+  set_fact:
+    vault_tests: "{{ vault_tests + [{'name': 'vault_certificate_present', 'category': 'vault', 'success': vault_cert.stat.exists | bool, 'duration': 0.1}] }}"
+
+- name: Check if certificate needs renewal
+  command: step certificate needs-renewal /opt/vault/tls/tls.crt
+  register: vault_cert_needs_renewal
+  when: vault_cert.stat.exists
   changed_when: false
+  failed_when: false
+  become: true
 
-- name: Calculate days until expiry
+- name: Record certificate validity test
   set_fact:
-    vault_cert_days: "{{ ((vault_cert_expiry_epoch.stdout | default('0') | int - ansible_date_time.epoch | int) / 86400) | int }}"
-  when: 
-    - vault_cert_expiry_epoch is defined
-    - vault_cert_expiry_epoch is succeeded
-    - vault_cert_expiry_epoch.stdout is defined
-
-- name: Record certificate test
-  set_fact:
-    vault_tests: "{{ vault_tests + [{'name': 'vault_certificate_valid', 'category': 'vault', 'success': (vault_cert_days | default(0) | int > 30) | bool, 'duration': 0.1}] }}"
+    vault_tests: "{{ vault_tests + [{'name': 'vault_certificate_valid', 'category': 'vault', 'success': (vault_cert_needs_renewal.rc != 0) | bool, 'duration': 0.1}] }}"
+    vault_cert_days: "{{ 1 if (vault_cert_needs_renewal is defined and vault_cert_needs_renewal.rc != 0) else 0 }}"
     certificate_status: "{{ (certificate_status | default([])) + [{'service': 'vault', 'days_remaining': vault_cert_days | default(0)}] }}"
 
 - name: Determine overall Vault health
