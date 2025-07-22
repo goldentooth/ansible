@@ -31,7 +31,7 @@
     - name: Test Kubernetes
       include_role:
         name: test_kubernetes
-      when: inventory_hostname in groups['k8s']
+      when: inventory_hostname in groups['k8s_cluster']
       tags: [kubernetes, k8s]
       
     - name: Test Prometheus

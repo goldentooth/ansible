@@ -65,7 +65,7 @@
 
 - name: Record certificate test
   set_fact:
-    vault_tests: "{{ vault_tests + [{'name': 'vault_certificate_valid', 'category': 'vault', 'success': (vault_cert_days | int > 30) | bool, 'duration': 0.1}] }}"
+    vault_tests: "{{ vault_tests + [{'name': 'vault_certificate_valid', 'category': 'vault', 'success': (vault_cert_days | default(0) | int > 30) | bool, 'duration': 0.1}] }}"
     certificate_status: "{{ (certificate_status | default([])) + [{'service': 'vault', 'days_remaining': vault_cert_days | default(0)}] }}"
 
 - name: Determine overall Vault health

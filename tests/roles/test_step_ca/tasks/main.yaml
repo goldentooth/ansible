@@ -45,7 +45,7 @@
 
 - name: Record root certificate expiry test
   set_fact:
-    step_ca_tests: "{{ step_ca_tests + [{'name': 'root_certificate_valid', 'category': 'step_ca', 'success': (step_ca_cert_days | int > 30) | bool, 'duration': 0.1}] }}"
+    step_ca_tests: "{{ step_ca_tests + [{'name': 'root_certificate_valid', 'category': 'step_ca', 'success': (step_ca_cert_days | default(0) | int > 30) | bool, 'duration': 0.1}] }}"
 
 - name: Extract root certificate fingerprint
   shell: |
