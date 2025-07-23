@@ -1,0 +1,24 @@
+-- OpenMPI Message Passing Interface
+whatis("OpenMPI Message Passing Interface library")
+
+help([[
+This module loads the OpenMPI Message Passing Interface library.
+OpenMPI is installed via system packages.
+
+Usage:
+  module load OpenMPI
+  mpirun -np 4 ./my_mpi_program
+]])
+
+-- Add OpenMPI binaries to PATH (system installation)
+-- System OpenMPI is already in PATH, this module mainly provides metadata
+
+-- Set OpenMPI environment variables
+setenv("OMPI_MCA_btl_vader_single_copy_mechanism", "none")
+
+-- Module conflict
+conflict("mpich")
+
+-- Module version
+local version = "system"
+set_alias("openmpi-version", "mpirun --version")

@@ -1,0 +1,8 @@
+---
+- name: Setup HPC Software Stack
+  hosts: slurm_controller[0]  # Only run on first controller to avoid NFS conflicts
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - { role: 'goldentooth.setup_hpc_software' }

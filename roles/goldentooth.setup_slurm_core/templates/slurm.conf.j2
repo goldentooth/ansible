@@ -1,0 +1,78 @@
+# Cluster name.
+ClusterName={{ cluster_name }}
+
+# Controller nodes.
+{% for slurm_controller_name in groups['slurm_controller'] %}
+SlurmctldHost={{ slurm_controller_name }}({{ hostvars[slurm_controller_name].ipv4_address }})
+{% endfor %}
+
+# Worker nodes.
+NodeName=DEFAULT CPUs=4 Sockets=1 CoresPerSocket=4 ThreadsPerCore=1 State=UNKNOWN
+{% for slurm_compute_name in groups['slurm_compute'] %}
+NodeName={{ slurm_compute_name }} NodeAddr={{ hostvars[slurm_compute_name].ipv4_address }} RealMemory={{ hostvars[slurm_compute_name].ansible_memtotal_mb }}
+{% endfor %}
+
+# The partition configuration permits you to establish different job limits or
+# access controls for various groups (or partitions) of nodes.
+PartitionName=DEFAULT MaxTime=INFINITE State=UP
+PartitionName=general Default=YES Nodes=ALL
+PartitionName=debug Default=NO Nodes=ALL
+
+# The name of the user that the slurmctld daemon executes as.
+SlurmUser=slurm
+
+# The authentication method for communications between Slurm components.
+AuthType=auth/munge
+
+# Fully qualified pathname of a directory into which the Slurm controller,
+# slurmctld, saves its state (e.g. "/usr/local/slurm/checkpoint").
+#
+# This should be on the NFS volume.
+StateSaveLocation={{ slurm.nfs_base_path }}/var/spool/slurm/ctld
+
+# Fully qualified pathname of a directory into which the slurmd daemon's
+# state information and batch job script information are written.
+#
+# This may be on the NFS volume, but if so it needs to use %h and/or %n.
+SlurmdSpoolDir=/var/spool/slurm/d
+
+# Controls when a DOWN node will be returned to service.
+ReturnToService=2
+
+# Fully qualified pathname of a file into which the slurmctld daemon may write
+# its process id.
+SlurmctldPidFile=/var/run/slurm/slurmctld.pid
+
+# The port number that the Slurm controller, slurmctld, listens to for work.
+SlurmctldPort=6817
+
+# Fully qualified pathname of a file into which the slurmd daemon may write its
+# process id.
+SlurmdPidFile=/var/run/slurm/slurmd.pid
+
+# The port number that the Slurm compute node daemon, slurmd, listens to for
+# work.
+SlurmdPort=6818
+
+# Identifies the type of task launch plugin, typically used to provide resource
+# management within a node (e.g. pinning tasks to specific processors).
+TaskPlugin=task/none
+
+# Identifies the default type of MPI to be used.
+MpiDefault=none
+
+# The level of detail to provide slurmd daemon's logs. The default value is
+# info.
+SlurmdDebug=verbose
+
+# Fully qualified pathname of a file into which the slurmd daemon's logs are
+# written.
+SlurmdLogFile=/var/log/slurm/slurmd.log
+
+# The level of detail to provide slurmctld daemon's logs. The default value is
+# info.
+SlurmctldDebug=verbose
+
+# Fully qualified pathname of a file into which the slurmctld daemon's logs are
+# written.
+SlurmctldLogFile=/var/log/slurm/slurmctld.log

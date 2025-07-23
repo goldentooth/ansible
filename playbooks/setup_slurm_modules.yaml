@@ -1,0 +1,8 @@
+---
+- name: Setup Slurm Module Files
+  hosts: slurm_controller[0]  # Only run on first controller
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - { role: 'goldentooth.setup_slurm_modules' }

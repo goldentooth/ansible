@@ -1,0 +1,29 @@
+-- Conda Package Manager (Miniforge)
+whatis("Conda package manager via Miniforge")
+
+help([[
+This module loads the Conda package manager (Miniforge distribution).
+
+Usage:
+  module load Conda
+  conda --version
+  conda create -n myenv python=3.11
+  conda activate myenv
+]])
+
+local base = "{{ slurm.nfs_base_path }}/miniforge"
+
+-- Add Conda binaries to PATH
+prepend_path("PATH", pathJoin(base, "bin"))
+
+-- Set Conda environment variables
+setenv("CONDA_ROOT", base)
+setenv("CONDA_ENVS_PATH", pathJoin(base, "user_envs"))
+setenv("CONDA_PKGS_DIRS", pathJoin(base, "user_pkgs"))
+
+-- Initialize conda for the current shell
+-- Note: Users may need to run 'conda init' manually for their shell
+execute{cmd="source " .. pathJoin(base, "etc/profile.d/conda.sh"), modeA={"load"}}
+
+-- Set version alias  
+set_alias("conda-version", "conda --version")

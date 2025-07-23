@@ -1,0 +1,25 @@
+-- Go Programming Language
+whatis("Go programming language {{ slurm.go_version }}")
+
+help([[
+This module loads Go (Golang) programming language version {{ slurm.go_version }}.
+
+Usage:
+  module load Golang/{{ slurm.go_version }}
+  go version
+  go build myprogram.go
+]])
+
+local version = "{{ slurm.go_version }}"
+local base = "{{ slurm.nfs_base_path }}/go/" .. version
+
+-- Add Go binaries to PATH
+prepend_path("PATH", pathJoin(base, "bin"))
+
+-- Set Go environment variables
+setenv("GOROOT", base)
+setenv("GOOS", "linux")
+setenv("GOARCH", "arm64")
+
+-- Set version alias
+set_alias("go-version", "go version")

@@ -1,0 +1,20 @@
+-- Standard Environment Module
+-- Provides basic environment for Goldentooth cluster
+
+whatis("Standard environment for Goldentooth cluster")
+
+help([[
+This module sets up the standard environment for the Goldentooth cluster.
+It includes basic paths and environment variables needed for HPC workloads.
+]])
+
+-- Add Slurm binaries to PATH
+prepend_path("PATH", "{{ slurm.nfs_base_path }}/bin")
+
+-- Set basic HPC environment variables
+setenv("GOLDENTOOTH_CLUSTER", "{{ cluster_name }}")
+setenv("SLURM_NFS_BASE", "{{ slurm.nfs_base_path }}")
+
+-- Module version
+local version = "1.0.0"
+set_alias("stdenv-version", "echo " .. version)

@@ -1,0 +1,196 @@
+---
+# HPC Software Stack - highly idempotent, runs only when needed
+- name: 'Install OpenMPI'
+  ansible.builtin.apt:
+    name:
+      - 'openmpi-bin'
+      - 'libopenmpi-dev'
+    state: 'present'
+
+- name: 'Check if Golang {{ slurm.go_version }} is installed'
+  ansible.builtin.stat:
+    path: "{{ slurm.nfs_base_path }}/go/{{ slurm.go_version }}/bin/go"
+  register: golang_installed
+  run_once: true
+
+- name: 'Install Golang {{ slurm.go_version }}'
+  block:
+    - name: 'Create Golang version directory'
+      ansible.builtin.file:
+        path: "{{ slurm.nfs_base_path }}/go/{{ slurm.go_version }}"
+        state: 'directory'
+        owner: 'slurm'
+        group: 'slurm'
+        mode: '0755'
+
+    - name: 'Download and install Golang'
+      ansible.builtin.unarchive:
+        src: "https://golang.org/dl/go{{ slurm.go_version }}.linux-arm64.tar.gz"
+        dest: "{{ slurm.nfs_base_path }}/go/{{ slurm.go_version }}"
+        remote_src: yes
+        owner: 'slurm'
+        group: 'slurm'
+        extra_opts: ['--strip-components=1']
+        creates: "{{ slurm.nfs_base_path }}/go/{{ slurm.go_version }}/bin/go"
+
+  run_once: true
+  when: not golang_installed.stat.exists
+
+- name: 'Check if Singularity {{ slurm.singularity_version }} is installed'
+  ansible.builtin.stat:
+    path: "{{ slurm.nfs_base_path }}/singularity/{{ slurm.singularity_version }}/bin/singularity"
+  register: singularity_installed
+  run_once: true
+
+- name: 'Install Singularity {{ slurm.singularity_version }}'
+  block:
+    - name: 'Install SingularityCE build dependencies'
+      ansible.builtin.apt:
+        name:
+          - 'build-essential'
+          - 'libssl-dev'
+          - 'uuid-dev'
+          - 'libgpgme11-dev'
+          - 'squashfs-tools'
+          - 'libseccomp-dev'
+          - 'wget'
+          - 'pkg-config'
+          - 'git'
+          - 'cryptsetup'
+          - 'runc'
+        state: 'present'
+
+    - name: 'Create temporary build directory'
+      ansible.builtin.tempfile:
+        state: 'directory'
+        suffix: 'singularity_build'
+      register: singularity_temp_dir
+
+    - name: 'Check out Singularity Git repo'
+      ansible.builtin.git:
+        repo: 'https://github.com/sylabs/singularity.git'
+        dest: "{{ singularity_temp_dir.path }}/singularity"
+        version: "v{{ slurm.singularity_version }}"
+        depth: 1
+
+    - name: 'Build and install Singularity'
+      ansible.builtin.shell: |
+        cd "{{ singularity_temp_dir.path }}/singularity"
+        ./mconfig --prefix={{ slurm.nfs_base_path }}/singularity/{{ slurm.singularity_version }}
+        make -C builddir
+        make -C builddir install
+      args:
+        creates: "{{ slurm.nfs_base_path }}/singularity/{{ slurm.singularity_version }}/bin/singularity"
+
+    - name: 'Clean up temporary build directory'
+      ansible.builtin.file:
+        path: "{{ singularity_temp_dir.path }}"
+        state: 'absent'
+
+  run_once: true
+  when: not singularity_installed.stat.exists
+
+- name: 'Check if Miniforge is installed'
+  ansible.builtin.stat:
+    path: "{{ slurm.nfs_base_path }}/miniforge/conda-meta/conda-{{ slurm.conda_version }}-py{{ slurm.python_version }}_0.json"
+  register: miniforge_installed
+  run_once: true
+
+- name: 'Install Miniforge'
+  block:
+    - name: 'Create temporary directory for Miniforge installer'
+      ansible.builtin.tempfile:
+        state: 'directory'
+        suffix: 'miniforge_install'
+      register: miniforge_temp_dir
+
+    - name: 'Download Miniforge installation script'
+      ansible.builtin.get_url:
+        url: 'https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh'
+        dest: "{{ miniforge_temp_dir.path }}/miniforge.sh"
+        mode: '0755'
+
+    - name: 'Execute Miniforge installation script'
+      ansible.builtin.shell: |
+        bash {{ miniforge_temp_dir.path }}/miniforge.sh -b -u -p {{ slurm.nfs_base_path }}/miniforge
+      args:
+        creates: "{{ slurm.nfs_base_path }}/miniforge/bin/conda"
+
+    - name: 'Configure Conda settings'
+      ansible.builtin.copy:
+        content: |
+          env_prompt: ({name})
+          envs_dirs:
+            - {{ slurm.nfs_base_path }}/miniforge/user_envs
+          pkgs_dirs:
+            - {{ slurm.nfs_base_path }}/miniforge/user_pkgs
+        dest: "{{ slurm.nfs_base_path }}/miniforge/.condarc"
+        owner: 'slurm'
+        group: 'slurm'
+        mode: '0644'
+
+    - name: 'Create user_envs and user_pkgs directories'
+      ansible.builtin.file:
+        path: "{{ slurm.nfs_base_path }}/miniforge/{{ dir_name }}"
+        state: 'directory'
+        owner: 'slurm'
+        group: 'slurm'
+        mode: '0755'
+      loop:
+        - 'user_envs'
+        - 'user_pkgs'
+      loop_control:
+        loop_var: 'dir_name'
+
+    - name: 'Clean up temporary installer directory'
+      ansible.builtin.file:
+        path: "{{ miniforge_temp_dir.path }}"
+        state: 'absent'
+
+  run_once: true  
+  when: not miniforge_installed.stat.exists
+
+- name: 'Verify HPC software installations'
+  block:
+    - name: 'Check OpenMPI installation'
+      ansible.builtin.command: 'mpirun --version'
+      register: openmpi_version
+      changed_when: false
+      failed_when: false
+
+    - name: 'Check Golang installation'
+      ansible.builtin.command: "{{ slurm.nfs_base_path }}/go/{{ slurm.go_version }}/bin/go version"
+      register: golang_version
+      changed_when: false
+      failed_when: false
+      run_once: true
+
+    - name: 'Check Singularity installation'
+      ansible.builtin.command: "{{ slurm.nfs_base_path }}/singularity/{{ slurm.singularity_version }}/bin/singularity --version"
+      register: singularity_version
+      changed_when: false
+      failed_when: false
+      run_once: true
+
+    - name: 'Check Conda installation'
+      ansible.builtin.command: "{{ slurm.nfs_base_path }}/miniforge/bin/conda --version"
+      register: conda_version
+      changed_when: false
+      failed_when: false
+      run_once: true
+
+- name: 'Display HPC software installation status'
+  ansible.builtin.debug:
+    msg: |
+      HPC Software Installation Status:
+      ================================
+      OpenMPI: {{ openmpi_version.stdout | default('Not found') }}
+      Golang: {{ golang_version.stdout | default('Not installed') }}
+      Singularity: {{ singularity_version.stdout | default('Not installed') }}
+      Conda: {{ conda_version.stdout | default('Not installed') }}
+      
+      Installation paths:
+      - Golang: {{ slurm.nfs_base_path }}/go/{{ slurm.go_version }}
+      - Singularity: {{ slurm.nfs_base_path }}/singularity/{{ slurm.singularity_version }}
+      - Conda: {{ slurm.nfs_base_path }}/miniforge
+  run_once: true

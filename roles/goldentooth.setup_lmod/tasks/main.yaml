@@ -1,0 +1,121 @@
+---
+# Lmod Environment Module System - idempotent installation
+- name: 'Install Lua packages for Lmod'
+  ansible.builtin.apt:
+    name:
+      - 'lua5.1'
+      - 'lua-posix'
+      - 'liblua5.1-0-dev'
+      - 'lua-term'
+      - 'tclsh'
+    state: 'present'
+
+- name: 'Create Lua symlinks in Slurm bin directory'
+  ansible.builtin.file:
+    src: "{{ file }}"
+    dest: "{{ slurm.nfs_base_path }}/bin/{{ file | basename }}"
+    owner: 'slurm'
+    group: 'slurm'
+    state: 'link'
+    force: yes
+  loop:
+    - '/usr/bin/lua'
+    - '/usr/bin/luac'
+  loop_control:
+    loop_var: 'file'
+  run_once: true
+
+- name: 'Check if Lmod is already installed'
+  ansible.builtin.stat:
+    path: "{{ slurm.nfs_base_path }}/lmod/lmod/init/bash"
+  register: lmod_installed
+  run_once: true
+
+- name: 'Install Lmod from source'
+  block:
+    - name: 'Set Lmod source filename'
+      ansible.builtin.set_fact:
+        lmod_source_filename: "{{ slurm.lmod.source_url | ansible.builtin.basename }}"
+
+    - name: 'Create temporary build directory'
+      ansible.builtin.tempfile:
+        state: 'directory'
+        suffix: 'lmod_build'
+      register: lmod_temp_dir
+
+    - name: 'Download and unarchive Lmod source'
+      ansible.builtin.unarchive:
+        src: "{{ slurm.lmod.source_url }}"
+        dest: "{{ lmod_temp_dir.path }}"
+        remote_src: yes
+        creates: "{{ lmod_temp_dir.path }}/{{ lmod_source_filename | regex_replace('\\.tar\\.gz$', '') }}"
+
+    - name: 'Build and install Lmod'
+      ansible.builtin.shell: |
+        cd "{{ lmod_temp_dir.path }}/{{ lmod_source_filename | regex_replace('\\.tar\\.gz$', '') }}"
+        ./configure \
+            --prefix="{{ slurm.nfs_base_path }}" \
+            --with-module-root-path="{{ slurm.nfs_base_path }}/apps/modulefiles"
+        make install
+      args:
+        creates: "{{ slurm.nfs_base_path }}/lmod/lmod/init/bash"
+
+    - name: 'Clean up temporary build directory'
+      ansible.builtin.file:
+        path: "{{ lmod_temp_dir.path }}"
+        state: 'absent'
+
+  run_once: true
+  when: not lmod_installed.stat.exists
+
+- name: 'Create StdEnv.lua module'
+  ansible.builtin.template:
+    src: 'StdEnv.lua.j2'
+    dest: "{{ slurm.nfs_base_path }}/apps/modulefiles/StdEnv.lua"
+    owner: 'slurm'
+    group: 'slurm'
+    mode: '0644'
+  run_once: true
+
+- name: 'Add modulefiles path to Lmod init files'
+  ansible.builtin.lineinfile:
+    path: "{{ lmod_init_file }}"
+    line: 'export MODULEPATH="{{ slurm.nfs_base_path }}/apps/modulefiles";'
+    state: 'present'
+    create: yes
+  loop:
+    - "{{ slurm.nfs_base_path }}/lmod/lmod/init/profile"
+    - "{{ slurm.nfs_base_path }}/lmod/lmod/init/cshrc"
+  loop_control:
+    loop_var: 'lmod_init_file'
+  run_once: true
+
+- name: 'Create system-wide Lmod profile links'
+  ansible.builtin.file:
+    src: "{{ slurm.nfs_base_path }}/{{ file.src }}"
+    dest: "/etc/profile.d/{{ file.dest }}"
+    owner: 'root'
+    group: 'root'
+    state: 'link'
+    force: yes
+  loop:
+    - { src: 'lmod/lmod/init/profile', dest: 'z00_lmod.sh' }
+    - { src: 'lmod/lmod/init/cshrc', dest: 'z00_lmod.csh' }
+  loop_control:
+    loop_var: 'file'
+
+- name: 'Verify Lmod installation'
+  ansible.builtin.shell: |
+    source {{ slurm.nfs_base_path }}/lmod/lmod/init/bash
+    module --version
+  register: lmod_version
+  changed_when: false
+  run_once: true
+
+- name: 'Display Lmod installation status'
+  ansible.builtin.debug:
+    msg: |
+      Lmod installation complete:
+      Version: {{ lmod_version.stdout_lines[0] | default('Unable to determine version') }}
+      Module path: {{ slurm.nfs_base_path }}/apps/modulefiles
+  run_once: true

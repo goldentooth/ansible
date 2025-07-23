@@ -1,0 +1,48 @@
+---
+- name: 'Retrieve first MUNGE key'
+  ansible.builtin.slurp:
+    src: '/etc/munge/munge.key'
+  register: 'munge_key'
+  run_once: true
+  delegate_to: "{{ groups['slurm_controller'] | first }}"
+
+- name: 'Synchronize MUNGE key'
+  ansible.builtin.copy:
+    content: "{{ munge_key.content | b64decode }}"
+    dest: '/etc/munge/munge.key'
+    owner: 'munge'
+    group: 'munge'
+    mode: '0400'
+    backup: yes
+  notify: 'Restart MUNGE'
+
+- name: 'Restart MUNGE'
+  ansible.builtin.systemd:
+    name: 'munge'
+    state: 'restarted'
+
+- name: 'Restart slurmd'
+  ansible.builtin.systemd:
+    name: 'slurmd'
+    state: 'restarted'
+
+- name: 'Disable slurmctld on compute nodes'
+  ansible.builtin.systemd:
+    name: 'slurmctld'
+    enabled: no
+    state: 'stopped'
+  when: inventory_hostname not in groups['slurm_controller']
+  failed_when: false
+
+- name: 'Restart slurmctld on controllers'
+  ansible.builtin.systemd:
+    name: 'slurmctld'
+    state: 'restarted'
+  when: inventory_hostname in groups['slurm_controller']
+
+- name: 'Reload systemd and restart slurmctld'
+  ansible.builtin.systemd:
+    name: 'slurmctld'
+    state: 'restarted'
+    daemon_reload: yes
+  when: inventory_hostname in groups['slurm_controller']

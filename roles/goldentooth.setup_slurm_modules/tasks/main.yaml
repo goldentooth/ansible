@@ -1,0 +1,84 @@
+---
+# Module files for HPC software - only creates missing modules
+- name: 'Create OpenMPI module file'
+  ansible.builtin.template:
+    src: 'OpenMPI.lua.j2'
+    dest: "{{ slurm.nfs_base_path }}/apps/modulefiles/OpenMPI.lua"
+    owner: 'slurm'
+    group: 'slurm'
+    mode: '0644'
+  run_once: true
+
+- name: 'Check if Golang module directory exists'
+  ansible.builtin.stat:
+    path: "{{ slurm.nfs_base_path }}/apps/modulefiles/Golang"
+  register: golang_module_dir
+  run_once: true
+
+- name: 'Create Golang module directory'
+  ansible.builtin.file:
+    path: "{{ slurm.nfs_base_path }}/apps/modulefiles/Golang"
+    state: 'directory'
+    owner: 'slurm'
+    group: 'slurm'
+    mode: '0755'
+  run_once: true
+  when: not golang_module_dir.stat.exists
+
+- name: 'Create Golang module file'
+  ansible.builtin.template:
+    src: 'Golang.lua.j2'
+    dest: "{{ slurm.nfs_base_path }}/apps/modulefiles/Golang/{{ slurm.go_version }}.lua"
+    owner: 'slurm'
+    group: 'slurm'
+    mode: '0644'
+  run_once: true
+
+- name: 'Check if Singularity module directory exists'
+  ansible.builtin.stat:
+    path: "{{ slurm.nfs_base_path }}/apps/modulefiles/Singularity"
+  register: singularity_module_dir
+  run_once: true
+
+- name: 'Create Singularity module directory'
+  ansible.builtin.file:
+    path: "{{ slurm.nfs_base_path }}/apps/modulefiles/Singularity"
+    state: 'directory'
+    owner: 'slurm'
+    group: 'slurm'
+    mode: '0755'
+  run_once: true
+  when: not singularity_module_dir.stat.exists
+
+- name: 'Create Singularity module file'
+  ansible.builtin.template:
+    src: 'Singularity.lua.j2'
+    dest: "{{ slurm.nfs_base_path }}/apps/modulefiles/Singularity/{{ slurm.singularity_version }}.lua"
+    owner: 'slurm'
+    group: 'slurm'
+    mode: '0644'
+  run_once: true
+
+- name: 'Create Conda module file'
+  ansible.builtin.template:
+    src: 'Conda.lua.j2'
+    dest: "{{ slurm.nfs_base_path }}/apps/modulefiles/Conda.lua"
+    owner: 'slurm'
+    group: 'slurm'
+    mode: '0644'
+  run_once: true
+
+- name: 'Verify module files are available'
+  ansible.builtin.shell: |
+    source {{ slurm.nfs_base_path }}/lmod/lmod/init/bash
+    module avail
+  register: available_modules
+  changed_when: false
+  run_once: true
+
+- name: 'Display available modules'
+  ansible.builtin.debug:
+    msg: |
+      Available Lmod modules:
+      {{ available_modules.stdout }}
+  run_once: true

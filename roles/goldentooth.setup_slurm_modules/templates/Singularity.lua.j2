@@ -1,0 +1,24 @@
+-- Singularity Container Platform
+whatis("Singularity container platform {{ slurm.singularity_version }}")
+
+help([[
+This module loads Singularity container platform version {{ slurm.singularity_version }}.
+
+Usage:
+  module load Singularity/{{ slurm.singularity_version }}
+  singularity --version
+  singularity run docker://hello-world
+]])
+
+local version = "{{ slurm.singularity_version }}"
+local base = "{{ slurm.nfs_base_path }}/singularity/" .. version
+
+-- Add Singularity binaries to PATH
+prepend_path("PATH", pathJoin(base, "bin"))
+
+-- Set Singularity environment variables
+setenv("SINGULARITY_CACHEDIR", "{{ slurm.nfs_base_path }}/tmp/singularity_cache")
+setenv("SINGULARITY_TMPDIR", "/tmp")
+
+-- Set version alias
+set_alias("singularity-version", "singularity --version")

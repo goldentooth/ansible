@@ -1,0 +1,145 @@
+---
+# Core Slurm configuration - fast and idempotent
+- name: 'Install MUNGE authentication service'
+  ansible.builtin.apt:
+    name:
+      - 'munge'
+    state: 'present'
+  notify:
+    - 'Retrieve first MUNGE key'
+    - 'Synchronize MUNGE key'
+    - 'Restart MUNGE'
+
+- name: 'Install Slurm workload manager'
+  ansible.builtin.apt:
+    name:
+      - 'slurm-wlm'
+    state: 'present'
+  notify:
+    - 'Restart slurmd'
+    - 'Disable slurmctld on compute nodes'
+    - 'Restart slurmctld on controllers'
+
+- name: 'Create Slurm shared directories on NFS'
+  ansible.builtin.file:
+    path: "{{ slurm_directory }}"
+    state: 'directory'
+    mode: '0755'
+    owner: 'slurm'
+    group: 'slurm'
+  loop: "{{ slurm.shared_directories }}"
+  loop_control:
+    loop_var: 'slurm_directory'
+  run_once: true
+  when: inventory_hostname in groups['slurm_controller']
+
+- name: 'Create Slurm local directories'
+  ansible.builtin.file:
+    path: "{{ slurm_directory }}"
+    state: 'directory'
+    mode: '0755'
+    owner: 'slurm'
+    group: 'slurm'
+  loop: "{{ slurm.local_directories }}"
+  loop_control:
+    loop_var: 'slurm_directory'
+
+- name: 'Deploy Slurm configuration files'
+  ansible.builtin.template:
+    src: "{{ config_file }}.conf.j2"
+    dest: '/etc/slurm/{{ config_file }}.conf'
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+    backup: yes
+  loop:
+    - 'slurm'
+    - 'cgroup'
+    - 'cgroup_allowed_devices_file'
+  loop_control:
+    loop_var: 'config_file'
+  notify:
+    - 'Restart slurmd'
+    - 'Disable slurmctld on compute nodes'
+    - 'Restart slurmctld on controllers'
+
+- name: 'Synchronize MUNGE keys across cluster'
+  block:
+    - name: 'Retrieve MUNGE key from first controller'
+      ansible.builtin.slurp:
+        src: '/etc/munge/munge.key'
+      register: 'controller_munge_key'
+      run_once: true
+      delegate_to: "{{ groups['slurm_controller'] | first }}"
+
+    - name: 'Distribute MUNGE key to all nodes'
+      ansible.builtin.copy:
+        content: "{{ controller_munge_key.content | b64decode }}"
+        dest: '/etc/munge/munge.key'
+        owner: 'munge'
+        group: 'munge'
+        mode: '0400'
+        backup: yes
+      when: inventory_hostname != groups['slurm_controller'] | first
+      notify: 'Restart MUNGE'
+
+- name: 'Enable and start MUNGE service'
+  ansible.builtin.systemd:
+    name: 'munge'
+    enabled: yes
+    state: 'started'
+
+- name: 'Enable and start slurmd service'
+  ansible.builtin.systemd:
+    name: 'slurmd'
+    enabled: yes
+    state: 'started'
+
+- name: 'Create systemd override directory for slurmctld'
+  ansible.builtin.file:
+    path: '/etc/systemd/system/slurmctld.service.d'
+    state: 'directory'
+    mode: '0755'
+  when: inventory_hostname in groups['slurm_controller']
+
+- name: 'Fix slurmctld pidfile path mismatch'
+  ansible.builtin.copy:
+    content: |
+      [Service]
+      PIDFile=/var/run/slurm/slurmctld.pid
+    dest: '/etc/systemd/system/slurmctld.service.d/override.conf'
+    mode: '0644'
+  when: inventory_hostname in groups['slurm_controller']
+  notify: 'Reload systemd and restart slurmctld'
+
+- name: 'Enable and start slurmctld service on controllers'
+  ansible.builtin.systemd:
+    name: 'slurmctld'
+    enabled: yes
+    state: 'started'
+    daemon_reload: yes
+  when: inventory_hostname in groups['slurm_controller']
+
+- name: 'Disable slurmctld service on compute nodes'
+  ansible.builtin.systemd:
+    name: 'slurmctld'
+    enabled: no
+    state: 'stopped'
+  when: inventory_hostname not in groups['slurm_controller']
+  failed_when: false  # Don't fail if service doesn't exist
+
+- name: 'Verify Slurm cluster status'
+  ansible.builtin.command: 'sinfo -h'
+  register: slurm_status
+  changed_when: false
+  failed_when: false
+  run_once: true
+  when: inventory_hostname in groups['slurm_controller']
+
+- name: 'Display cluster status'
+  ansible.builtin.debug:
+    msg: |
+      Slurm cluster status:
+      {{ slurm_status.stdout | default('Unable to contact controller') }}
+  run_once: true
+  when: inventory_hostname in groups['slurm_controller']

@@ -1,0 +1,8 @@
+---
+- name: Setup Lmod Environment Module System
+  hosts: slurm
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - { role: 'goldentooth.setup_lmod' }

@@ -537,6 +537,14 @@ blackbox_exporter_log_level: "info"
 blackbox_exporter_log_format: "logfmt"
 blackbox_exporter_nginx_proxy: false
 
+# Prometheus Slurm Exporter configuration (rivosinc fork)
+prometheus_slurm_exporter:
+  version: "1.6.10"
+  port: 9092
+  tls_port: 8443
+  user: "slurm-exporter"
+  group: "slurm-exporter"
+
 # Blackbox Exporter target lists
 blackbox_https_internal_targets:
   - "https://consul.{{ cluster.services_domain }}"
@@ -807,6 +815,16 @@ prometheus_scrape_configs:
         target_label: __param_module
         regex: 'blackbox-api'
         replacement: 'https_api_2xx'
+# Slurm exporter
+  - job_name: 'slurm'
+    file_sd_configs:
+      - files:
+          - "/etc/prometheus/file_sd/slurm_targets.yaml"
+    relabel_configs:
+      - source_labels: [instance]
+        target_label: instance
+        regex: '([^:]+):\d+'
+        replacement: '${1}'
 
 # List of folders where ansible will look for files containing custom scrape
 # config configuration files which will be copied to
