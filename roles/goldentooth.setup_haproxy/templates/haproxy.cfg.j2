@@ -50,8 +50,8 @@ frontend prometheus
   http-request use-service prometheus-exporter if { path /metrics }
   no log
 
-# Grafana HTTPS frontend configuration.
-frontend grafana-https
+# HTTPS frontend configuration for services.
+frontend services-https
   # Listen on port 443 for HTTPS traffic
   bind *:443 ssl crt /etc/ssl/private/goldentooth.pem
   # Use HTTP mode for application layer routing
@@ -60,7 +60,12 @@ frontend grafana-https
   option httplog
   # Sets the maximum inactivity time on the client side
   timeout client 30s
-  # Use the Grafana backend
+  
+  # Route to appropriate backend based on SNI/Host header
+  use_backend grafana-backend if { hdr(host) -i grafana.services.goldentooth.net }
+  use_backend prometheus-backend if { hdr(host) -i prometheus.services.goldentooth.net }
+  
+  # Default to grafana for backwards compatibility
   default_backend grafana-backend
 
 # Kubernetes API server frontend configuration.
@@ -116,4 +121,19 @@ backend grafana-backend
   # Grafana server configuration (HTTPS backend)
 {% for host in groups['grafana'] %}
   server {{ host }} {{ hostvars[host]['ipv4_address'] }}:3000 check ssl verify none fall 3 rise 2
+{% endfor %}
+
+# Prometheus backend configuration.
+backend prometheus-backend
+  # Use HTTP mode
+  mode http
+  # Sets the load balancing algorithm
+  balance roundrobin
+  # Enable health checks via HTTP (Prometheus uses HTTP only)
+  option httpchk GET /-/healthy
+  # Sets the maximum inactivity time on the server side
+  timeout server 30s
+  # Prometheus server configuration (HTTP backend)
+{% for host in groups['prometheus'] %}
+  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:9090 check fall 3 rise 2
 {% endfor %}
