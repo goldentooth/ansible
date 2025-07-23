@@ -1,0 +1,7 @@
+---
+- name: 'Setup Prometheus Slurm Exporter'
+  hosts: 'slurm_controller'
+  gather_facts: true
+  become: true
+  roles:
+    - { role: 'goldentooth.setup_slurm_exporter' }

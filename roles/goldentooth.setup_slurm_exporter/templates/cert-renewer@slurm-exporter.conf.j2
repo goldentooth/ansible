@@ -1,0 +1,42 @@
+# Certificate renewal configuration for slurm-exporter
+# This file configures automatic certificate renewal via Step-CA
+
+[Unit]
+Description=Certificate renewal for slurm-exporter on %i
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+
+# Certificate renewal command
+ExecStart=/usr/local/bin/step ca certificate \
+  "slurm-exporter.{{ host.fqdn }}" \
+  /etc/ssl/certs/slurm-exporter.pem \
+  /etc/ssl/private/slurm-exporter.key \
+  --provisioner={{ step_ca.default_provisioner.name }} \
+  --provisioner-password-file={{ step_ca.default_provisioner.password_path }} \
+  --san=slurm-exporter.{{ host.fqdn }} \
+  --san=slurm-exporter \
+  --san={{ ansible_fqdn }} \
+  --san={{ ipv4_address }} \
+  --not-after=168h \
+  --force
+
+# Set proper permissions after renewal
+ExecStartPost=/usr/bin/chown slurm-exporter:slurm-exporter /etc/ssl/certs/slurm-exporter.pem
+ExecStartPost=/usr/bin/chown slurm-exporter:slurm-exporter /etc/ssl/private/slurm-exporter.key
+ExecStartPost=/usr/bin/chmod 644 /etc/ssl/certs/slurm-exporter.pem  
+ExecStartPost=/usr/bin/chmod 600 /etc/ssl/private/slurm-exporter.key
+
+# Restart slurm-exporter to use new certificate
+ExecStartPost=/usr/bin/systemctl restart slurm-exporter.service
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cert-renewer-slurm-exporter
+
+[Install]
+WantedBy=multi-user.target
