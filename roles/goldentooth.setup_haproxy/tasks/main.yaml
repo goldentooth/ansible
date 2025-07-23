@@ -22,6 +22,78 @@
     state: 'present'
     cache_valid_time: 3600
 
+- name: 'Ensure HAProxy certificate directory exists.'
+  ansible.builtin.file:
+    path: '/etc/haproxy/tls'
+    state: directory
+    owner: 'haproxy'
+    group: 'haproxy'
+    mode: '0755'
+
+- name: 'Ensure HAProxy service directory exists.'
+  ansible.builtin.file:
+    path: '/etc/systemd/system/cert-renewer@haproxy.service.d'
+    state: directory
+    owner: 'root'
+    group: 'root'
+    mode: '0755'
+
+- name: 'Enable cert-renewer service for HAProxy.'
+  ansible.builtin.systemd_service:
+    name: 'cert-renewer@haproxy.timer'
+    enabled: true
+    state: 'started'
+  notify:
+    - 'Trigger systemd daemon-reload.'
+
+- name: 'Copy HAProxy certificate renewer configuration into place.'
+  ansible.builtin.template:
+    src: 'cert-renewer@haproxy.conf.j2'
+    dest: '/etc/systemd/system/cert-renewer@haproxy.service.d/override.conf'
+  notify:
+    - 'Trigger systemd daemon-reload.'
+
+- name: 'Ensure SSL private directory exists.'
+  ansible.builtin.file:
+    path: '/etc/ssl/private'
+    state: directory
+    owner: 'root'
+    group: 'root'
+    mode: '0700'
+
+- name: 'Generate initial HAProxy certificate.'
+  ansible.builtin.shell: |
+    step ca certificate \
+      "*.{{ cluster.services_domain }}" \
+      /etc/haproxy/tls/tls.crt \
+      /etc/haproxy/tls/tls.key \
+      --provisioner="default" \
+      --password-file="/root/.step/jwk_provisioner_password.txt" \
+      --san="*.{{ cluster.services_domain }}" \
+      --san="{{ ansible_hostname }}" \
+      --san="{{ ansible_hostname }}.{{ cluster.node_domain }}" \
+      --san="{{ ipv4_address }}" \
+      --not-after='24h' \
+      --console \
+      --force
+  args:
+    creates: /etc/haproxy/tls/tls.crt
+  notify:
+    - 'Restart HAProxy.'
+
+- name: 'Create combined certificate with full chain for HAProxy.'
+  ansible.builtin.shell: |
+    cat /etc/haproxy/tls/tls.crt > /tmp/haproxy_chain.pem && \
+    step ca root >> /tmp/haproxy_chain.pem && \
+    cat /tmp/haproxy_chain.pem /etc/haproxy/tls/tls.key > /etc/ssl/private/goldentooth.pem && \
+    chown haproxy:haproxy /etc/ssl/private/goldentooth.pem && \
+    chmod 600 /etc/ssl/private/goldentooth.pem && \
+    rm /tmp/haproxy_chain.pem
+  args:
+    creates: /etc/ssl/private/goldentooth.pem
+  notify:
+    - 'Restart HAProxy.'
+
 - name: 'Configure HAProxy.'
   ansible.builtin.template:
     src: 'haproxy.cfg.j2'

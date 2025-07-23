@@ -1,0 +1,12 @@
+[Service]
+; `Environment=` overrides are applied per environment variable. This line does not
+; affect any other variables set in the service template.
+Environment=CERT_LOCATION=/etc/haproxy/tls/tls.crt
+Environment=KEY_LOCATION=/etc/haproxy/tls/tls.key  
+WorkingDirectory=/etc/haproxy/tls
+
+; Create combined certificate with full chain for HAProxy after renewal
+ExecStartPost=/usr/bin/env sh -c "cat /etc/haproxy/tls/tls.crt > /tmp/haproxy_chain.pem && step ca root >> /tmp/haproxy_chain.pem && cat /tmp/haproxy_chain.pem /etc/haproxy/tls/tls.key > /etc/ssl/private/goldentooth.pem && chown haproxy:haproxy /etc/ssl/private/goldentooth.pem && chmod 600 /etc/ssl/private/goldentooth.pem && rm /tmp/haproxy_chain.pem"
+
+; Restart HAProxy service after certificate renewal
+ExecStartPost=/usr/bin/env sh -c "! systemctl --quiet is-active haproxy.service || systemctl try-reload-or-restart haproxy.service"
