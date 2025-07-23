@@ -8,8 +8,3 @@
     name: 'grafana-server'
     state: 'restarted'
 
-- name: 'Restart Nginx service.'
-  ansible.builtin.systemd_service:
-    name: 'nginx'
-    state: 'restarted'
-  delegate_to: "{{ groups['haproxy'] | first }}"

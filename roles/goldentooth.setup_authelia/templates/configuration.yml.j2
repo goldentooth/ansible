@@ -52,7 +52,7 @@ authentication_backend:
   password_reset:
     disable: false
     custom_url: ""
-  
+
   file:
     path: {{ authelia_config_dir }}/users_database.yml
     password:
@@ -81,19 +81,19 @@ access_control:
       policy: bypass
       resources:
         - "^/api/.*$"
-    
+
     # Public access to health check
     - domain: "*.{{ authelia_domain }}"
       policy: bypass
       resources:
         - "^/api/health$"
-    
+
     # Require two factor for admin resources
     - domain: "*.{{ authelia_domain }}"
       policy: two_factor
       subject:
         - "group:admins"
-    
+
     # Allow single factor for regular users
     - domain: "*.{{ authelia_domain }}"
       policy: one_factor
@@ -105,12 +105,12 @@ session:
   expiration: {{ authelia_session_expiration }}
   inactivity: {{ authelia_session_inactivity }}
   remember_me: {{ authelia_session_remember_me_duration }}
-  
+
   cookies:
     - domain: {{ authelia_session_domain }}
       authelia_url: https://auth.{{ authelia_domain }}:9091
       default_redirection_url: https://{{ authelia_domain }}
-  
+
 {% if authelia_redis_enabled %}
   redis:
     host: {{ authelia_redis_host }}
@@ -163,7 +163,7 @@ notifier:
 identity_providers:
   oidc:
     hmac_secret: {{ authelia_oidc_hmac_secret }}
-    
+
     jwks:
       - key_id: 'authelia-goldentooth'
         algorithm: 'RS256'
@@ -172,16 +172,16 @@ identity_providers:
 {{ authelia_oidc_issuer_private_key_content | default('') }}
         certificate_chain: |
 {{ authelia_oidc_issuer_certificate_chain_content | default('') }}
-    
+
     lifespans:
       access_token: 1h
       authorize_code: 1m
       id_token: 1h
       refresh_token: 90d
-    
+
     enable_client_debug_messages: false
     minimum_parameter_entropy: 8
-    
+
     cors:
       endpoints:
         - authorization
@@ -190,11 +190,11 @@ identity_providers:
         - introspection
         - userinfo
       allowed_origins_from_client_redirect_uris: true
-    
+
     clients:
       - client_id: goldentooth-mcp
         client_name: Goldentooth MCP Server
-        client_secret: "$argon2id$v=19$m=65536,t=3,p=4$ZGVmYXVsdHNlY3JldA$4oiMVjkVZjVnGJVm8ov28XAoqT5oUa5Q9uVDqXqjN+E"
+        client_secret: "$argon2id$v=19$m=65536,t=3,p=4$Flm7xRevvcylW25CMnHEag$bCIXo3jBkJ1Q/S0ffMcYXGfz5eoEWTcq2erdN59lyQk"
         authorization_policy: one_factor
         redirect_uris:
           - https://mcp.{{ authelia_domain }}/callback

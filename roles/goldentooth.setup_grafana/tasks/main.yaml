@@ -146,14 +146,3 @@
     group: 'grafana'
     mode: '0640'
   ignore_errors: true  # File may not exist on fresh installations
-
-- name: 'Configure Nginx reverse proxy for Grafana on the load balancer.'
-  ansible.builtin.template:
-    src: 'nginx-grafana.conf.j2'
-    dest: '/etc/nginx/sites-enabled/grafana.conf'
-    owner: 'root'
-    group: 'root'
-    mode: '0644'
-  delegate_to: "{{ groups['haproxy'] | first }}"
-  notify:
-    - 'Restart Nginx service.'

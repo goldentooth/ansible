@@ -64,6 +64,11 @@ frontend services-https
   # Route to appropriate backend based on SNI/Host header
   use_backend grafana-backend if { hdr(host) -i grafana.services.goldentooth.net }
   use_backend prometheus-backend if { hdr(host) -i prometheus.services.goldentooth.net }
+  use_backend loki-backend if { hdr(host) -i loki.services.goldentooth.net }
+  use_backend vault-backend if { hdr(host) -i vault.services.goldentooth.net }
+  use_backend nomad-backend if { hdr(host) -i nomad.services.goldentooth.net }
+  use_backend consul-backend if { hdr(host) -i consul.services.goldentooth.net }
+  use_backend authelia-backend if { hdr(host) -i auth.services.goldentooth.net }
   
   # Default to grafana for backwards compatibility
   default_backend grafana-backend
@@ -136,4 +141,77 @@ backend prometheus-backend
   # Prometheus server configuration (HTTP backend)
 {% for host in groups['prometheus'] %}
   server {{ host }} {{ hostvars[host]['ipv4_address'] }}:9090 check fall 3 rise 2
+{% endfor %}
+
+# Loki backend configuration.
+backend loki-backend
+  # Use HTTP mode
+  mode http
+  # Sets the load balancing algorithm
+  balance roundrobin
+  # Enable health checks via HTTPS (Loki uses HTTPS)
+  option httpchk GET /ready
+  http-check connect ssl
+  # Sets the maximum inactivity time on the server side
+  timeout server 30s
+  # Loki server configuration (HTTPS backend)
+{% for host in groups['loki'] %}
+  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:3100 check ssl verify none fall 3 rise 2
+{% endfor %}
+
+# Vault backend configuration.
+backend vault-backend
+  # Use HTTP mode
+  mode http
+  # Sets the load balancing algorithm
+  balance roundrobin
+  # Disable health checks (Vault requires client certificates)
+  # Sets the maximum inactivity time on the server side
+  timeout server 30s
+  # Vault server configuration (HTTPS backend)
+{% for host in groups['vault'] %}
+  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:8200 ssl verify none
+{% endfor %}
+
+# Nomad backend configuration.
+backend nomad-backend
+  # Use HTTP mode
+  mode http
+  # Sets the load balancing algorithm
+  balance roundrobin
+  # Disable health checks (Nomad requires client certificates)
+  # Sets the maximum inactivity time on the server side
+  timeout server 30s
+  # Nomad server configuration (HTTPS backend)
+{% for host in groups['nomad_server'] %}
+  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:4646 ssl verify none
+{% endfor %}
+
+# Consul backend configuration.
+backend consul-backend
+  # Use HTTP mode
+  mode http
+  # Sets the load balancing algorithm
+  balance roundrobin
+  # Disable health checks (Consul requires client certificates)
+  # Sets the maximum inactivity time on the server side
+  timeout server 30s
+  # Consul server configuration (HTTPS backend)
+{% for host in groups['consul_server'] %}
+  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:8501 ssl verify none
+{% endfor %}
+
+# Authelia backend configuration.
+backend authelia-backend
+  # Use HTTP mode
+  mode http
+  # Sets the load balancing algorithm
+  balance roundrobin
+  # Enable health checks via HTTP (Authelia uses HTTP)
+  option httpchk GET /api/health
+  # Sets the maximum inactivity time on the server side
+  timeout server 30s
+  # Authelia server configuration (HTTP backend)
+{% for host in groups['authelia'] %}
+  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:9091 check fall 3 rise 2
 {% endfor %}
