@@ -168,7 +168,7 @@
       echo "SUCCESS: FQDN connection"
       exit 0
     # Try IP address as fallback
-    elif step ca health --ca-url https://{{ hostvars[groups['step_ca'] | first]['ansible_default_ipv4']['address'] }}:9443 --root /etc/ssl/certs/goldentooth.pem; then
+    elif step ca health --ca-url https://{{ hostvars[groups['step_ca'] | first]['ipv4_address'] }}:9443 --root /etc/ssl/certs/goldentooth.pem; then
       echo "SUCCESS: IP connection"  
       exit 0
     # Try short hostname (if SAN is configured)

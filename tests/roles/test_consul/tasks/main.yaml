@@ -15,12 +15,19 @@
   set_fact:
     consul_tests: "{{ consul_tests + [{'name': 'consul_service_running', 'category': 'consul', 'success': (consul_service.status.ActiveState == 'active') | bool, 'duration': 0.1}] }}"
 
+- name: Check if consul command exists
+  stat:
+    path: /usr/bin/consul
+  register: consul_command_stat
+
 - name: Check Consul members
-  command: consul members -status=alive
+  command: consul members -status=alive -http-addr={{ ansible_default_ipv4.address }}:8500
   register: consul_members_raw
   changed_when: false
   ignore_errors: yes
-  when: consul_service.status.ActiveState == "active"
+  when: 
+    - consul_service.status.ActiveState == "active"
+    - consul_command_stat.stat.exists
 
 - name: Count Consul members
   set_fact:
