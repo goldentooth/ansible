@@ -1,8 +1,8 @@
 [Service]
 ; `Environment=` overrides are applied per environment variable. This line does not
 ; affect any other variables set in the service template.
-Environment=CERT_LOCATION={{ consul.cert_path }} \
-            KEY_LOCATION={{ consul.key_path }}
+Environment=CERT_LOCATION={{ consul.cert_path }}
+Environment=KEY_LOCATION={{ consul.key_path }}
 WorkingDirectory={{ consul.key_path | dirname }}
 
 ; Restart Consul service after certificate renewal

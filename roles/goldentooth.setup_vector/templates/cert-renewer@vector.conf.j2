@@ -1,8 +1,8 @@
 [Service]
 ; `Environment=` overrides are applied per environment variable. This line does not
 ; affect any other variables set in the service template.
-Environment=CERT_LOCATION={{ vector.cert_path }} \
-            KEY_LOCATION={{ vector.key_path }}
+Environment=CERT_LOCATION={{ vector.cert_path }}
+Environment=KEY_LOCATION={{ vector.key_path }}
 WorkingDirectory={{ vector.key_path | dirname }}
 
 ; Restart Vector service after certificate renewal

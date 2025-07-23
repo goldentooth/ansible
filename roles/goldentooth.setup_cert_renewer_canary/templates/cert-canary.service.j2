@@ -1,0 +1,26 @@
+[Unit]
+Description=Certificate Canary Service - Tests cert renewal
+After=network.target
+
+[Service]
+Type=simple
+User=cert-canary
+Group=cert-canary
+WorkingDirectory=/opt/cert-canary
+
+# Simple service that logs certificate status
+ExecStart=/usr/bin/env sh -c "while true; do \
+  echo 'Cert canary alive at $(date)'; \
+  if [ -f {{ canary.cert_path }} ]; then \
+    echo 'Certificate expires: $(openssl x509 -in {{ canary.cert_path }} -noout -enddate 2>/dev/null | cut -d= -f2)'; \
+  else \
+    echo 'Certificate not found!'; \
+  fi; \
+  sleep 300; \
+done"
+
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -9,14 +9,15 @@ StartLimitIntervalSec=0
 Type=oneshot
 User=root
 
-Environment=STEPPATH=/etc/step-ca \
-            CERT_LOCATION=/etc/step/certs/%i.crt \
-            KEY_LOCATION=/etc/step/certs/%i.key
+Environment=STEPPATH=/etc/step-ca
+Environment=CERT_LOCATION=/etc/step/certs/%i.crt
+Environment=KEY_LOCATION=/etc/step/certs/%i.key
+Environment=EXPIRES_IN_THRESHOLD=66%
 
 ; ExecCondition checks if the certificate is ready for renewal,
 ; based on the exit status of the command.
 ; (In systemd <242, you can use ExecStartPre= here.)
-ExecCondition=/usr/bin/step certificate needs-renewal ${CERT_LOCATION}
+ExecCondition=/usr/bin/step certificate needs-renewal ${CERT_LOCATION} --expires-in ${EXPIRES_IN_THRESHOLD}
 
 ; ExecStart renews the certificate, if ExecStartPre was successful.
 ExecStart=/usr/bin/step ca renew --force ${CERT_LOCATION} ${KEY_LOCATION}

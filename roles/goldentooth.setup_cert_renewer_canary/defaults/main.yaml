@@ -1,0 +1,6 @@
+---
+canary:
+  certs_path: '/opt/cert-canary/certs'
+  cert_path: '/opt/cert-canary/certs/tls.crt'
+  key_path: '/opt/cert-canary/certs/tls.key'
+  cert_lifetime: '15m'  # 15 minute certificates, should renew at ~10 minutes

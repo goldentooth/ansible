@@ -1,0 +1,24 @@
+# Description: Test certificate renewal system and certificate validity across all services
+---
+- name: Test certificate renewal system
+  hosts: all
+  gather_facts: true
+  roles:
+    - test_certificate_renewal
+    - test_reporter
+
+- name: Display certificate test summary
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Summarize certificate test results
+      debug:
+        msg: |
+          Certificate Renewal Test Summary:
+          {% for host in groups['all'] %}
+          {{ host }}:
+            {% for result in hostvars[host].cert_renewal_tests | default([]) %}
+            - {{ result.name }}: {{ "PASS" if result.success else "FAIL" }}{% if result.days_remaining is defined %} ({{ result.days_remaining }} days){% endif %}
+            {% endfor %}
+          {% endfor %}
+      when: hostvars[groups['all'][0]].cert_renewal_tests is defined

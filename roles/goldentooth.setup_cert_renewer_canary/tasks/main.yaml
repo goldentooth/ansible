@@ -1,0 +1,89 @@
+---
+- name: 'Create canary user'
+  ansible.builtin.user:
+    name: 'cert-canary'
+    system: true
+    shell: '/bin/false'
+    home: '/opt/cert-canary'
+    create_home: true
+
+- name: 'Create canary certificate directory'
+  ansible.builtin.file:
+    path: "{{ canary.certs_path }}"
+    state: 'directory'
+    owner: 'cert-canary'
+    group: 'cert-canary'
+    mode: '0755'
+
+- name: 'Generate short-lived certificate for canary'
+  ansible.builtin.shell:
+    cmd: |
+      {{ step_ca.executable }} \
+        ca certificate \
+        cert-canary.{{ cluster.domain }} \
+        "{{ canary.cert_path }}" \
+        "{{ canary.key_path }}" \
+        --provisioner="{{ step_ca.default_provisioner.name }}" \
+        --password-file="{{ step_ca.default_provisioner.password_path }}" \
+        --san='cert-canary.{{ cluster.domain }}' \
+        --san='localhost' \
+        --san="{{ clean_hostname }}" \
+        --san="{{ ipv4_address }}" \
+        --not-after='{{ canary.cert_lifetime }}' \
+        --console \
+        --force
+
+- name: 'Set certificate permissions'
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: 'cert-canary'
+    group: 'cert-canary'
+    mode: '0600'
+  loop:
+    - "{{ canary.cert_path }}"
+    - "{{ canary.key_path }}"
+
+- name: 'Create cert-renewer override directory for canary'
+  ansible.builtin.file:
+    path: '/etc/systemd/system/cert-renewer@cert-canary.service.d'
+    state: 'directory'
+    owner: 'root'
+    group: 'root'
+    mode: '0755'
+
+- name: 'Configure cert-renewer for canary'
+  ansible.builtin.template:
+    src: 'cert-renewer@cert-canary.conf.j2'
+    dest: '/etc/systemd/system/cert-renewer@cert-canary.service.d/override.conf'
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+  notify:
+    - 'Reload systemd daemon'
+
+
+- name: 'Create canary service'
+  ansible.builtin.template:
+    src: 'cert-canary.service.j2'
+    dest: '/etc/systemd/system/cert-canary.service'
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+  notify:
+    - 'Reload systemd daemon'
+
+- name: 'Flush handlers'
+  ansible.builtin.meta: 'flush_handlers'
+
+- name: 'Enable and start cert-renewer timer for canary'
+  ansible.builtin.systemd_service:
+    name: 'cert-renewer@cert-canary.timer'
+    enabled: true
+    state: 'started'
+    daemon_reload: true
+
+- name: 'Enable and start canary service'
+  ansible.builtin.systemd_service:
+    name: 'cert-canary.service'
+    enabled: true
+    state: 'started'

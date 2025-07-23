@@ -1,0 +1,9 @@
+[Service]
+; Certificate renewal configuration for canary service
+Environment=CERT_LOCATION={{ canary.cert_path }}
+Environment=KEY_LOCATION={{ canary.key_path }}
+Environment=EXPIRES_IN_THRESHOLD=50%
+WorkingDirectory={{ canary.certs_path }}
+
+; Restart canary service after certificate renewal (if it exists)
+ExecStartPost=/usr/bin/env sh -c "! systemctl --quiet is-active cert-canary.service || systemctl try-reload-or-restart cert-canary.service"

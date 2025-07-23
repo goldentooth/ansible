@@ -1,0 +1,248 @@
+---
+# Test certificate renewal system functionality across all services
+- name: Initialize certificate renewal test results
+  set_fact:
+    cert_renewal_tests: []
+    cert_renewal_health: true
+    certificate_services: []
+
+# Define services that use cert-renewer system
+- name: Set certificate-enabled services list
+  set_fact:
+    certificate_services:
+      - name: consul
+        cert_path: /etc/consul.d/certs/tls.crt
+        key_path: /etc/consul.d/certs/tls.key
+        service_name: consul.service
+        host_groups: ['consul']
+      - name: vault
+        cert_path: /opt/vault/tls/tls.crt
+        key_path: /opt/vault/tls/tls.key
+        service_name: vault.service
+        host_groups: ['vault']
+      - name: nomad
+        cert_path: /opt/nomad/certs/tls.crt
+        key_path: /opt/nomad/certs/tls.key
+        service_name: nomad.service
+        host_groups: ['nomad']
+      - name: nomad-cli
+        cert_path: /opt/nomad/certs/cli.crt
+        key_path: /opt/nomad/certs/cli.key
+        service_name: nomad.service
+        host_groups: ['nomad']
+      - name: grafana
+        cert_path: /etc/grafana/tls/tls.crt
+        key_path: /etc/grafana/tls/tls.key
+        service_name: grafana.service
+        host_groups: ['grafana']
+      - name: loki
+        cert_path: /etc/loki/tls/tls.crt
+        key_path: /etc/loki/tls/tls.key
+        service_name: loki.service
+        host_groups: ['loki']
+      - name: vector
+        cert_path: /etc/vector/tls/tls.crt
+        key_path: /etc/vector/tls/tls.key
+        service_name: vector.service
+        host_groups: ['all']
+      - name: cert-canary
+        cert_path: /opt/cert-canary/certs/tls.crt
+        key_path: /opt/cert-canary/certs/tls.key
+        service_name: cert-canary.service
+        host_groups: []
+        specific_hosts: ['allyrion']
+
+# Filter services to only those deployed on this node
+- name: Filter services for current node
+  set_fact:
+    node_certificate_services: |-
+      {%- set filtered_services = [] -%}
+      {%- for service in certificate_services -%}
+        {%- set should_include = false -%}
+        {%- if service.get('specific_hosts') -%}
+          {%- if inventory_hostname in service.specific_hosts -%}
+            {%- set should_include = true -%}
+          {%- endif -%}
+        {%- elif service.host_groups -%}
+          {%- for group in service.host_groups -%}
+            {%- if inventory_hostname in groups.get(group, []) -%}
+              {%- set should_include = true -%}
+            {%- endif -%}
+          {%- endfor -%}
+        {%- endif -%}
+        {%- if should_include -%}
+          {%- set _ = filtered_services.append(service) -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ filtered_services }}
+
+# Test certificate presence and validity for each service
+- name: Check certificate files exist
+  stat:
+    path: "{{ item.cert_path }}"
+  register: cert_files_check
+  loop: "{{ node_certificate_services }}"
+  ignore_errors: yes
+
+- name: Record certificate presence tests
+  set_fact:
+    cert_renewal_tests: "{{ cert_renewal_tests + [{'name': 'certificate_present_' + item.item.name, 'category': 'certificate_renewal', 'success': item.stat.exists | default(false), 'duration': 0.1, 'service': item.item.name}] }}"
+  loop: "{{ cert_files_check.results }}"
+  when: item is not skipped and item.item is defined
+
+# Test certificate validity using openssl
+- name: Check certificate validity and expiration
+  shell: |
+    if [ -f "{{ item.cert_path }}" ]; then
+      # Check if certificate is valid (not expired)
+      if openssl x509 -in "{{ item.cert_path }}" -noout -checkend 0 > /dev/null 2>&1; then
+        # Get days until expiration
+        expiry_date=$(openssl x509 -in "{{ item.cert_path }}" -noout -enddate | cut -d= -f2)
+        expiry_epoch=$(date -d "$expiry_date" +%s)
+        current_epoch=$(date +%s)
+        days_remaining=$(( (expiry_epoch - current_epoch) / 86400 ))
+        echo "VALID:$days_remaining"
+      else
+        echo "EXPIRED:0"
+      fi
+    else
+      echo "MISSING:-1"
+    fi
+  register: cert_validity_check
+  loop: "{{ node_certificate_services }}"
+  changed_when: false
+  ignore_errors: yes
+
+- name: Parse certificate validity results
+  set_fact:
+    cert_validity_results: "{{ cert_validity_results | default([]) + [{'service': item.item.name, 'status': item.stdout.split(':')[0], 'days': item.stdout.split(':')[1] | int}] }}"
+  loop: "{{ cert_validity_check.results }}"
+  when: item is not skipped and item.stdout is defined
+
+- name: Record certificate validity tests
+  set_fact:
+    cert_renewal_tests: "{{ cert_renewal_tests + [{'name': 'certificate_valid_' + item.service, 'category': 'certificate_renewal', 'success': (item.status == 'VALID'), 'duration': 0.2, 'service': item.service, 'days_remaining': item.days}] }}"
+  loop: "{{ cert_validity_results | default([]) }}"
+
+# Test cert-renewer service and timer status
+- name: Check cert-renewer timer status for each service
+  systemd:
+    name: "cert-renewer@{{ item.name }}.timer"
+  register: cert_timer_status
+  loop: "{{ node_certificate_services }}"
+  ignore_errors: yes
+
+- name: Record cert-renewer timer tests
+  set_fact:
+    cert_renewal_tests: "{{ cert_renewal_tests + [{'name': 'cert_renewer_timer_' + item.item.name, 'category': 'certificate_renewal', 'success': (item.status.ActiveState == 'active' if item.status is defined else false), 'duration': 0.1, 'service': item.item.name}] }}"
+  loop: "{{ cert_timer_status.results }}"
+  when: item is not skipped and item.item is defined
+
+# Test certificate renewal capability using step CLI
+- name: Test certificate renewal check for each service
+  shell: |
+    if [ -f "{{ item.cert_path }}" ]; then
+      step certificate needs-renewal "{{ item.cert_path }}" && echo "NEEDS_RENEWAL" || echo "NO_RENEWAL_NEEDED"
+    else
+      echo "CERT_MISSING"
+    fi
+  register: cert_renewal_check
+  loop: "{{ node_certificate_services }}"
+  changed_when: false
+  ignore_errors: yes
+
+- name: Record certificate renewal capability tests
+  set_fact:
+    cert_renewal_tests: "{{ cert_renewal_tests + [{'name': 'cert_renewal_check_' + item.item.name, 'category': 'certificate_renewal', 'success': (item.stdout in ['NEEDS_RENEWAL', 'NO_RENEWAL_NEEDED']), 'duration': 0.3, 'service': item.item.name, 'renewal_status': item.stdout}] }}"
+  loop: "{{ cert_renewal_check.results }}"
+  when: item is not skipped and item.stdout is defined
+
+# Test cert-renewer service configuration
+- name: Check cert-renewer service override configuration
+  shell: |
+    override_dir="/etc/systemd/system/cert-renewer@{{ item.name }}.service.d"
+    if [ -d "$override_dir" ] && [ -f "$override_dir/override.conf" ]; then
+      echo "CONFIGURED"
+    else
+      echo "NOT_CONFIGURED"
+    fi
+  register: cert_service_config_check
+  loop: "{{ node_certificate_services }}"
+  changed_when: false
+  ignore_errors: yes
+
+- name: Record cert-renewer service configuration tests
+  set_fact:
+    cert_renewal_tests: "{{ cert_renewal_tests + [{'name': 'cert_renewer_config_' + item.item.name, 'category': 'certificate_renewal', 'success': (item.stdout == 'CONFIGURED'), 'duration': 0.1, 'service': item.item.name}] }}"
+  loop: "{{ cert_service_config_check.results }}"
+  when: item is not skipped and item.stdout is defined
+
+# Special test for certificate canary (only on allyrion)
+- name: Test certificate canary health
+  block:
+    - name: Check cert-canary service status
+      systemd:
+        name: cert-canary.service
+      register: canary_service_status
+      ignore_errors: yes
+
+    - name: Check cert-canary certificate age
+      shell: |
+        if [ -f "/opt/cert-canary/certs/tls.crt" ]; then
+          # Get certificate creation time and current time
+          cert_start=$(openssl x509 -in /opt/cert-canary/certs/tls.crt -noout -startdate | cut -d= -f2)
+          cert_start_epoch=$(date -d "$cert_start" +%s)
+          current_epoch=$(date +%s)
+          age_minutes=$(( (current_epoch - cert_start_epoch) / 60 ))
+          echo "AGE:$age_minutes"
+        else
+          echo "MISSING:-1"
+        fi
+      register: canary_cert_age
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Record certificate canary tests
+      set_fact:
+        cert_renewal_tests: "{{ cert_renewal_tests + [
+          {'name': 'cert_canary_service_running', 'category': 'certificate_renewal', 'success': (canary_service_status.status.ActiveState == 'active' if canary_service_status.status is defined else false), 'duration': 0.1, 'service': 'cert-canary'},
+          {'name': 'cert_canary_certificate_fresh', 'category': 'certificate_renewal', 'success': (canary_cert_age.stdout.split(':')[1] | int < 600 if canary_cert_age.stdout is defined and ':' in canary_cert_age.stdout else false), 'duration': 0.2, 'service': 'cert-canary', 'age_minutes': (canary_cert_age.stdout.split(':')[1] | int if canary_cert_age.stdout is defined and ':' in canary_cert_age.stdout else -1)}
+        ] }}"
+  when: inventory_hostname == 'allyrion'
+
+# Test certificate chain validation for services
+- name: Test certificate chain validation
+  shell: |
+    if [ -f "{{ item.cert_path }}" ]; then
+      # Verify certificate against the cluster CA
+      step certificate verify "{{ item.cert_path }}" --roots /etc/ssl/certs/goldentooth.pem && echo "VALID_CHAIN" || echo "INVALID_CHAIN"
+    else
+      echo "CERT_MISSING"
+    fi
+  register: cert_chain_check
+  loop: "{{ node_certificate_services }}"
+  changed_when: false
+  ignore_errors: yes
+
+- name: Record certificate chain validation tests
+  set_fact:
+    cert_renewal_tests: "{{ cert_renewal_tests + [{'name': 'cert_chain_valid_' + item.item.name, 'category': 'certificate_renewal', 'success': (item.stdout == 'VALID_CHAIN'), 'duration': 0.3, 'service': item.item.name}] }}"
+  loop: "{{ cert_chain_check.results }}"
+  when: item is not skipped and item.stdout is defined
+
+# Determine overall certificate renewal system health
+- name: Calculate certificate renewal system health
+  set_fact:
+    cert_renewal_health: "{{ cert_renewal_tests | selectattr('success', 'equalto', false) | list | length == 0 }}"
+
+# Export certificate expiration information for metrics
+- name: Build certificate status for metrics export
+  set_fact:
+    certificate_status: "{{ certificate_status | default([]) + [{'service': item.service, 'days_remaining': item.days_remaining | default(0)}] }}"
+  loop: "{{ cert_renewal_tests | selectattr('days_remaining', 'defined') | list }}"
+
+# Export results for integration with test framework
+- name: Export certificate renewal test results
+  set_fact:
+    test_results: "{{ (test_results | default([])) + cert_renewal_tests }}"
+    service_health: "{{ (service_health | default({})) | combine({'certificate_renewal': cert_renewal_health}) }}"

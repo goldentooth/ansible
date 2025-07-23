@@ -1,8 +1,8 @@
 [Service]
 ; `Environment=` overrides are applied per environment variable. This line does not
 ; affect any other variables set in the service template.
-Environment=CERT_LOCATION={{ vault.cert_path }} \
-            KEY_LOCATION={{ vault.key_path }}
+Environment=CERT_LOCATION={{ vault.cert_path }}
+Environment=KEY_LOCATION={{ vault.key_path }}
 WorkingDirectory={{ vault.key_path | dirname }}
 
 ; Restart Vault service after certificate renewal

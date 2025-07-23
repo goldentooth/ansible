@@ -646,7 +646,78 @@ prometheus_alert_relabel_configs: []
 #
 # Please see default values in role defaults/main.yml
 prometheus_alert_rules:
-  # Basic Infrastructure Alerts
+  # Slurm Cluster Alerts
+  - alert: SlurmHighJobQueueLength
+    expr: slurm_jobs_pending > 50
+    for: 10m
+    labels:
+      severity: warning
+      service: slurm
+    annotations:
+      summary: "High number of pending Slurm jobs"
+      description: "{{ "{{ $value }}" }} jobs are pending in the Slurm queue for more than 10 minutes"
+      
+  - alert: SlurmCriticalJobQueueLength
+    expr: slurm_jobs_pending > 100
+    for: 5m
+    labels:
+      severity: critical
+      service: slurm
+    annotations:
+      summary: "Critical number of pending Slurm jobs"
+      description: "{{ $value }} jobs are pending in the Slurm queue for more than 5 minutes"
+      
+  - alert: SlurmNodeFailure
+    expr: slurm_node_count_per_state{state="down"} > 0
+    for: 1m
+    labels:
+      severity: critical
+      service: slurm
+    annotations:
+      summary: "Slurm nodes are down"
+      description: "{{ $value }} Slurm compute nodes are in down state"
+      
+  - alert: SlurmHighCPUUtilization
+    expr: (slurm_cpus_alloc / slurm_cpus_total) * 100 > 90
+    for: 15m
+    labels:
+      severity: warning
+      service: slurm
+    annotations:
+      summary: "High CPU utilization in Slurm cluster"
+      description: "Slurm cluster CPU utilization is {{ $value }}% (over 90%)"
+      
+  - alert: SlurmCriticalCPUUtilization
+    expr: (slurm_cpus_alloc / slurm_cpus_total) * 100 > 95
+    for: 5m
+    labels:
+      severity: critical
+      service: slurm
+    annotations:
+      summary: "Critical CPU utilization in Slurm cluster"
+      description: "Slurm cluster CPU utilization is {{ $value }}% (over 95%)"
+      
+  - alert: SlurmHighMemoryUtilization
+    expr: (slurm_mem_alloc / slurm_mem_real) * 100 > 95
+    for: 10m
+    labels:
+      severity: critical
+      service: slurm
+    annotations:
+      summary: "High memory utilization in Slurm cluster"
+      description: "Slurm cluster memory utilization is {{ $value }}% (over 95%)"
+      
+  - alert: SlurmExporterDown
+    expr: up{job="slurm"} == 0
+    for: 2m
+    labels:
+      severity: critical
+      service: slurm
+    annotations:
+      summary: "Slurm exporter is down"
+      description: "Slurm metrics exporter on {{ $labels.instance }} has been down for more than 2 minutes"
+      
+  # Infrastructure Service Availability Alerts
   - alert: NodeDown
     expr: up{job="node"} == 0
     for: 5m
@@ -654,8 +725,152 @@ prometheus_alert_rules:
       severity: critical
       service: infrastructure
     annotations:
-      summary: "Node is down"
-      description: "Node has been down for more than 5 minutes"
+      summary: "Node {{ $labels.instance }} is down"
+      description: "Node {{ $labels.instance }} has been down for more than 5 minutes"
+      
+  - alert: ServiceUnavailable
+    expr: probe_success{job="blackbox"} == 0
+    for: 5m
+    labels:
+      severity: critical
+      service: infrastructure
+    annotations:
+      summary: "Service {{ $labels.instance }} is unavailable"
+      description: "Service {{ $labels.instance }} ({{ $labels.module }}) has been unavailable for more than 5 minutes"
+      
+  - alert: HighServiceResponseTime
+    expr: probe_duration_seconds{job="blackbox"} > 10
+    for: 5m
+    labels:
+      severity: warning
+      service: infrastructure
+    annotations:
+      summary: "High response time for {{ $labels.instance }}"
+      description: "Service {{ $labels.instance }} response time is {{ $value }}s (over 10s)"
+      
+  # HashiCorp Services Availability
+  - alert: ConsulServerDown
+    expr: up{job="consul"} == 0
+    for: 2m
+    labels:
+      severity: critical
+      service: consul
+    annotations:
+      summary: "Consul server {{ $labels.instance }} is down"
+      description: "Consul server on {{ $labels.instance }} has been down for more than 2 minutes"
+      
+  - alert: VaultSealed
+    expr: vault_core_sealed == 1
+    for: 1m
+    labels:
+      severity: critical
+      service: vault
+    annotations:
+      summary: "Vault server {{ $labels.instance }} is sealed"
+      description: "Vault server on {{ $labels.instance }} is in sealed state"
+      
+  - alert: NomadServerDown
+    expr: up{job="nomad"} == 0
+    for: 2m
+    labels:
+      severity: critical
+      service: nomad
+    annotations:
+      summary: "Nomad server {{ $labels.instance }} is down"
+      description: "Nomad server on {{ $labels.instance }} has been down for more than 2 minutes"
+      
+  # Storage Capacity Alerts
+  - alert: HighDiskUsage
+    expr: (1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) * 100 > 80
+    for: 10m
+    labels:
+      severity: warning
+      service: storage
+    annotations:
+      summary: "High disk usage on {{ $labels.instance }}"
+      description: "Disk usage on {{ $labels.instance }} is {{ $value }}% (over 80%)"
+      
+  - alert: CriticalDiskUsage
+    expr: (1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) * 100 > 90
+    for: 5m
+    labels:
+      severity: critical
+      service: storage
+    annotations:
+      summary: "Critical disk usage on {{ $labels.instance }}"
+      description: "Disk usage on {{ $labels.instance }} is {{ $value }}% (over 90%)"
+      
+  - alert: DiskSpaceRunningOut
+    expr: predict_linear(node_filesystem_avail_bytes{mountpoint="/"}[4h], 24*3600) < 0
+    for: 30m
+    labels:
+      severity: warning
+      service: storage
+    annotations:
+      summary: "Disk space running out on {{ $labels.instance }}"
+      description: "Based on current usage trend, disk on {{ $labels.instance }} will be full in less than 24 hours"
+      
+  # Certificate Expiration Alerts
+  - alert: CertificateExpiringWarning
+    expr: goldentooth_test_cert_expiry_days < 30
+    for: 1h
+    labels:
+      severity: warning
+      service: certificates
+    annotations:
+      summary: "Certificate expiring soon on {{ $labels.instance }}"
+      description: "Certificate on {{ $labels.instance }} expires in {{ $value }} days (less than 30 days)"
+      
+  - alert: CertificateExpiringCritical
+    expr: goldentooth_test_cert_expiry_days < 7
+    for: 1h
+    labels:
+      severity: critical
+      service: certificates
+    annotations:
+      summary: "Certificate expiring very soon on {{ $labels.instance }}"
+      description: "Certificate on {{ $labels.instance }} expires in {{ $value }} days (less than 7 days)"
+      
+  - alert: CertificateExpired
+    expr: goldentooth_test_cert_expiry_days <= 0
+    for: 5m
+    labels:
+      severity: critical
+      service: certificates
+    annotations:
+      summary: "Certificate expired on {{ $labels.instance }}"
+      description: "Certificate on {{ $labels.instance }} has expired {{ $value }} days ago"
+      
+  # Memory and CPU Infrastructure Alerts
+  - alert: HighMemoryUsage
+    expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+    for: 15m
+    labels:
+      severity: warning
+      service: infrastructure
+    annotations:
+      summary: "High memory usage on {{ $labels.instance }}"
+      description: "Memory usage on {{ $labels.instance }} is {{ $value }}% (over 90%)"
+      
+  - alert: HighCPUUsage
+    expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 95
+    for: 15m
+    labels:
+      severity: warning
+      service: infrastructure
+    annotations:
+      summary: "High CPU usage on {{ $labels.instance }}"
+      description: "CPU usage on {{ $labels.instance }} is {{ $value }}% (over 95%)"
+      
+  - alert: HighSystemLoad
+    expr: node_load15 > 4
+    for: 10m
+    labels:
+      severity: warning
+      service: infrastructure
+    annotations:
+      summary: "High system load on {{ $labels.instance }}"
+      description: "15-minute load average on {{ $labels.instance }} is {{ $value }} (over 4.0)"
 
 # Configuration responsible for pointing where alertmanagers are. This should
 # be specified as list in yaml format.

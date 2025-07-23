@@ -51,6 +51,11 @@
         name: test_step_ca
       tags: [step_ca, certificates, pki]
       
+    - name: Test certificate renewal system
+      include_role:
+        name: test_certificate_renewal
+      tags: [certificates, certificate_renewal, pki]
+      
     - name: Test storage services
       include_role:
         name: test_storage

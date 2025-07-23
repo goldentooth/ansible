@@ -36,8 +36,8 @@ sources:
 #     timezone: "{{ my.local.timezone }}"
   l_internal:
     type: internal_logs
-#  internal_metrics:
-#    type: internal_metrics
+  internal_metrics:
+    type: internal_metrics
   l_nginx:
     type: file
     include:
@@ -88,6 +88,12 @@ sinks:
       key_file: "{{ vector.key_path }}"
       verify_hostname: true
       verify_certificate: true
+  
+  prometheus_metrics:
+    type: 'prometheus_exporter'
+    inputs:
+      - 'internal_metrics'
+    address: "{{ ipv4_address }}:9598"
 
 api:
   enabled: true

@@ -202,6 +202,75 @@
     step_ca_tests: "{{ step_ca_tests + [{'name': 'certificate_renewal_capable', 'category': 'step_ca', 'success': (cert_renewal_test.rc == 0) | bool, 'duration': 0.3}] }}"
   when: cert_renewal_test is defined
 
+# Test cert-renewer system functionality
+- name: Check cert-renewer base service template exists
+  stat:
+    path: /etc/systemd/system/cert-renewer@.service
+  register: cert_renewer_template
+  become: true
+
+- name: Record cert-renewer template test
+  set_fact:
+    step_ca_tests: "{{ step_ca_tests + [{'name': 'cert_renewer_template_exists', 'category': 'step_ca', 'success': cert_renewer_template.stat.exists | bool, 'duration': 0.1}] }}"
+
+- name: Check cert-renewer timer template exists
+  stat:
+    path: /etc/systemd/system/cert-renewer@.timer
+  register: cert_renewer_timer_template  
+  become: true
+
+- name: Record cert-renewer timer template test
+  set_fact:
+    step_ca_tests: "{{ step_ca_tests + [{'name': 'cert_renewer_timer_template_exists', 'category': 'step_ca', 'success': cert_renewer_timer_template.stat.exists | bool, 'duration': 0.1}] }}"
+
+- name: Test cert-renewer environment variable configuration
+  shell: |
+    systemctl show cert-renewer@test.service -p Environment 2>/dev/null | grep -q "EXPIRES_IN_THRESHOLD" && echo "CONFIGURED" || echo "NOT_CONFIGURED"
+  register: cert_renewer_env_test
+  changed_when: false
+  ignore_errors: yes
+
+- name: Record cert-renewer environment test
+  set_fact:
+    step_ca_tests: "{{ step_ca_tests + [{'name': 'cert_renewer_environment_configured', 'category': 'step_ca', 'success': (cert_renewer_env_test.stdout == 'CONFIGURED'), 'duration': 0.2}] }}"
+  when: cert_renewer_env_test.stdout is defined
+
+# Test certificate canary (only on allyrion)
+- name: Test certificate canary functionality
+  block:
+    - name: Check cert-canary timer status
+      systemd:
+        name: cert-renewer@cert-canary.timer
+      register: canary_timer_status
+      ignore_errors: yes
+
+    - name: Record cert-canary timer test
+      set_fact:
+        step_ca_tests: "{{ step_ca_tests + [{'name': 'cert_canary_timer_active', 'category': 'step_ca', 'success': (canary_timer_status.status.ActiveState == 'active' if canary_timer_status.status is defined else false), 'duration': 0.1}] }}"
+
+    - name: Check cert-canary certificate exists and is recent
+      shell: |
+        if [ -f "/opt/cert-canary/certs/tls.crt" ]; then
+          # Check if certificate was modified within last hour (sign of active renewal)
+          if [ $(find /opt/cert-canary/certs/tls.crt -mmin -60) ]; then
+            echo "RECENT"
+          else
+            echo "OLD"
+          fi
+        else
+          echo "MISSING"
+        fi
+      register: canary_cert_check
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Record cert-canary freshness test
+      set_fact:
+        step_ca_tests: "{{ step_ca_tests + [{'name': 'cert_canary_certificate_fresh', 'category': 'step_ca', 'success': (canary_cert_check.stdout == 'RECENT'), 'duration': 0.2}] }}"
+      when: canary_cert_check.stdout is defined
+
+  when: inventory_hostname == 'allyrion'
+
 - name: Determine overall Step-CA health
   set_fact:
     step_ca_health: "{{ step_ca_tests | selectattr('success', 'equalto', false) | list | length == 0 }}"

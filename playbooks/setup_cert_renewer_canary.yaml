@@ -1,0 +1,8 @@
+# Description: Deploy certificate renewal canary for testing
+---
+- name: 'Setup certificate renewal canary service'
+  hosts: "{{ target | default('allyrion') }}"
+  become: true
+  gather_facts: true
+  roles:
+    - { role: 'goldentooth.setup_cert_renewer_canary' }

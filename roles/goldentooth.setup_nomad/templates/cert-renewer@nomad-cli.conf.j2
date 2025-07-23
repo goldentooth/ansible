@@ -1,6 +1,6 @@
 [Service]
 ; `Environment=` overrides are applied per environment variable. This line does not
 ; affect any other variables set in the service template.
-Environment=CERT_LOCATION={{ nomad.cli_cert_path }} \
-            KEY_LOCATION={{ nomad.cli_key_path }}
+Environment=CERT_LOCATION={{ nomad.cli_cert_path }}
+Environment=KEY_LOCATION={{ nomad.cli_key_path }}
 WorkingDirectory={{ nomad.cli_key_path | dirname }}
