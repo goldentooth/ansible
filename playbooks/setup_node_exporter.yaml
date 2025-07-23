@@ -1,0 +1,13 @@
+# Description: Setup Prometheus Node Exporter on all cluster nodes.
+
+- name: 'Setup Prometheus Node Exporter.'
+  hosts: 'all'
+  remote_user: 'root'
+  roles:
+    - { role: 'prometheus.prometheus.node_exporter' }
+  handlers:
+    - name: 'Restart Node Exporter.'
+      ansible.builtin.service:
+        name: 'node_exporter'
+        state: 'restarted'
+        enabled: true
