@@ -1,0 +1,47 @@
+---
+- name: Test Monitoring Enhancements
+  hosts: all
+  gather_facts: yes
+  become: yes
+  
+  tasks:
+    - name: Initialize global test variables
+      set_fact:
+        test_results: []
+        service_health: {}
+        certificate_status: []
+
+    - name: Test enhanced Consul monitoring
+      include_role:
+        name: test_consul
+      when: inventory_hostname in groups['consul']
+
+    - name: Test Prometheus alerting rules (Prometheus server only)
+      include_role:
+        name: test_prometheus_alerts
+      when: inventory_hostname in groups['prometheus']
+
+    - name: Test Slurm metrics collection
+      include_role:
+        name: test_slurm_metrics
+
+    - name: Generate and export test metrics
+      include_role:
+        name: test_reporter
+
+- name: Display monitoring enhancement test summary
+  hosts: prometheus
+  gather_facts: no
+  
+  tasks:
+    - name: Show test summary
+      debug:
+        msg: |
+          Monitoring Enhancement Test Summary:
+          - Consul metrics: {{ service_health.consul | default('not tested') }}
+          - Prometheus alerts: {{ service_health.prometheus_alerts | default('not tested') }}
+          - Slurm metrics: {{ service_health.slurm_metrics | default('not tested') }}
+          
+          Total tests run: {{ test_results | length }}
+          Tests passed: {{ test_results | selectattr('success', 'equalto', true) | list | length }}
+          Tests failed: {{ test_results | selectattr('success', 'equalto', false) | list | length }}

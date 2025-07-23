@@ -1,0 +1,121 @@
+---
+# Nextflow Workflow Management System - Slurm Integration
+- name: 'Install Java OpenJDK (required for Nextflow)'
+  ansible.builtin.apt:
+    name:
+      - 'openjdk-17-jdk'
+      - 'openjdk-17-jre'
+    state: 'present'
+
+- name: 'Check if Nextflow {{ slurm.nextflow_version }} is installed'
+  ansible.builtin.stat:
+    path: "{{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}/nextflow"
+  register: nextflow_installed
+  run_once: true
+
+- name: 'Install Nextflow {{ slurm.nextflow_version }}'
+  block:
+    - name: 'Create Nextflow version directory'
+      ansible.builtin.file:
+        path: "{{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}"
+        state: 'directory'
+        owner: 'slurm'
+        group: 'slurm'
+        mode: '0755'
+        recurse: yes
+
+    - name: 'Download Nextflow binary'
+      ansible.builtin.get_url:
+        url: "https://github.com/nextflow-io/nextflow/releases/download/v{{ slurm.nextflow_version }}/nextflow"
+        dest: "{{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}/nextflow"
+        owner: 'slurm'
+        group: 'slurm'
+        mode: '0755'
+
+    - name: 'Create Nextflow wrapper script'
+      ansible.builtin.template:
+        src: 'nextflow-wrapper.sh.j2'
+        dest: "{{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}/nextflow-wrapper"
+        owner: 'slurm'
+        group: 'slurm'
+        mode: '0755'
+
+  run_once: true
+  when: not nextflow_installed.stat.exists
+
+- name: 'Create Nextflow Slurm configuration template'
+  ansible.builtin.template:
+    src: 'nextflow.config.j2'
+    dest: "{{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}/nextflow.config"
+    owner: 'slurm'
+    group: 'slurm'
+    mode: '0644'
+  run_once: true
+
+- name: 'Create example pipeline directory'
+  ansible.builtin.file:
+    path: "{{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}/examples"
+    state: 'directory'
+    owner: 'slurm'
+    group: 'slurm'
+    mode: '0755'
+  run_once: true
+
+- name: 'Create example hello-world pipeline'
+  ansible.builtin.template:
+    src: 'hello-world.nf.j2'
+    dest: "{{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}/examples/hello-world.nf"
+    owner: 'slurm'
+    group: 'slurm'
+    mode: '0644'
+  run_once: true
+
+- name: 'Create Nextflow workspace directory'
+  ansible.builtin.file:
+    path: "{{ slurm.nfs_base_path }}/nextflow/workspace"
+    state: 'directory'
+    owner: 'slurm'
+    group: 'slurm'
+    mode: '0755'
+  run_once: true
+
+- name: 'Create Singularity cache directory for Nextflow'
+  ansible.builtin.file:
+    path: "{{ slurm.nfs_base_path }}/singularity/cache"
+    state: 'directory'
+    owner: 'slurm'
+    group: 'slurm'
+    mode: '0755'
+  run_once: true
+
+- name: 'Verify Nextflow installation'
+  block:
+    - name: 'Check Java installation'
+      ansible.builtin.command: 'java -version'
+      register: java_version
+      changed_when: false
+      failed_when: false
+
+    - name: 'Test Nextflow installation'
+      ansible.builtin.shell: |
+        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64/
+        {{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}/nextflow -version
+      register: nextflow_version
+      changed_when: false
+      failed_when: false
+      run_once: true
+
+- name: 'Display Nextflow installation status'
+  ansible.builtin.debug:
+    msg: |
+      Nextflow Installation Status:
+      =============================
+      Java Version: {{ java_version.stderr | default('Not found') }}
+      Nextflow Version: {{ nextflow_version.stdout | default('Not installed') }}
+      
+      Installation paths:
+      - Nextflow: {{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}
+      - Config: {{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}/nextflow.config
+      - Examples: {{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}/examples
+      - Workspace: {{ slurm.nfs_base_path }}/nextflow/workspace
+  run_once: true

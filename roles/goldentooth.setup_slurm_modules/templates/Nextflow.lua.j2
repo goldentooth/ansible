@@ -1,0 +1,54 @@
+-- Nextflow Workflow Management System
+whatis("Nextflow workflow management system {{ slurm.nextflow_version }}")
+
+help([[
+This module loads Nextflow workflow management system version {{ slurm.nextflow_version }}.
+
+Nextflow is a workflow management system for data-intensive computational pipelines.
+It enables scalable and reproducible scientific workflows using software containers.
+
+Usage:
+  module load Nextflow/{{ slurm.nextflow_version }}
+  nextflow run hello-world.nf
+  nextflow run nf-core/rnaseq --input data.csv --outdir results
+
+Examples:
+  # Run built-in hello world example
+  nextflow run {{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}/examples/hello-world.nf
+  
+  # Run with specific profile
+  nextflow run pipeline.nf -profile dev
+  
+  # Run with custom configuration
+  nextflow run pipeline.nf -c custom.config
+
+Documentation: https://www.nextflow.io/docs/latest/
+]])
+
+local version = "{{ slurm.nextflow_version }}"
+local base = "{{ slurm.nfs_base_path }}/nextflow/" .. version
+
+-- Load required Java module (dependency)
+depends_on("java/17")
+
+-- Add Nextflow to PATH
+prepend_path("PATH", base)
+
+-- Set Nextflow environment variables
+setenv("NXF_HOME", base)
+setenv("NXF_WORK", "{{ slurm.nfs_base_path }}/nextflow/workspace")
+setenv("NXF_TEMP", "{{ slurm.nfs_base_path }}/nextflow/workspace/tmp")
+
+-- Set Java environment for Nextflow
+setenv("JAVA_HOME", "/usr/lib/jvm/java-17-openjdk-arm64/")
+prepend_path("PATH", "/usr/lib/jvm/java-17-openjdk-arm64/bin")
+
+-- Enable Singularity by default
+setenv("NXF_SINGULARITY_CACHEDIR", "{{ slurm.nfs_base_path }}/singularity/cache")
+
+-- Set default configuration
+setenv("NXF_DEFAULT_CONFIG", pathJoin(base, "nextflow.config"))
+
+-- Set version alias
+set_alias("nextflow-version", "nextflow -version")
+set_alias("nf", "nextflow")

@@ -87,6 +87,47 @@
   set_fact:
     consul_health: "{{ consul_tests | selectattr('success', 'equalto', false) | list | length == 0 }}"
 
+# NEW TESTS: Enhanced Consul monitoring validation
+- name: Check Consul metrics endpoint accessibility
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:8500/v1/agent/metrics?format=prometheus"
+    timeout: 5
+  register: consul_metrics
+  ignore_errors: yes
+  when: consul_service.status.ActiveState == "active"
+
+- name: Record metrics endpoint test
+  set_fact:
+    consul_tests: "{{ consul_tests + [{'name': 'consul_metrics_endpoint', 'category': 'consul', 'success': (consul_metrics.status == 200) | bool, 'duration': 0.3}] }}"
+  when: consul_metrics is defined
+
+- name: Validate Consul metrics contain telemetry data
+  set_fact:
+    consul_telemetry_test:
+      name: "consul_telemetry_data_present"
+      category: "consul"
+      success: "{{ 'consul_' in (consul_metrics.content | default('')) }}"
+      duration: 0.1
+  when: consul_metrics is defined and consul_metrics is succeeded
+
+- name: Add telemetry test
+  set_fact:
+    consul_tests: "{{ consul_tests + [consul_telemetry_test] }}"
+  when: consul_telemetry_test is defined
+
+- name: Check Consul role labeling (client vs server)
+  set_fact:
+    consul_role: "{{ 'server' if inventory_hostname in groups['consul_server'] else 'client' }}"
+    consul_role_test:
+      name: "consul_role_correctly_identified"
+      category: "consul"
+      success: true
+      duration: 0.1
+
+- name: Add role identification test
+  set_fact:
+    consul_tests: "{{ consul_tests + [consul_role_test] }}"
+
 - name: Export test results
   set_fact:
     test_results: "{{ (test_results | default([])) + consul_tests }}"

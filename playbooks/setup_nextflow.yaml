@@ -1,0 +1,38 @@
+---
+- name: Install and configure Nextflow for Slurm cluster
+  hosts: slurm_compute
+  become: yes
+  gather_facts: yes
+  
+  tasks:
+    - name: Setup Nextflow workflow management system
+      include_role:
+        name: goldentooth.setup_nextflow
+      tags: [nextflow, workflow]
+
+    - name: Setup Nextflow module file
+      include_role:
+        name: goldentooth.setup_slurm_modules
+      tags: [nextflow, modules]
+
+- name: Verify Nextflow installation
+  hosts: slurm_compute
+  gather_facts: no
+  
+  tasks:
+    - name: Test Nextflow installation
+      shell: |
+        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64/
+        {{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}/nextflow -version
+      register: nextflow_test
+      changed_when: false
+      failed_when: false
+      run_once: true
+
+    - name: Display Nextflow test results
+      debug:
+        msg: |
+          Nextflow Installation Test:
+          {{ nextflow_test.stdout }}
+          {{ nextflow_test.stderr }}
+      run_once: true

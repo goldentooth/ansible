@@ -68,6 +68,31 @@
     mode: '0644'
   run_once: true
 
+- name: 'Check if Nextflow module directory exists'
+  ansible.builtin.stat:
+    path: "{{ slurm.nfs_base_path }}/apps/modulefiles/Nextflow"
+  register: nextflow_module_dir
+  run_once: true
+
+- name: 'Create Nextflow module directory'
+  ansible.builtin.file:
+    path: "{{ slurm.nfs_base_path }}/apps/modulefiles/Nextflow"
+    state: 'directory'
+    owner: 'slurm'
+    group: 'slurm'
+    mode: '0755'
+  run_once: true
+  when: not nextflow_module_dir.stat.exists
+
+- name: 'Create Nextflow module file'
+  ansible.builtin.template:
+    src: 'Nextflow.lua.j2'
+    dest: "{{ slurm.nfs_base_path }}/apps/modulefiles/Nextflow/{{ slurm.nextflow_version }}.lua"
+    owner: 'slurm'
+    group: 'slurm'
+    mode: '0644'
+  run_once: true
+
 - name: 'Verify module files are available'
   ansible.builtin.shell: |
     source {{ slurm.nfs_base_path }}/lmod/lmod/init/bash

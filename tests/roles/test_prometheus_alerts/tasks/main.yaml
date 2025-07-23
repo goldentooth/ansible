@@ -1,0 +1,114 @@
+---
+- name: Initialize Prometheus alerting test results
+  set_fact:
+    prometheus_alerts_tests: []
+    prometheus_alerts_health: false
+
+- name: Check Prometheus service status
+  systemd:
+    name: prometheus
+  register: prometheus_service
+  ignore_errors: yes
+
+- name: Record Prometheus service test
+  set_fact:
+    prometheus_alerts_tests: "{{ prometheus_alerts_tests + [{'name': 'prometheus_service_running', 'category': 'prometheus_alerts', 'success': (prometheus_service.status.ActiveState == 'active') | bool, 'duration': 0.1}] }}"
+
+- name: Check Prometheus rules API
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/rules"
+    timeout: 10
+  register: prometheus_rules
+  ignore_errors: yes
+  when: prometheus_service.status.ActiveState == "active"
+
+- name: Record rules API test
+  set_fact:
+    prometheus_alerts_tests: "{{ prometheus_alerts_tests + [{'name': 'prometheus_rules_api_responding', 'category': 'prometheus_alerts', 'success': (prometheus_rules.status == 200) | bool, 'duration': 0.5}] }}"
+  when: prometheus_rules is defined
+
+# Validate specific Slurm alerting rules are loaded
+- name: Check for Slurm alerting rules
+  set_fact:
+    slurm_rules_present: >-
+      {{
+        prometheus_rules.json.data.groups[0].rules |
+        selectattr('name', 'match', '^Slurm.*') |
+        list | length >= 4
+      }}
+  when: prometheus_rules is defined and prometheus_rules is succeeded
+
+- name: Record Slurm rules test
+  set_fact:
+    prometheus_alerts_tests: "{{ prometheus_alerts_tests + [{'name': 'slurm_alerting_rules_loaded', 'category': 'prometheus_alerts', 'success': slurm_rules_present | bool, 'duration': 0.2}] }}"
+  when: slurm_rules_present is defined
+
+# Validate infrastructure alerting rules are loaded
+- name: Check for infrastructure alerting rules
+  set_fact:
+    infra_rules_present: >-
+      {{
+        prometheus_rules.json.data.groups[0].rules |
+        selectattr('name', 'match', '.*(Certificate|Storage|Service).*') |
+        list | length >= 5
+      }}
+  when: prometheus_rules is defined and prometheus_rules is succeeded
+
+- name: Record infrastructure rules test
+  set_fact:
+    prometheus_alerts_tests: "{{ prometheus_alerts_tests + [{'name': 'infrastructure_alerting_rules_loaded', 'category': 'prometheus_alerts', 'success': infra_rules_present | bool, 'duration': 0.2}] }}"
+  when: infra_rules_present is defined
+
+# Validate rules are evaluating properly (no syntax errors)
+- name: Check rule evaluation health
+  set_fact:
+    rules_healthy: >-
+      {{
+        prometheus_rules.json.data.groups[0].rules |
+        selectattr('health', 'equalto', 'ok') |
+        list | length == prometheus_rules.json.data.groups[0].rules | length
+      }}
+  when: prometheus_rules is defined and prometheus_rules is succeeded
+
+- name: Record rule health test
+  set_fact:
+    prometheus_alerts_tests: "{{ prometheus_alerts_tests + [{'name': 'all_rules_evaluating_healthy', 'category': 'prometheus_alerts', 'success': rules_healthy | bool, 'duration': 0.3}] }}"
+  when: rules_healthy is defined
+
+# Check Prometheus targets for enhanced Consul scraping
+- name: Check Prometheus targets API
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/targets"
+    timeout: 10
+  register: prometheus_targets
+  ignore_errors: yes
+  when: prometheus_service.status.ActiveState == "active"
+
+- name: Count Consul targets in Prometheus
+  set_fact:
+    consul_targets_count: >-
+      {{
+        prometheus_targets.json.data.activeTargets |
+        selectattr('labels.job', 'equalto', 'consul') |
+        list | length
+      }}
+  when: prometheus_targets is defined and prometheus_targets is succeeded
+
+- name: Validate enhanced Consul target coverage
+  set_fact:
+    consul_targets_complete: "{{ (consul_targets_count | int) >= 13 }}"  # 3 servers + 10 clients
+  when: consul_targets_count is defined
+
+- name: Record Consul targets test
+  set_fact:
+    prometheus_alerts_tests: "{{ prometheus_alerts_tests + [{'name': 'enhanced_consul_targets_configured', 'category': 'prometheus_alerts', 'success': consul_targets_complete | bool, 'duration': 0.4}] }}"
+  when: consul_targets_complete is defined
+
+- name: Determine overall Prometheus alerting health
+  set_fact:
+    prometheus_alerts_health: "{{ prometheus_alerts_tests | selectattr('success', 'equalto', false) | list | length == 0 }}"
+
+- name: Export Prometheus alerting test results
+  set_fact:
+    test_results: "{{ (test_results | default([])) + prometheus_alerts_tests }}"
+    service_health: "{{ (service_health | default({})) | combine({'prometheus_alerts': prometheus_alerts_health}) }}"

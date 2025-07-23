@@ -1,0 +1,20 @@
+#!/bin/bash
+# Nextflow Wrapper Script - Configures environment for Slurm integration
+
+# Set Java environment
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64/
+export PATH=$JAVA_HOME/bin:$PATH
+
+# Set Nextflow environment
+export NXF_HOME="{{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}"
+export NXF_WORK="{{ slurm.nfs_base_path }}/nextflow/workspace"
+export NXF_TEMP="$NXF_WORK/tmp"
+
+# Set Slurm environment
+export SLURM_CONF="/etc/slurm/slurm.conf"
+
+# Create workspace directories if they don't exist
+mkdir -p "$NXF_WORK" "$NXF_TEMP"
+
+# Execute Nextflow with default configuration
+exec "$NXF_HOME/nextflow" -c "$NXF_HOME/nextflow.config" "$@"

@@ -1,0 +1,143 @@
+// Nextflow Configuration for Goldentooth Cluster
+// Slurm executor with container support
+
+// Default process configuration
+process {
+    executor = 'slurm'
+    queue = 'general'
+    
+    // Default resource requirements
+    cpus = 1
+    memory = '1GB'
+    time = '1h'
+    
+    // Enable Singularity containers
+    container = 'ubuntu:20.04'
+    
+    // Error handling
+    errorStrategy = 'retry'
+    maxRetries = 2
+    
+    // Process-specific configurations
+    withLabel: 'small' {
+        cpus = 1
+        memory = '2GB' 
+        time = '30m'
+    }
+    
+    withLabel: 'medium' {
+        cpus = 2
+        memory = '4GB'
+        time = '2h'
+    }
+    
+    withLabel: 'large' {
+        cpus = 4
+        memory = '8GB'
+        time = '6h'
+    }
+    
+    withLabel: 'gpu' {
+        queue = 'gpu'
+        clusterOptions = '--gres=gpu:1'
+        cpus = 2
+        memory = '4GB'
+        time = '4h'
+    }
+}
+
+// Slurm executor configuration
+executor {
+    name = 'slurm'
+    queueSize = 100
+    submitRateLimit = '10/1min'
+    
+    // Job submission options
+    clusterOptions = {
+        "--account=default " +
+        "--partition=\${task.queue} " +
+        "--job-name=nf-\${task.hash} " +
+        "--output={{ slurm.nfs_base_path }}/nextflow/workspace/slurm-%j.out " +
+        "--error={{ slurm.nfs_base_path }}/nextflow/workspace/slurm-%j.err"
+    }
+}
+
+// Singularity configuration
+singularity {
+    enabled = true
+    autoMounts = true
+    envWhitelist = 'SLURM_*'
+    
+    // Cache directory on shared storage
+    cacheDir = '{{ slurm.nfs_base_path }}/singularity/cache'
+    
+    // Mount shared directories
+    runOptions = '--bind {{ slurm.nfs_base_path }}:{{ slurm.nfs_base_path }}'
+}
+
+// Work directory configuration
+workDir = '{{ slurm.nfs_base_path }}/nextflow/workspace'
+
+// Reporting and monitoring
+report {
+    enabled = true
+    file = "\${workDir}/reports/report.html"
+}
+
+timeline {
+    enabled = true
+    file = "\${workDir}/reports/timeline.html"
+}
+
+trace {
+    enabled = true
+    file = "\${workDir}/reports/trace.txt"
+}
+
+dag {
+    enabled = true
+    file = "\${workDir}/reports/flowchart.png"
+}
+
+// Resource profiles for different workload types
+profiles {
+    
+    // Development profile - smaller resources
+    dev {
+        process {
+            cpus = 1
+            memory = '1GB'
+            time = '15m'
+        }
+        executor.queueSize = 10
+    }
+    
+    // Production profile - full resources
+    prod {
+        process {
+            errorStrategy = 'finish'
+            maxRetries = 3
+        }
+        executor.queueSize = 500
+    }
+    
+    // Debug profile - verbose logging
+    debug {
+        process.beforeScript = 'echo "DEBUG: Starting process \$PWD on \$(hostname)"'
+        trace.enabled = true
+        report.enabled = true
+    }
+}
+
+// Cleanup configuration
+cleanup = true
+
+// Notification settings (optional)
+notification {
+    to = 'admin@{{ cluster_domain | default("goldentooth.local") }}'
+    from = 'nextflow@{{ cluster_domain | default("goldentooth.local") }}'
+}
+
+// Logging configuration
+log.file = "\${workDir}/nextflow.log"
+log.level = 'INFO'

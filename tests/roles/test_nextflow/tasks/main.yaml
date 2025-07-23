@@ -1,0 +1,212 @@
+---
+- name: Initialize Nextflow test results
+  set_fact:
+    nextflow_tests: []
+    nextflow_health: false
+
+# Test Nextflow installation and basic functionality
+- name: Check if Nextflow binary exists
+  stat:
+    path: "{{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}/nextflow"
+  register: nextflow_binary
+  run_once: true
+
+- name: Record Nextflow binary test
+  set_fact:
+    nextflow_tests: "{{ nextflow_tests + [{'name': 'nextflow_binary_exists', 'category': 'nextflow', 'success': nextflow_binary.stat.exists | bool, 'duration': 0.1}] }}"
+
+# Test Java runtime availability
+- name: Check Java installation
+  command: java -version
+  register: java_check
+  ignore_errors: yes
+  changed_when: false
+
+- name: Record Java availability test
+  set_fact:
+    nextflow_tests: "{{ nextflow_tests + [{'name': 'java_runtime_available', 'category': 'nextflow', 'success': (java_check.rc == 0) | bool, 'duration': 0.2}] }}"
+
+# Test Nextflow version command
+- name: Test Nextflow version command
+  shell: |
+    export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64/
+    {{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}/nextflow -version
+  register: nextflow_version
+  ignore_errors: yes
+  changed_when: false
+  run_once: true
+
+- name: Record Nextflow version test
+  set_fact:
+    nextflow_tests: "{{ nextflow_tests + [{'name': 'nextflow_version_command', 'category': 'nextflow', 'success': (nextflow_version.rc == 0) | bool, 'duration': 0.5}] }}"
+
+# Test Nextflow configuration file exists
+- name: Check Nextflow config file
+  stat:
+    path: "{{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}/nextflow.config"
+  register: nextflow_config
+  run_once: true
+
+- name: Record Nextflow config test
+  set_fact:
+    nextflow_tests: "{{ nextflow_tests + [{'name': 'nextflow_config_exists', 'category': 'nextflow', 'success': nextflow_config.stat.exists | bool, 'duration': 0.1}] }}"
+
+# Test workspace directory exists
+- name: Check Nextflow workspace directory
+  stat:
+    path: "{{ slurm.nfs_base_path }}/nextflow/workspace"
+  register: nextflow_workspace
+  run_once: true
+
+- name: Record workspace directory test
+  set_fact:
+    nextflow_tests: "{{ nextflow_tests + [{'name': 'nextflow_workspace_exists', 'category': 'nextflow', 'success': nextflow_workspace.stat.exists | bool, 'duration': 0.1}] }}"
+
+# Test example pipeline exists
+- name: Check hello-world example pipeline
+  stat:
+    path: "{{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}/examples/hello-world.nf"
+  register: hello_world_pipeline
+  run_once: true
+
+- name: Record example pipeline test
+  set_fact:
+    nextflow_tests: "{{ nextflow_tests + [{'name': 'example_pipeline_exists', 'category': 'nextflow', 'success': hello_world_pipeline.stat.exists | bool, 'duration': 0.1}] }}"
+
+# Test Slurm integration (only if Slurm is available)
+- name: Check if Slurm is available
+  command: which sbatch
+  register: slurm_available
+  ignore_errors: yes
+  changed_when: false
+
+- name: Test Nextflow Slurm integration
+  block:
+    - name: Test Nextflow config parsing
+      shell: |
+        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64/
+        {{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}/nextflow config -show-profiles
+      register: nextflow_profiles
+      ignore_errors: yes
+      changed_when: false
+      run_once: true
+
+    - name: Record Nextflow config parsing test
+      set_fact:
+        nextflow_tests: "{{ nextflow_tests + [{'name': 'nextflow_config_parsing', 'category': 'nextflow_slurm', 'success': (nextflow_profiles.rc == 0) | bool, 'duration': 0.8}] }}"
+
+    - name: Create test workspace directory
+      file:
+        path: "{{ slurm.nfs_base_path }}/nextflow/workspace/test"
+        state: directory
+        mode: '0755'
+        owner: slurm
+        group: slurm
+      become: yes
+      run_once: true
+
+    - name: Test simple pipeline dry-run (only if safe)
+      shell: |
+        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64/
+        cd {{ slurm.nfs_base_path }}/nextflow/workspace/test
+        {{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}/nextflow run {{ slurm.nfs_base_path }}/nextflow/{{ slurm.nextflow_version }}/examples/hello-world.nf -preview
+      register: nextflow_dryrun
+      ignore_errors: yes
+      changed_when: false
+      run_once: true
+      timeout: 30
+
+    - name: Record pipeline dry-run test
+      set_fact:
+        nextflow_tests: "{{ nextflow_tests + [{'name': 'pipeline_dry_run', 'category': 'nextflow_slurm', 'success': (nextflow_dryrun.rc == 0) | bool, 'duration': 1.0}] }}"
+
+  when: slurm_available.rc == 0
+
+# Test Singularity integration
+- name: Check if Singularity is available
+  command: which singularity
+  register: singularity_available
+  ignore_errors: yes
+  changed_when: false
+
+- name: Test Singularity cache directory
+  stat:
+    path: "{{ slurm.nfs_base_path }}/singularity/cache"
+  register: singularity_cache
+  run_once: true
+  when: singularity_available.rc == 0
+
+- name: Record Singularity integration test
+  set_fact:
+    nextflow_tests: "{{ nextflow_tests + [{'name': 'singularity_cache_accessible', 'category': 'nextflow_containers', 'success': (singularity_cache.stat.exists | default(false)) | bool, 'duration': 0.1}] }}"
+  when: singularity_available.rc == 0
+
+# Test module system integration (if Lmod is available)
+- name: Check if Lmod is available
+  stat:
+    path: "{{ slurm.nfs_base_path }}/lmod/lmod/init/bash"
+  register: lmod_available
+  run_once: true
+
+- name: Test Nextflow module availability
+  shell: |
+    /bin/bash -c "source {{ slurm.nfs_base_path }}/lmod/lmod/init/bash && export MODULEPATH={{ slurm.nfs_base_path }}/apps/modulefiles && module avail 2>&1 | grep -i nextflow"
+  register: nextflow_module
+  ignore_errors: yes
+  changed_when: false
+  run_once: true
+  when: lmod_available.stat.exists
+
+- name: Record module system test
+  set_fact:
+    nextflow_tests: "{{ nextflow_tests + [{'name': 'nextflow_module_available', 'category': 'nextflow_modules', 'success': (nextflow_module.rc == 0) | bool, 'duration': 0.3}] }}"
+  when: lmod_available.stat.exists
+
+# Test NFS permissions and accessibility
+- name: Create test permissions directory
+  file:
+    path: "{{ slurm.nfs_base_path }}/nextflow/workspace/test_permissions"
+    state: directory
+    mode: '0755'
+    owner: slurm
+    group: slurm
+  become: yes
+  register: nfs_write_test
+  ignore_errors: yes
+  run_once: true
+
+- name: Clean up permission test directory
+  file:
+    path: "{{ slurm.nfs_base_path }}/nextflow/workspace/test_permissions"
+    state: absent
+  become: yes
+  run_once: true
+  when: nfs_write_test is succeeded
+
+- name: Record NFS permissions test
+  set_fact:
+    nextflow_tests: "{{ nextflow_tests + [{'name': 'nfs_workspace_writable', 'category': 'nextflow_storage', 'success': (nfs_write_test is succeeded) | bool, 'duration': 0.2}] }}"
+
+# Calculate overall health
+- name: Determine overall Nextflow health
+  set_fact:
+    nextflow_health: "{{ nextflow_tests | selectattr('success', 'equalto', false) | list | length == 0 }}"
+
+# Export test results
+- name: Export Nextflow test results
+  set_fact:
+    test_results: "{{ (test_results | default([])) + nextflow_tests }}"
+    service_health: "{{ (service_health | default({})) | combine({'nextflow': nextflow_health}) }}"
+
+- name: Display Nextflow test summary
+  debug:
+    msg: |
+      Nextflow Test Summary:
+      =====================
+      Total tests: {{ nextflow_tests | length }}
+      Passed: {{ nextflow_tests | selectattr('success', 'equalto', true) | list | length }}
+      Failed: {{ nextflow_tests | selectattr('success', 'equalto', false) | list | length }}
+      Overall health: {{ 'HEALTHY' if nextflow_health else 'UNHEALTHY' }}
+      
+      Failed tests: {{ nextflow_tests | selectattr('success', 'equalto', false) | map(attribute='name') | list | join(', ') if not nextflow_health else 'None' }}
+  run_once: true

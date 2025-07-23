@@ -1,0 +1,29 @@
+#!/usr/bin/env nextflow
+
+/*
+ * Simple Hello World Pipeline for Goldentooth Cluster
+ * Compatible with Nextflow 24.10.0
+ */
+
+nextflow.enable.dsl=2
+
+params.greeting = 'Hello'
+params.name = 'Goldentooth'
+
+process sayHello {
+    tag "$params.name"
+    
+    output:
+    stdout
+    
+    script:
+    """
+    echo "$params.greeting $params.name from \$(hostname)!"
+    echo "Date: \$(date)"
+    echo "Nextflow working directory: \$PWD"
+    """
+}
+
+workflow {
+    sayHello() | view
+}

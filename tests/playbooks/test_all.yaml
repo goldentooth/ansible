@@ -40,6 +40,23 @@
       when: inventory_hostname in groups['prometheus']
       tags: [prometheus, observability]
       
+    - name: Test Prometheus alerting rules
+      include_role:
+        name: test_prometheus_alerts
+      when: inventory_hostname in groups['prometheus']
+      tags: [prometheus, prometheus_alerts, observability, monitoring_enhancements]
+      
+    - name: Test Slurm metrics collection
+      include_role:
+        name: test_slurm_metrics
+      tags: [slurm, slurm_metrics, observability, monitoring_enhancements]
+      
+    - name: Test Nextflow workflow management
+      include_role:
+        name: test_nextflow
+      when: inventory_hostname in groups['slurm_compute']
+      tags: [nextflow, workflow, hpc, slurm_integration]
+      
     - name: Test Grafana
       include_role:
         name: test_grafana

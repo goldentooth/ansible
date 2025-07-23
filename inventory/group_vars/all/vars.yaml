@@ -276,6 +276,7 @@ slurm:
     - "/var/spool/slurm"
     - "/var/spool/slurm/d"
   singularity_version: '4.3.0'
+  nextflow_version: '24.10.0'
 
 # (HashiCorp) Vault data:
 vault:
@@ -657,6 +658,98 @@ prometheus_alert_rules:
       summary: "Node is down"
       description: "Node has been down for more than 5 minutes"
 
+  # Slurm Cluster Alerts
+  - alert: SlurmHighPendingJobs
+    expr: slurm_jobs_pending > 50
+    for: 2m
+    labels:
+      severity: warning
+      service: slurm
+    annotations:
+      summary: "High number of pending Slurm jobs"
+      description: "High number of pending jobs in the Slurm queue"
+
+  - alert: SlurmNodesDown
+    expr: slurm_node_count_per_state{state="down"} > 0
+    for: 1m
+    labels:
+      severity: critical
+      service: slurm
+    annotations:
+      summary: "Slurm nodes are down"
+      description: "Slurm compute nodes are currently down"
+
+  - alert: SlurmHighCPUUtilization
+    expr: (slurm_cpus_alloc / slurm_cpus_total) * 100 > 90
+    for: 5m
+    labels:
+      severity: warning
+      service: slurm
+    annotations:
+      summary: "High CPU utilization in Slurm cluster"
+      description: "High CPU utilization across the Slurm cluster"
+
+  - alert: SlurmHighMemoryUtilization
+    expr: (slurm_mem_alloc / slurm_mem_real) * 100 > 95
+    for: 5m
+    labels:
+      severity: critical
+      service: slurm
+    annotations:
+      summary: "High memory utilization in Slurm cluster"
+      description: "High memory utilization across the Slurm cluster"
+
+  # Infrastructure Availability Alerts
+  - alert: ServiceUnavailable
+    expr: probe_success{job="blackbox"} == 0
+    for: 2m
+    labels:
+      severity: critical
+      service: infrastructure
+    annotations:
+      summary: "Service is unavailable"
+      description: "Blackbox probe failed - service may be down"
+
+  - alert: CertificateExpiration
+    expr: goldentooth_certificate_expiry_days < 30
+    for: 1m
+    labels:
+      severity: warning
+      service: infrastructure
+    annotations:
+      summary: "Certificate expiring soon"
+      description: "Certificate expiring soon"
+
+  - alert: CertificateExpirationCritical
+    expr: goldentooth_certificate_expiry_days < 7
+    for: 1m
+    labels:
+      severity: critical
+      service: infrastructure
+    annotations:
+      summary: "Certificate expiring very soon"
+      description: "Certificate expiring soon"
+
+  - alert: HighStorageUsage
+    expr: (node_filesystem_size_bytes{fstype="ext4"} - node_filesystem_avail_bytes{fstype="ext4"}) / node_filesystem_size_bytes{fstype="ext4"} * 100 > 80
+    for: 5m
+    labels:
+      severity: warning
+      service: infrastructure
+    annotations:
+      summary: "High storage usage"
+      description: "High storage usage detected"
+
+  - alert: CriticalStorageUsage
+    expr: (node_filesystem_size_bytes{fstype="ext4"} - node_filesystem_avail_bytes{fstype="ext4"}) / node_filesystem_size_bytes{fstype="ext4"} * 100 > 95
+    for: 2m
+    labels:
+      severity: critical
+      service: infrastructure
+    annotations:
+      summary: "Critical storage usage"
+      description: "High storage usage detected"
+
 # Configuration responsible for pointing where alertmanagers are. This should
 # be specified as list in yaml format.
 #
@@ -750,15 +843,35 @@ prometheus_scrape_configs:
       format: ['prometheus']
     static_configs:
       - targets:
+          # Consul servers
           - "{{ groups['consul_server'][0] }}:8500"  # bettley (server)
           - "{{ groups['consul_server'][1] }}:8500"  # cargyll (server)
           - "{{ groups['consul_server'][2] }}:8500"  # dalt (server)
+          # Consul clients
+          - "allyrion:8500"     # allyrion (client)
+          - "erenford:8500"     # erenford (client)
+          - "fenn:8500"         # fenn (client)
+          - "gardener:8500"     # gardener (client)
+          - "harlton:8500"      # harlton (client)
+          - "inchfield:8500"    # inchfield (client)
+          - "jast:8500"         # jast (client)
+          - "velaryon:8500"     # velaryon (client)
+          - "karstark:8500"     # karstark (client)
+          - "lipps:8500"        # lipps (client)
     scheme: 'http'
     relabel_configs:
       - source_labels: [instance]
         target_label: instance
         regex: '([^:]+):\d+'
         replacement: '${1}'
+      - source_labels: [instance]
+        target_label: consul_role
+        regex: '(bettley|cargyll|dalt).*'
+        replacement: 'server'
+      - source_labels: [instance]
+        target_label: consul_role
+        regex: '(allyrion|erenford|fenn|gardener|harlton|inchfield|jast|velaryon|karstark|lipps).*'
+        replacement: 'client'
   - job_name: 'vault'
     metrics_path: '/v1/sys/metrics'
     params:

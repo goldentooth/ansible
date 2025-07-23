@@ -1,0 +1,124 @@
+---
+- name: Initialize Slurm metrics test results
+  set_fact:
+    slurm_metrics_tests: []
+    slurm_metrics_health: false
+
+# Only run on one node to avoid duplicate testing
+- name: Check if this is the Prometheus server node
+  set_fact:
+    is_prometheus_node: "{{ inventory_hostname == groups['prometheus'][0] }}"
+
+- name: Check Prometheus Slurm targets
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/targets"
+    timeout: 10
+  register: prometheus_targets
+  ignore_errors: yes
+  when: is_prometheus_node
+
+- name: Find Slurm exporter targets
+  set_fact:
+    slurm_targets: >-
+      {{
+        prometheus_targets.json.data.activeTargets |
+        selectattr('labels.job', 'match', '.*slurm.*') |
+        list
+      }}
+  when: is_prometheus_node and prometheus_targets is defined and prometheus_targets is succeeded
+
+- name: Record Slurm targets test
+  set_fact:
+    slurm_metrics_tests: "{{ slurm_metrics_tests + [{'name': 'slurm_exporter_targets_present', 'category': 'slurm_metrics', 'success': (slurm_targets | length > 0), 'duration': 0.3}] }}"
+  when: is_prometheus_node and slurm_targets is defined
+
+# Test key Slurm metrics are available
+- name: Query Slurm job metrics
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/query?query=slurm_jobs_pending"
+    timeout: 10
+  register: slurm_jobs_query
+  ignore_errors: yes
+  when: is_prometheus_node
+
+- name: Record Slurm jobs metrics test
+  set_fact:
+    slurm_metrics_tests: "{{ slurm_metrics_tests + [{'name': 'slurm_jobs_metrics_available', 'category': 'slurm_metrics', 'success': (slurm_jobs_query.status == 200) | bool, 'duration': 0.4}] }}"
+  when: is_prometheus_node and slurm_jobs_query is defined
+
+- name: Query Slurm node metrics
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/query?query=slurm_node_count_per_state"
+    timeout: 10
+  register: slurm_nodes_query
+  ignore_errors: yes
+  when: is_prometheus_node
+
+- name: Record Slurm nodes metrics test
+  set_fact:
+    slurm_metrics_tests: "{{ slurm_metrics_tests + [{'name': 'slurm_nodes_metrics_available', 'category': 'slurm_metrics', 'success': (slurm_nodes_query.status == 200) | bool, 'duration': 0.4}] }}"
+  when: is_prometheus_node and slurm_nodes_query is defined
+
+- name: Query Slurm CPU metrics
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/query?query=slurm_cpus_total"
+    timeout: 10
+  register: slurm_cpu_query
+  ignore_errors: yes
+  when: is_prometheus_node
+
+- name: Record Slurm CPU metrics test
+  set_fact:
+    slurm_metrics_tests: "{{ slurm_metrics_tests + [{'name': 'slurm_cpu_metrics_available', 'category': 'slurm_metrics', 'success': (slurm_cpu_query.status == 200) | bool, 'duration': 0.4}] }}"
+  when: is_prometheus_node and slurm_cpu_query is defined
+
+- name: Query Slurm memory metrics
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/query?query=slurm_mem_real"
+    timeout: 10
+  register: slurm_memory_query
+  ignore_errors: yes
+  when: is_prometheus_node
+
+- name: Record Slurm memory metrics test
+  set_fact:
+    slurm_metrics_tests: "{{ slurm_metrics_tests + [{'name': 'slurm_memory_metrics_available', 'category': 'slurm_metrics', 'success': (slurm_memory_query.status == 200) | bool, 'duration': 0.4}] }}"
+  when: is_prometheus_node and slurm_memory_query is defined
+
+# Test alerting rule thresholds make sense
+- name: Validate Slurm CPU utilization calculation
+  set_fact:
+    cpu_utilization_valid: >-
+      {{
+        (slurm_cpu_query.json.data.result | length > 0) and
+        (slurm_cpu_query.json.data.result[0].value[1] | float > 0)
+      }}
+  when: is_prometheus_node and slurm_cpu_query is defined and slurm_cpu_query is succeeded
+
+- name: Record CPU utilization validation test
+  set_fact:
+    slurm_metrics_tests: "{{ slurm_metrics_tests + [{'name': 'slurm_cpu_utilization_data_valid', 'category': 'slurm_metrics', 'success': cpu_utilization_valid | bool, 'duration': 0.2}] }}"
+  when: is_prometheus_node and cpu_utilization_valid is defined
+
+# For non-Prometheus nodes, just verify they can reach the Slurm exporter if it exists locally
+- name: Check local Slurm exporter (non-Prometheus nodes)
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9341/metrics"
+    timeout: 5
+  register: local_slurm_exporter
+  ignore_errors: yes
+  when: not is_prometheus_node
+
+- name: Record local Slurm exporter test
+  set_fact:
+    slurm_metrics_tests: "{{ slurm_metrics_tests + [{'name': 'local_slurm_exporter_accessible', 'category': 'slurm_metrics', 'success': (local_slurm_exporter.status == 200) | bool, 'duration': 0.3}] }}"
+  when: not is_prometheus_node and local_slurm_exporter is defined
+
+- name: Determine overall Slurm metrics health
+  set_fact:
+    slurm_metrics_health: "{{ slurm_metrics_tests | selectattr('success', 'equalto', false) | list | length == 0 }}"
+
+- name: Export Slurm metrics test results
+  set_fact:
+    test_results: "{{ (test_results | default([])) + slurm_metrics_tests }}"
+    service_health: "{{ (service_health | default({})) | combine({'slurm_metrics': slurm_metrics_health}) }}"

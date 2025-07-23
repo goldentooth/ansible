@@ -1,0 +1,6 @@
+---
+- hosts: bettley
+  gather_facts: yes
+  tasks:
+    - include_role:
+        name: test_nextflow
