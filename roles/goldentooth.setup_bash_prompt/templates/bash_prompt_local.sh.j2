@@ -1,4 +1,4 @@
-# ~/.bash_prompt_local: sourced from .bash_prompt to construct our prompt.
+# /etc/bash_prompt_local.sh: sourced from /etc/bash_prompt.sh to construct our prompt.
 
 clean_hostname="{{ clean_hostname }}";
 primary_color="$(tput setaf {{ hostvars[clean_hostname].prompt.colors.primary }})";
