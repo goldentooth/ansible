@@ -10,6 +10,6 @@ dashboard_path="/var/lib/grafana/dashboards";
 [ ! -d "${dashboard_path}" ] && exit_with_error "Dashboard directory ${dashboard_path} does not exist";
 pushd "${dashboard_path}" > /dev/null || exit_with_error "Failed to change directory to ${dashboard_path}";
 git fetch --all || exit_with_error "Failed to fetch from git repository";
-git reset --hard origin/master || exit_with_error "Failed to reset to origin/master";
+git reset --hard origin/main || exit_with_error "Failed to reset to origin/main";
 git pull || exit_with_error "Failed to pull latest changes";
 popd > /dev/null || exit_with_error "Failed to return to previous directory";
