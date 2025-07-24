@@ -10,7 +10,11 @@ User={{ mcp_server_user }}
 Group={{ mcp_server_group }}
 ExecStart={{ mcp_server_install_dir }}/{{ mcp_server_binary_name }} --http
 Environment=MCP_HTTP_MODE=1
-Environment=MCP_PORT={{ mcp_server_port | default('8080') }}
+Environment=MCP_PORT={{ mcp_server_port }}
+Environment=OAUTH_CLIENT_ID={{ mcp_server_oauth_client_id | default('goldentooth-mcp') }}
+Environment=OAUTH_CLIENT_SECRET={{ vault_authelia_oidc_mcp_secret | default('changeme') }}
+Environment=AUTHELIA_BASE_URL={{ mcp_server_authelia_base_url | default('https://auth.goldentooth.net:9091') }}
+Environment=OAUTH_REDIRECT_URI={{ mcp_server_oauth_redirect_uri | default('https://mcp.goldentooth.net/callback') }}
 Restart={{ mcp_server_restart_policy }}
 RestartSec={{ mcp_server_restart_delay }}
 StandardInput=null
