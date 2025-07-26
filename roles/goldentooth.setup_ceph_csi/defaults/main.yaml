@@ -1,0 +1,90 @@
+---
+# Default variables for goldentooth.setup_ceph_csi role
+
+# Ceph cluster configuration
+ceph_csi:
+  cluster_id: 'goldentooth-ceph'
+  namespace: 'ceph-csi'
+  
+  # Ceph monitor addresses (derived from inventory)
+  monitors:
+    - '{{ hostvars["fenn"]["ipv4_address"] }}:6789'
+    - '{{ hostvars["karstark"]["ipv4_address"] }}:6789'  
+    - '{{ hostvars["lipps"]["ipv4_address"] }}:6789'
+  
+  # Storage pools
+  pools:
+    main: 'kubernetes'
+    fast: 'goldentooth-storage'
+  
+  # CSI driver configuration
+  driver:
+    image: 'quay.io/cephcsi/cephcsi:v3.11.0'
+    log_level: 2
+    
+  # CSI sidecar images (ARM64 compatible)
+  sidecars:
+    provisioner: 'registry.k8s.io/sig-storage/csi-provisioner:v4.0.1'
+    attacher: 'registry.k8s.io/sig-storage/csi-attacher:v4.6.1'
+    resizer: 'registry.k8s.io/sig-storage/csi-resizer:v1.11.1'
+    snapshotter: 'registry.k8s.io/sig-storage/csi-snapshotter:v8.0.1'
+    registrar: 'registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.11.1'
+  
+  # Resource limits optimized for Pi cluster
+  resources:
+    rbd_plugin:
+      requests:
+        memory: '512Mi'
+        cpu: '250m'
+      limits:
+        memory: '1Gi'
+    sidecars:
+      requests:
+        memory: '128Mi'
+        cpu: '100m'
+      limits:
+        memory: '512Mi'
+    liveness:
+      requests:
+        memory: '64Mi'
+        cpu: '50m'
+      limits:
+        memory: '128Mi'
+  
+  # StorageClass configuration
+  storage_classes:
+    default:
+      name: 'ceph-rbd'
+      pool: '{{ ceph_csi.pools.main }}'
+      reclaim_policy: 'Delete'
+      is_default: true
+      allow_expansion: true
+    retain:
+      name: 'ceph-rbd-retain'
+      pool: '{{ ceph_csi.pools.main }}'
+      reclaim_policy: 'Retain'
+      is_default: false
+      allow_expansion: true
+    fast:
+      name: 'ceph-rbd-fast'
+      pool: '{{ ceph_csi.pools.fast }}'
+      reclaim_policy: 'Delete'
+      is_default: false
+      allow_expansion: true
+  
+  # Authentication
+  auth:
+    user_id: 'kubernetes'
+    # Key will be retrieved from Ceph cluster during deployment
+  
+  # RBD image features (optimized for Pi)
+  image_features: 'layering'
+  
+  # Filesystem type
+  fstype: 'ext4'
+  
+  # Provisioner replica count  
+  provisioner_replicas: 2
+  
+  # Enable profiling (disabled for production)
+  enable_profiling: false

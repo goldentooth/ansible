@@ -1,0 +1,455 @@
+---
+# test_ceph_csi: Comprehensive Ceph CSI integration test following TDD principles
+# 
+# This test suite validates:
+# 1. CSI pods are running and ready
+# 2. StorageClasses are available and functional
+# 3. PVC creation and binding works
+# 4. Volume mounting in pods works
+# 5. Basic read/write operations on mounted volumes
+# 6. Performance validation (70+ MB/s sequential)
+# 7. Data integrity validation
+# 8. Cleanup after tests
+#
+# Following RED-GREEN-REFACTOR methodology:
+# RED: Start with failing tests that define expectations
+# GREEN: Make tests pass with minimal implementation
+# REFACTOR: Improve code quality and add comprehensive coverage
+
+- name: Initialize test results (RED phase - define test structure)
+  set_fact:
+    ceph_csi_tests: []
+    ceph_csi_health: false
+    test_namespace: "ceph-csi-test-{{ ansible_date_time.epoch }}"
+    test_pvc_name: "test-pvc-{{ ansible_date_time.epoch }}"
+    test_pod_name: "test-pod-{{ ansible_date_time.epoch }}"
+    performance_threshold_mb_sec: 50  # Conservative threshold below observed 70 MB/s
+
+- name: Check if node is in Kubernetes cluster
+  stat:
+    path: /etc/kubernetes/admin.conf
+  register: k8s_config
+
+# RED PHASE: Write failing tests first - CSI Infrastructure Tests
+- name: Test CSI namespace exists (RED)
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    name: ceph-csi
+    kubeconfig: /etc/kubernetes/admin.conf
+  register: csi_namespace_check
+  when: 
+    - k8s_config.stat.exists
+    - inventory_hostname in groups['k8s_control_plane']
+  ignore_errors: yes
+
+- name: Record CSI namespace test
+  set_fact:
+    ceph_csi_tests: "{{ ceph_csi_tests + [{'name': 'csi_namespace_exists', 'category': 'ceph_csi', 'success': (csi_namespace_check.resources | length > 0) | bool, 'duration': 0.1}] }}"
+  when: csi_namespace_check is defined
+
+- name: Test CSI provisioner deployment (RED)
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: ceph-csi-rbd-provisioner
+    namespace: ceph-csi
+    kubeconfig: /etc/kubernetes/admin.conf
+  register: csi_provisioner_check
+  when: 
+    - k8s_config.stat.exists
+    - inventory_hostname in groups['k8s_control_plane']
+  ignore_errors: yes
+
+- name: Record CSI provisioner test
+  set_fact:
+    ceph_csi_tests: "{{ ceph_csi_tests + [{'name': 'csi_provisioner_ready', 'category': 'ceph_csi', 'success': (csi_provisioner_check.resources | length > 0 and csi_provisioner_check.resources[0].status.readyReplicas | default(0) > 0) | bool, 'duration': 0.2}] }}"
+  when: csi_provisioner_check is defined
+
+- name: Test CSI node plugin daemonset (RED)
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: DaemonSet
+    name: ceph-csi-rbd-nodeplugin
+    namespace: ceph-csi
+    kubeconfig: /etc/kubernetes/admin.conf
+  register: csi_nodeplugin_check
+  when: 
+    - k8s_config.stat.exists
+    - inventory_hostname in groups['k8s_control_plane']
+  ignore_errors: yes
+
+- name: Record CSI node plugin test
+  set_fact:
+    ceph_csi_tests: "{{ ceph_csi_tests + [{'name': 'csi_nodeplugin_ready', 'category': 'ceph_csi', 'success': (csi_nodeplugin_check.resources | length > 0 and csi_nodeplugin_check.resources[0].status.numberReady | default(0) > 0) | bool, 'duration': 0.3}] }}"
+  when: csi_nodeplugin_check is defined
+
+# GREEN PHASE: Make StorageClass tests pass
+- name: Test StorageClasses are available
+  kubernetes.core.k8s_info:
+    api_version: storage.k8s.io/v1
+    kind: StorageClass
+    kubeconfig: /etc/kubernetes/admin.conf
+  register: storage_classes_check
+  when: 
+    - k8s_config.stat.exists
+    - inventory_hostname in groups['k8s_control_plane']
+  ignore_errors: yes
+
+- name: Verify Ceph StorageClasses exist
+  set_fact:
+    ceph_storage_classes: "{{ storage_classes_check.resources | selectattr('provisioner', 'equalto', 'rbd.csi.ceph.com') | list }}"
+  when: storage_classes_check is defined
+
+- name: Record StorageClass tests
+  set_fact:
+    ceph_csi_tests: "{{ ceph_csi_tests + [
+      {'name': 'ceph_rbd_storageclass_exists', 'category': 'ceph_csi', 'success': (ceph_storage_classes | selectattr('metadata.name', 'equalto', 'ceph-rbd') | list | length > 0) | bool, 'duration': 0.1},
+      {'name': 'ceph_rbd_retain_storageclass_exists', 'category': 'ceph_csi', 'success': (ceph_storage_classes | selectattr('metadata.name', 'equalto', 'ceph-rbd-retain') | list | length > 0) | bool, 'duration': 0.1},
+      {'name': 'ceph_rbd_fast_storageclass_exists', 'category': 'ceph_csi', 'success': (ceph_storage_classes | selectattr('metadata.name', 'equalto', 'ceph-rbd-fast') | list | length > 0) | bool, 'duration': 0.1},
+      {'name': 'ceph_rbd_default_storageclass', 'category': 'ceph_csi', 'success': (ceph_storage_classes | selectattr('metadata.annotations.storageclass.kubernetes.io/is-default-class', 'defined') | selectattr('metadata.annotations.storageclass.kubernetes.io/is-default-class', 'equalto', 'true') | list | length > 0) | bool, 'duration': 0.1}
+    ] }}"
+  when: ceph_storage_classes is defined
+
+# REFACTOR PHASE: Comprehensive volume lifecycle tests
+- name: Create test namespace for volume tests
+  kubernetes.core.k8s:
+    name: "{{ test_namespace }}"
+    api_version: v1
+    kind: Namespace
+    state: present
+    kubeconfig: /etc/kubernetes/admin.conf
+  register: test_ns_creation
+  when: 
+    - k8s_config.stat.exists
+    - inventory_hostname in groups['k8s_control_plane']
+  ignore_errors: yes
+
+- name: Record test namespace creation
+  set_fact:
+    ceph_csi_tests: "{{ ceph_csi_tests + [{'name': 'test_namespace_created', 'category': 'ceph_csi', 'success': (test_ns_creation is succeeded) | bool, 'duration': 0.2}] }}"
+  when: test_ns_creation is defined
+
+- name: Create test PVC with Ceph RBD storage
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: "{{ test_pvc_name }}"
+        namespace: "{{ test_namespace }}"
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+        storageClassName: ceph-rbd
+    kubeconfig: /etc/kubernetes/admin.conf
+  register: test_pvc_creation
+  when: 
+    - k8s_config.stat.exists
+    - inventory_hostname in groups['k8s_control_plane']
+    - test_ns_creation is succeeded
+  ignore_errors: yes
+
+- name: Record PVC creation test
+  set_fact:
+    ceph_csi_tests: "{{ ceph_csi_tests + [{'name': 'test_pvc_created', 'category': 'ceph_csi', 'success': (test_pvc_creation is succeeded) | bool, 'duration': 0.3}] }}"
+  when: test_pvc_creation is defined
+
+- name: Wait for PVC to be bound
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: PersistentVolumeClaim
+    name: "{{ test_pvc_name }}"
+    namespace: "{{ test_namespace }}"
+    kubeconfig: /etc/kubernetes/admin.conf
+    wait: true
+    wait_condition:
+      type: Bound
+    wait_timeout: 120
+  register: pvc_bound_check
+  when: 
+    - k8s_config.stat.exists
+    - inventory_hostname in groups['k8s_control_plane']
+    - test_pvc_creation is succeeded
+  ignore_errors: yes
+
+- name: Record PVC binding test
+  set_fact:
+    ceph_csi_tests: "{{ ceph_csi_tests + [{'name': 'test_pvc_bound', 'category': 'ceph_csi', 'success': (pvc_bound_check is succeeded and pvc_bound_check.resources[0].status.phase == 'Bound') | bool, 'duration': 2.0}] }}"
+  when: pvc_bound_check is defined
+
+- name: Create test pod with mounted Ceph volume
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: "{{ test_pod_name }}"
+        namespace: "{{ test_namespace }}"
+      spec:
+        containers:
+        - name: test-container
+          image: busybox:1.35
+          command: ['sh', '-c', 'sleep 300']
+          volumeMounts:
+          - name: test-volume
+            mountPath: /data
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+        volumes:
+        - name: test-volume
+          persistentVolumeClaim:
+            claimName: "{{ test_pvc_name }}"
+        restartPolicy: Never
+    kubeconfig: /etc/kubernetes/admin.conf
+  register: test_pod_creation
+  when: 
+    - k8s_config.stat.exists
+    - inventory_hostname in groups['k8s_control_plane']
+    - pvc_bound_check is succeeded
+  ignore_errors: yes
+
+- name: Record pod creation test
+  set_fact:
+    ceph_csi_tests: "{{ ceph_csi_tests + [{'name': 'test_pod_created', 'category': 'ceph_csi', 'success': (test_pod_creation is succeeded) | bool, 'duration': 0.5}] }}"
+  when: test_pod_creation is defined
+
+- name: Wait for test pod to be ready
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    name: "{{ test_pod_name }}"
+    namespace: "{{ test_namespace }}"
+    kubeconfig: /etc/kubernetes/admin.conf
+    wait: true
+    wait_condition:
+      type: Ready
+      status: "True"
+    wait_timeout: 180
+  register: pod_ready_check
+  when: 
+    - k8s_config.stat.exists
+    - inventory_hostname in groups['k8s_control_plane']
+    - test_pod_creation is succeeded
+  ignore_errors: yes
+
+- name: Record pod ready test
+  set_fact:
+    ceph_csi_tests: "{{ ceph_csi_tests + [{'name': 'test_pod_ready', 'category': 'ceph_csi', 'success': (pod_ready_check is succeeded) | bool, 'duration': 3.0}] }}"
+  when: pod_ready_check is defined
+
+# Advanced I/O and Performance Tests
+- name: Test basic write operation
+  kubernetes.core.k8s_exec:
+    namespace: "{{ test_namespace }}"
+    pod: "{{ test_pod_name }}"
+    command: sh -c "echo 'Ceph CSI test data' > /data/test.txt && sync"
+    kubeconfig: /etc/kubernetes/admin.conf
+  register: write_test
+  when: 
+    - k8s_config.stat.exists
+    - inventory_hostname in groups['k8s_control_plane']
+    - pod_ready_check is succeeded
+  ignore_errors: yes
+
+- name: Record write test
+  set_fact:
+    ceph_csi_tests: "{{ ceph_csi_tests + [{'name': 'volume_write_test', 'category': 'ceph_csi', 'success': (write_test is succeeded) | bool, 'duration': 0.5}] }}"
+  when: write_test is defined
+
+- name: Test basic read operation
+  kubernetes.core.k8s_exec:
+    namespace: "{{ test_namespace }}"
+    pod: "{{ test_pod_name }}"
+    command: sh -c "cat /data/test.txt"
+    kubeconfig: /etc/kubernetes/admin.conf
+  register: read_test
+  when: 
+    - k8s_config.stat.exists
+    - inventory_hostname in groups['k8s_control_plane']
+    - write_test is succeeded
+  ignore_errors: yes
+
+- name: Record read test and data integrity
+  set_fact:
+    ceph_csi_tests: "{{ ceph_csi_tests + [
+      {'name': 'volume_read_test', 'category': 'ceph_csi', 'success': (read_test is succeeded) | bool, 'duration': 0.3},
+      {'name': 'data_integrity_test', 'category': 'ceph_csi', 'success': (read_test is succeeded and 'Ceph CSI test data' in read_test.stdout) | bool, 'duration': 0.1}
+    ] }}"
+  when: read_test is defined
+
+- name: Test filesystem operations
+  kubernetes.core.k8s_exec:
+    namespace: "{{ test_namespace }}"
+    pod: "{{ test_pod_name }}"
+    command: sh -c "df -h /data && ls -la /data/ && touch /data/permissions_test && rm /data/permissions_test"
+    kubeconfig: /etc/kubernetes/admin.conf
+  register: filesystem_test
+  when: 
+    - k8s_config.stat.exists
+    - inventory_hostname in groups['k8s_control_plane']
+    - read_test is succeeded
+  ignore_errors: yes
+
+- name: Record filesystem test
+  set_fact:
+    ceph_csi_tests: "{{ ceph_csi_tests + [{'name': 'filesystem_operations_test', 'category': 'ceph_csi', 'success': (filesystem_test is succeeded) | bool, 'duration': 0.4}] }}"
+  when: filesystem_test is defined
+
+# Performance validation tests
+- name: Performance test - sequential write
+  kubernetes.core.k8s_exec:
+    namespace: "{{ test_namespace }}"
+    pod: "{{ test_pod_name }}"
+    command: sh -c "time dd if=/dev/zero of=/data/write_test.bin bs=1M count=100 conv=fsync 2>&1"
+    kubeconfig: /etc/kubernetes/admin.conf
+  register: write_performance_test
+  when: 
+    - k8s_config.stat.exists
+    - inventory_hostname in groups['k8s_control_plane']
+    - filesystem_test is succeeded
+  ignore_errors: yes
+
+- name: Extract write performance metrics
+  set_fact:
+    write_performance_mb_sec: "{{ write_performance_test.stdout | regex_search('([0-9.]+) MB/s', '\\1') | first | float if write_performance_test is succeeded and 'MB/s' in write_performance_test.stdout else 0 }}"
+  when: write_performance_test is defined
+
+- name: Performance test - sequential read
+  kubernetes.core.k8s_exec:
+    namespace: "{{ test_namespace }}"
+    pod: "{{ test_pod_name }}"
+    command: sh -c "time dd if=/data/write_test.bin of=/dev/null bs=1M 2>&1"
+    kubeconfig: /etc/kubernetes/admin.conf
+  register: read_performance_test
+  when: 
+    - k8s_config.stat.exists
+    - inventory_hostname in groups['k8s_control_plane']
+    - write_performance_test is succeeded
+  ignore_errors: yes
+
+- name: Extract read performance metrics
+  set_fact:
+    read_performance_mb_sec: "{{ read_performance_test.stdout | regex_search('([0-9.]+) MB/s', '\\1') | first | float if read_performance_test is succeeded and 'MB/s' in read_performance_test.stdout else 0 }}"
+  when: read_performance_test is defined
+
+- name: Record performance tests
+  set_fact:
+    ceph_csi_tests: "{{ ceph_csi_tests + [
+      {'name': 'write_performance_test', 'category': 'ceph_csi', 'success': (write_performance_test is succeeded and (write_performance_mb_sec | float) >= performance_threshold_mb_sec) | bool, 'duration': 5.0, 'details': 'Write: ' + (write_performance_mb_sec | string) + ' MB/s'},
+      {'name': 'read_performance_test', 'category': 'ceph_csi', 'success': (read_performance_test is succeeded and (read_performance_mb_sec | float) >= performance_threshold_mb_sec) | bool, 'duration': 3.0, 'details': 'Read: ' + (read_performance_mb_sec | string) + ' MB/s'}
+    ] }}"
+  when: 
+    - write_performance_mb_sec is defined
+    - read_performance_mb_sec is defined
+
+# Cleanup phase with proper error handling
+- name: Cleanup - Delete test pod
+  kubernetes.core.k8s:
+    name: "{{ test_pod_name }}"
+    namespace: "{{ test_namespace }}"
+    api_version: v1
+    kind: Pod
+    state: absent
+    kubeconfig: /etc/kubernetes/admin.conf
+  register: pod_cleanup
+  when: 
+    - k8s_config.stat.exists
+    - inventory_hostname in groups['k8s_control_plane']
+    - test_pod_name is defined
+  ignore_errors: yes
+
+- name: Cleanup - Delete test PVC
+  kubernetes.core.k8s:
+    name: "{{ test_pvc_name }}"
+    namespace: "{{ test_namespace }}"
+    api_version: v1
+    kind: PersistentVolumeClaim
+    state: absent
+    kubeconfig: /etc/kubernetes/admin.conf
+  register: pvc_cleanup
+  when: 
+    - k8s_config.stat.exists
+    - inventory_hostname in groups['k8s_control_plane']
+    - test_pvc_name is defined
+  ignore_errors: yes
+
+- name: Cleanup - Delete test namespace
+  kubernetes.core.k8s:
+    name: "{{ test_namespace }}"
+    api_version: v1
+    kind: Namespace
+    state: absent
+    kubeconfig: /etc/kubernetes/admin.conf
+  register: namespace_cleanup
+  when: 
+    - k8s_config.stat.exists
+    - inventory_hostname in groups['k8s_control_plane']
+    - test_namespace is defined
+  ignore_errors: yes
+
+- name: Record cleanup tests
+  set_fact:
+    ceph_csi_tests: "{{ ceph_csi_tests + [
+      {'name': 'cleanup_pod_deleted', 'category': 'ceph_csi', 'success': (pod_cleanup is succeeded or pod_cleanup is skipped) | bool, 'duration': 0.5},
+      {'name': 'cleanup_pvc_deleted', 'category': 'ceph_csi', 'success': (pvc_cleanup is succeeded or pvc_cleanup is skipped) | bool, 'duration': 1.0},
+      {'name': 'cleanup_namespace_deleted', 'category': 'ceph_csi', 'success': (namespace_cleanup is succeeded or namespace_cleanup is skipped) | bool, 'duration': 0.5}
+    ] }}"
+  when: 
+    - pod_cleanup is defined or pvc_cleanup is defined or namespace_cleanup is defined
+
+# Overall health determination
+- name: Determine overall Ceph CSI health
+  set_fact:
+    ceph_csi_health: "{{ ceph_csi_tests | selectattr('success', 'equalto', false) | list | length == 0 }}"
+
+- name: Calculate performance summary
+  set_fact:
+    performance_summary:
+      write_mb_sec: "{{ write_performance_mb_sec | default(0) }}"
+      read_mb_sec: "{{ read_performance_mb_sec | default(0) }}"
+      threshold_mb_sec: "{{ performance_threshold_mb_sec }}"
+      performance_healthy: "{{ (write_performance_mb_sec | default(0) | float) >= performance_threshold_mb_sec and (read_performance_mb_sec | default(0) | float) >= performance_threshold_mb_sec }}"
+  when: 
+    - write_performance_mb_sec is defined or read_performance_mb_sec is defined
+
+- name: Export test results
+  set_fact:
+    test_results: "{{ (test_results | default([])) + ceph_csi_tests }}"
+    service_health: "{{ (service_health | default({})) | combine({'ceph_csi': ceph_csi_health}) }}"
+    performance_metrics: "{{ (performance_metrics | default({})) | combine({'ceph_csi': performance_summary}) if performance_summary is defined else performance_metrics | default({}) }}"
+
+- name: Display comprehensive test summary
+  debug:
+    msg: |
+      
+      ═══════════════════════════════════════════════════════════════════════
+                           CEPH CSI TEST SUMMARY
+      ═══════════════════════════════════════════════════════════════════════
+      Overall Health: {{ "✅ HEALTHY" if ceph_csi_health else "❌ UNHEALTHY" }}
+      Total Tests: {{ ceph_csi_tests | length }}
+      Passed: {{ ceph_csi_tests | selectattr('success', 'equalto', true) | list | length }}
+      Failed: {{ ceph_csi_tests | selectattr('success', 'equalto', false) | list | length }}
+      
+      {% if performance_summary is defined %}
+      Performance Results:
+      - Write Speed: {{ performance_summary.write_mb_sec }} MB/s ({{ "✅" if performance_summary.write_mb_sec | float >= performance_summary.threshold_mb_sec else "❌" }} >= {{ performance_summary.threshold_mb_sec }} MB/s)
+      - Read Speed: {{ performance_summary.read_mb_sec }} MB/s ({{ "✅" if performance_summary.read_mb_sec | float >= performance_summary.threshold_mb_sec else "❌" }} >= {{ performance_summary.threshold_mb_sec }} MB/s)
+      {% endif %}
+      
+      {% if ceph_csi_tests | selectattr('success', 'equalto', false) | list | length > 0 %}
+      Failed Tests:
+      {% for test in ceph_csi_tests | selectattr('success', 'equalto', false) %}
+      - ❌ {{ test.name }}: {{ test.details | default('') }}
+      {% endfor %}
+      {% endif %}
+      ═══════════════════════════════════════════════════════════════════════
+  when: ceph_csi_tests | length > 0

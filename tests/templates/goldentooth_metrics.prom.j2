@@ -42,3 +42,22 @@ goldentooth_node_resource_usage{resource="disk",node="{{ inventory_hostname }}"}
 # HELP goldentooth_test_timestamp_seconds Unix timestamp of test execution
 # TYPE goldentooth_test_timestamp_seconds gauge
 goldentooth_test_timestamp_seconds{node="{{ inventory_hostname }}"} {{ ansible_date_time.epoch }}
+
+# HELP goldentooth_storage_performance_mb_sec Storage performance in MB/s
+# TYPE goldentooth_storage_performance_mb_sec gauge
+{% if performance_metrics is defined and performance_metrics.ceph_csi is defined %}
+goldentooth_storage_performance_mb_sec{operation="write",storage="ceph_csi",node="{{ inventory_hostname }}"} {{ performance_metrics.ceph_csi.write_mb_sec }}
+goldentooth_storage_performance_mb_sec{operation="read",storage="ceph_csi",node="{{ inventory_hostname }}"} {{ performance_metrics.ceph_csi.read_mb_sec }}
+{% endif %}
+
+# HELP goldentooth_storage_performance_threshold_mb_sec Storage performance threshold in MB/s
+# TYPE goldentooth_storage_performance_threshold_mb_sec gauge
+{% if performance_metrics is defined and performance_metrics.ceph_csi is defined %}
+goldentooth_storage_performance_threshold_mb_sec{storage="ceph_csi",node="{{ inventory_hostname }}"} {{ performance_metrics.ceph_csi.threshold_mb_sec }}
+{% endif %}
+
+# HELP goldentooth_storage_performance_health Storage performance health (1=above threshold, 0=below threshold)
+# TYPE goldentooth_storage_performance_health gauge
+{% if performance_metrics is defined and performance_metrics.ceph_csi is defined %}
+goldentooth_storage_performance_health{storage="ceph_csi",node="{{ inventory_hostname }}"} {{ performance_metrics.ceph_csi.performance_healthy | int }}
+{% endif %}

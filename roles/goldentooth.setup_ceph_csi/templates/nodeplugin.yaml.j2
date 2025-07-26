@@ -1,0 +1,184 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ceph-csi-rbd-nodeplugin
+  namespace: ceph-csi
+  labels:
+    app: ceph-csi-rbd-nodeplugin
+spec:
+  selector:
+    matchLabels:
+      app: ceph-csi-rbd-nodeplugin
+  template:
+    metadata:
+      labels:
+        app: ceph-csi-rbd-nodeplugin
+    spec:
+      serviceAccountName: ceph-csi-rbd-nodeplugin
+      hostNetwork: true
+      hostPID: true
+      priorityClassName: system-node-critical
+      # Critical for mixed architecture support
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: driver-registrar
+          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.11.1
+          args:
+            - "--v=2"
+            - "--csi-address=/csi/csi.sock"
+            - "--kubelet-registration-path=/var/lib/kubelet/plugins/rbd.csi.ceph.com/csi.sock"
+          lifecycle:
+            preStop:
+              exec:
+                command: [
+                  "/bin/sh", "-c",
+                  "rm -rf /registration/rbd.csi.ceph.com /registration/rbd.csi.ceph.com-reg.sock"
+                ]
+          env:
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: registration-dir
+              mountPath: /registration
+          resources:
+            limits:
+              memory: 256Mi
+            requests:
+              memory: 64Mi
+              cpu: 50m
+        - name: csi-rbdplugin
+          image: quay.io/cephcsi/cephcsi:v3.11.0
+          args:
+            - "--nodeid=$(NODE_ID)"
+            - "--type=rbd"
+            - "--nodeserver=true"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--csi-addons-endpoint=$(CSI_ADDONS_ENDPOINT)"
+            - "--v=2"
+            - "--drivername=rbd.csi.ceph.com"
+            - "--pidlimit=-1"
+            - "--enableprofiling=false"
+            # Pi-specific optimizations
+            - "--stagingpath=/var/lib/kubelet/plugins/kubernetes.io/csi/rbd.csi.ceph.com/staging"
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+            - name: CSI_ADDONS_ENDPOINT
+              value: unix:///csi/csi-addons.sock
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - mountPath: /dev
+              name: host-dev
+            - mountPath: /sys
+              name: host-sys
+            - mountPath: /var/lib/kubelet/pods
+              mountPropagation: "Bidirectional"
+              name: pods-mount-dir
+            - mountPath: /var/lib/kubelet/plugins
+              mountPropagation: "Bidirectional"
+              name: plugin-dir
+            - mountPath: /var/lib/kubelet/plugins/kubernetes.io/csi
+              mountPropagation: "Bidirectional"
+              name: csi-plugins-dir
+            - name: ceph-csi-config
+              mountPath: /etc/ceph-csi-config/
+            - name: ceph-csi-encryption-kms-config
+              mountPath: /etc/ceph-csi-encryption-kms-config/
+            - name: keys-tmp-dir
+              mountPath: /tmp/csi/keys
+            - name: ceph-config
+              mountPath: /etc/ceph/
+              readOnly: true
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              memory: 512Mi
+              cpu: 250m
+        - name: liveness-prometheus
+          image: quay.io/cephcsi/cephcsi:v3.11.0
+          args:
+            - "--type=liveness"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--metricsport=8682"
+            - "--metricspath=/metrics"
+            - "--polltime=60s"
+            - "--timeout=3s"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              memory: 128Mi
+            requests:
+              memory: 64Mi
+              cpu: 50m
+      volumes:
+        - name: socket-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/rbd.csi.ceph.com
+            type: DirectoryOrCreate
+        - name: plugin-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins
+            type: Directory
+        - name: csi-plugins-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/kubernetes.io/csi
+            type: DirectoryOrCreate
+        - name: registration-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins_registry/
+            type: Directory
+        - name: pods-mount-dir
+          hostPath:
+            path: /var/lib/kubelet/pods
+            type: Directory
+        - name: host-dev
+          hostPath:
+            path: /dev
+        - name: host-sys
+          hostPath:
+            path: /sys
+        - name: ceph-csi-config
+          configMap:
+            name: ceph-csi-config
+        - name: ceph-csi-encryption-kms-config
+          configMap:
+            name: ceph-csi-encryption-kms-config
+        - name: keys-tmp-dir
+          emptyDir: {
+            medium: "Memory"
+          }
+        - name: ceph-config
+          configMap:
+            name: ceph-config

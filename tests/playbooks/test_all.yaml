@@ -78,6 +78,12 @@
         name: test_storage
       tags: [storage]
       
+    - name: Test Ceph CSI storage integration
+      include_role:
+        name: test_ceph_csi
+      when: inventory_hostname in groups['k8s_control_plane']
+      tags: [ceph_csi, storage, integration]
+      
     - name: Create metrics directory
       file:
         path: /var/lib/node_exporter/textfile_collector

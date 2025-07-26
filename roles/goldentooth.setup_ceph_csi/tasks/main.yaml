@@ -1,0 +1,292 @@
+---
+# goldentooth.setup_ceph_csi tasks
+
+- name: 'Create ceph-csi project directory'
+  ansible.builtin.file:
+    path: '/opt/goldentooth/ceph-csi'
+    state: 'directory'
+    mode: '0755'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'setup'
+
+- name: 'Create ceph-csi manifests directory'
+  ansible.builtin.file:
+    path: '/opt/goldentooth/ceph-csi/manifests'
+    state: 'directory'
+    mode: '0755'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'setup'
+
+- name: 'Generate Ceph CSI namespace manifest'
+  ansible.builtin.template:
+    src: 'namespace.yaml.j2'
+    dest: '/opt/goldentooth/ceph-csi/manifests/namespace.yaml'
+    mode: '0644'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'manifests'
+
+- name: 'Generate Ceph CSI RBAC manifests'
+  ansible.builtin.template:
+    src: 'rbac.yaml.j2'
+    dest: '/opt/goldentooth/ceph-csi/manifests/rbac.yaml'
+    mode: '0644'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'manifests'
+
+- name: 'Generate Ceph CSI ConfigMap manifests'
+  ansible.builtin.template:
+    src: 'configmap.yaml.j2'
+    dest: '/opt/goldentooth/ceph-csi/manifests/configmap.yaml'
+    mode: '0644'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'manifests'
+
+- name: 'Get or create Ceph client.kubernetes key'
+  ansible.builtin.command: >
+    cephadm shell -- ceph auth get-or-create client.kubernetes 
+    mon 'profile rbd' 
+    osd 'profile rbd pool={{ ceph_csi.pools.main }},profile rbd pool={{ ceph_csi.pools.fast }}' 
+    mgr 'profile rbd pool={{ ceph_csi.pools.main }},profile rbd pool={{ ceph_csi.pools.fast }}'
+  register: 'ceph_kubernetes_auth'
+  delegate_to: "{{ groups['ceph'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'auth'
+
+- name: 'Extract Ceph client key'
+  ansible.builtin.set_fact:
+    ceph_client_key: "{{ ceph_kubernetes_auth.stdout | regex_search('key = (.+)', '\\1') | first }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'auth'
+
+- name: 'Generate Ceph CSI Secret manifests'
+  ansible.builtin.template:
+    src: 'secret.yaml.j2'
+    dest: '/opt/goldentooth/ceph-csi/manifests/secret.yaml'
+    mode: '0600'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  vars:
+    ceph_key_b64: "{{ ceph_client_key | b64encode }}"
+  tags:
+    - 'ceph-csi'
+    - 'manifests'
+    - 'auth'
+
+- name: 'Generate CSI Driver manifest'
+  ansible.builtin.template:
+    src: 'csidriver.yaml.j2'
+    dest: '/opt/goldentooth/ceph-csi/manifests/csidriver.yaml'
+    mode: '0644'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'manifests'
+
+- name: 'Generate StorageClass manifests'
+  ansible.builtin.template:
+    src: 'storageclass.yaml.j2'
+    dest: '/opt/goldentooth/ceph-csi/manifests/storageclass.yaml'
+    mode: '0644'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'manifests'
+
+- name: 'Generate CSI Provisioner manifest'
+  ansible.builtin.template:
+    src: 'provisioner.yaml.j2'
+    dest: '/opt/goldentooth/ceph-csi/manifests/provisioner.yaml'
+    mode: '0644'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'manifests'
+
+- name: 'Generate CSI Node Plugin manifest'
+  ansible.builtin.template:
+    src: 'nodeplugin.yaml.j2'
+    dest: '/opt/goldentooth/ceph-csi/manifests/nodeplugin.yaml'
+    mode: '0644'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'manifests'
+
+- name: 'Apply Ceph CSI namespace'
+  kubernetes.core.k8s:
+    state: 'present'
+    src: '/opt/goldentooth/ceph-csi/manifests/namespace.yaml'
+    kubeconfig: '/etc/kubernetes/admin.conf'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'deploy'
+
+- name: 'Apply Ceph CSI RBAC'
+  kubernetes.core.k8s:
+    state: 'present'
+    src: '/opt/goldentooth/ceph-csi/manifests/rbac.yaml'
+    kubeconfig: '/etc/kubernetes/admin.conf'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'deploy'
+
+- name: 'Apply Ceph CSI ConfigMaps'
+  kubernetes.core.k8s:
+    state: 'present'
+    src: '/opt/goldentooth/ceph-csi/manifests/configmap.yaml'
+    kubeconfig: '/etc/kubernetes/admin.conf'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'deploy'
+
+- name: 'Apply Ceph CSI Secrets'
+  kubernetes.core.k8s:
+    state: 'present'
+    src: '/opt/goldentooth/ceph-csi/manifests/secret.yaml'
+    kubeconfig: '/etc/kubernetes/admin.conf'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'deploy'
+
+- name: 'Apply CSI Driver'
+  kubernetes.core.k8s:
+    state: 'present'
+    src: '/opt/goldentooth/ceph-csi/manifests/csidriver.yaml'
+    kubeconfig: '/etc/kubernetes/admin.conf'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'deploy'
+
+- name: 'Apply StorageClasses'
+  kubernetes.core.k8s:
+    state: 'present'
+    src: '/opt/goldentooth/ceph-csi/manifests/storageclass.yaml'
+    kubeconfig: '/etc/kubernetes/admin.conf'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'deploy'
+
+- name: 'Apply CSI Provisioner'
+  kubernetes.core.k8s:
+    state: 'present'
+    src: '/opt/goldentooth/ceph-csi/manifests/provisioner.yaml'
+    kubeconfig: '/etc/kubernetes/admin.conf'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'deploy'
+
+- name: 'Apply CSI Node Plugin'
+  kubernetes.core.k8s:
+    state: 'present'
+    src: '/opt/goldentooth/ceph-csi/manifests/nodeplugin.yaml'
+    kubeconfig: '/etc/kubernetes/admin.conf'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'deploy'
+
+- name: 'Wait for CSI provisioner pods to be ready'
+  kubernetes.core.k8s_info:
+    api_version: 'apps/v1'
+    kind: 'Deployment'
+    name: 'ceph-csi-rbd-provisioner'
+    namespace: "{{ ceph_csi.namespace }}"
+    kubeconfig: '/etc/kubernetes/admin.conf'
+    wait: true
+    wait_condition:
+      type: 'Available'
+      status: 'True'
+    wait_timeout: 300
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'deploy'
+    - 'wait'
+
+- name: 'Wait for CSI node plugin pods to be ready'
+  kubernetes.core.k8s_info:
+    api_version: 'apps/v1'
+    kind: 'DaemonSet'
+    name: 'ceph-csi-rbd-nodeplugin'
+    namespace: "{{ ceph_csi.namespace }}"
+    kubeconfig: '/etc/kubernetes/admin.conf'
+    wait: true
+    wait_condition:
+      type: 'Ready'
+    wait_timeout: 300
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'deploy'
+    - 'wait'
+
+- name: 'Verify StorageClasses are available'
+  kubernetes.core.k8s_info:
+    api_version: 'storage.k8s.io/v1'
+    kind: 'StorageClass'
+    kubeconfig: '/etc/kubernetes/admin.conf'
+  register: 'storage_classes'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'verify'
+
+- name: 'Display deployment status'
+  ansible.builtin.debug:
+    msg: |
+      Ceph CSI deployment completed successfully!
+      
+      StorageClasses available:
+      {% for sc in storage_classes.resources %}
+      - {{ sc.metadata.name }}{% if sc.metadata.annotations['storageclass.kubernetes.io/is-default-class'] == 'true' %} (default){% endif %}
+      {% endfor %}
+      
+      Next steps:
+      1. Test with: kubectl apply -f /opt/goldentooth/ceph-csi/test/test-pvc.yaml
+      2. Monitor: kubectl get pods -n {{ ceph_csi.namespace }}
+      3. Check logs: kubectl logs -n {{ ceph_csi.namespace }} -l app=ceph-csi-rbd-provisioner
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'verify'

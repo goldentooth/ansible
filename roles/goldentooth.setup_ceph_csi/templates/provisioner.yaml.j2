@@ -1,0 +1,216 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ceph-csi-rbd-provisioner
+  namespace: ceph-csi
+  labels:
+    app: ceph-csi-rbd-provisioner
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ceph-csi-rbd-provisioner
+  template:
+    metadata:
+      labels:
+        app: ceph-csi-rbd-provisioner
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: ceph-csi-rbd-provisioner
+              topologyKey: kubernetes.io/hostname
+      serviceAccountName: ceph-csi-rbd-provisioner
+      priorityClassName: system-cluster-critical
+      containers:
+        - name: csi-provisioner
+          image: registry.k8s.io/sig-storage/csi-provisioner:v4.0.1
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--v=2"
+            - "--timeout=150s"
+            - "--retry-interval-start=500ms"
+            - "--leader-election=true"
+            - "--default-fstype=ext4"
+            - "--extra-create-metadata=true"
+          env:
+            - name: ADDRESS
+              value: unix:///csi/csi-provisioner.sock
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              memory: 128Mi
+              cpu: 100m
+        - name: csi-resizer
+          image: registry.k8s.io/sig-storage/csi-resizer:v1.11.1
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--v=2"
+            - "--timeout=150s"
+            - "--leader-election"
+            - "--retry-interval-start=500ms"
+            - "--handle-volume-inuse-error=false"
+          env:
+            - name: ADDRESS
+              value: unix:///csi/csi-provisioner.sock
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              memory: 128Mi
+              cpu: 100m
+        - name: csi-attacher
+          image: registry.k8s.io/sig-storage/csi-attacher:v4.6.1
+          args:
+            - "--v=2"
+            - "--csi-address=$(ADDRESS)"
+            - "--timeout=150s"
+            - "--leader-election=true"
+            - "--retry-interval-start=500ms"
+          env:
+            - name: ADDRESS
+              value: unix:///csi/csi-provisioner.sock
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              memory: 128Mi
+              cpu: 100m
+        - name: csi-snapshotter
+          image: registry.k8s.io/sig-storage/csi-snapshotter:v8.0.1
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--v=2"
+            - "--timeout=150s"
+            - "--leader-election=true"
+          env:
+            - name: ADDRESS
+              value: unix:///csi/csi-provisioner.sock
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              memory: 128Mi
+              cpu: 100m
+        - name: csi-rbdplugin
+          image: quay.io/cephcsi/cephcsi:v3.11.0
+          args:
+            - "--nodeid=$(NODE_ID)"
+            - "--type=rbd"
+            - "--controllerserver=true"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--csi-addons-endpoint=$(CSI_ADDONS_ENDPOINT)"
+            - "--v=2"
+            - "--drivername=rbd.csi.ceph.com"
+            - "--pidlimit=-1"
+            - "--rbdhardmaxclonedepth=8"
+            - "--rbdsoftmaxclonedepth=4"
+            - "--enableprofiling=false"
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi-provisioner.sock
+            - name: CSI_ADDONS_ENDPOINT
+              value: unix:///csi/csi-addons.sock
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - mountPath: /dev
+              name: host-dev
+            - mountPath: /sys
+              name: host-sys
+            - mountPath: /lib/modules
+              name: lib-modules
+              readOnly: true
+            - name: ceph-csi-config
+              mountPath: /etc/ceph-csi-config/
+            - name: ceph-csi-encryption-kms-config
+              mountPath: /etc/ceph-csi-encryption-kms-config/
+            - name: keys-tmp-dir
+              mountPath: /tmp/csi/keys
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              memory: 512Mi
+              cpu: 250m
+        - name: liveness-prometheus
+          image: quay.io/cephcsi/cephcsi:v3.11.0
+          args:
+            - "--type=liveness"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--metricsport=8681"
+            - "--metricspath=/metrics"
+            - "--polltime=60s"
+            - "--timeout=3s"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi-provisioner.sock
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              memory: 128Mi
+            requests:
+              memory: 64Mi
+              cpu: 50m
+      volumes:
+        - name: socket-dir
+          emptyDir: {
+            medium: "Memory"
+          }
+        - name: host-dev
+          hostPath:
+            path: /dev
+        - name: host-sys
+          hostPath:
+            path: /sys
+        - name: lib-modules
+          hostPath:
+            path: /lib/modules
+        - name: ceph-csi-config
+          configMap:
+            name: ceph-csi-config
+        - name: ceph-csi-encryption-kms-config
+          configMap:
+            name: ceph-csi-encryption-kms-config
+        - name: keys-tmp-dir
+          emptyDir: {
+            medium: "Memory"
+          }

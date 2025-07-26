@@ -27,6 +27,7 @@ goldentooth test all
 goldentooth test consul
 goldentooth test kubernetes
 goldentooth test vault
+goldentooth test ceph_csi
 
 # Run quick system checks only
 goldentooth test quick
@@ -46,6 +47,7 @@ goldentooth test quick
 - **Kubernetes**: Node status, API health, system pods
 - **Vault**: Service status, seal state, certificates
 - **Storage**: NFS mounts, ZFS pools, Ceph status
+- **Ceph CSI**: Container storage interface, volume lifecycle, performance validation
 - **Observability**: Prometheus, Grafana, Loki health
 
 ## Metrics Exported

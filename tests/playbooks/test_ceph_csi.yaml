@@ -1,0 +1,72 @@
+---
+- name: Test Ceph CSI storage integration
+  hosts: k8s_control_plane
+  gather_facts: yes
+  serial: 1  # Run on one control plane node at a time to avoid conflicts
+  
+  vars:
+    test_batch_size: "1"  # Conservative for storage tests
+  
+  tasks:
+    - name: Clear previous test results
+      set_fact:
+        test_results: []
+        service_health: {}
+        performance_metrics: {}
+        
+    - name: Run Ceph CSI integration tests
+      include_role:
+        name: test_ceph_csi
+      tags: [ceph_csi, storage, integration]
+      
+    - name: Create metrics directory
+      file:
+        path: /var/lib/node_exporter/textfile_collector
+        state: directory
+        mode: '0755'
+        owner: nobody
+        group: nogroup
+      become: true
+      
+    - name: Write Prometheus metrics for Ceph CSI tests
+      template:
+        src: ../templates/goldentooth_metrics.prom.j2
+        dest: /var/lib/node_exporter/textfile_collector/goldentooth-ceph-csi-tests.prom
+        mode: '0644'
+        owner: nobody
+        group: nogroup
+      become: true
+      when: 
+        - test_results is defined
+        - test_results | length > 0
+      
+    - name: Ensure metrics are picked up
+      file:
+        path: /var/lib/node_exporter/textfile_collector/goldentooth-ceph-csi-tests.prom
+        modification_time: preserve
+        access_time: now
+        state: touch
+      become: true
+      when: test_results | length > 0
+
+    - name: Generate comprehensive test report
+      include_role:
+        name: test_reporter
+      when: test_results is defined and test_results | length > 0
+
+- name: Display cluster-wide summary
+  hosts: localhost
+  gather_facts: true
+  
+  tasks:
+    - name: Display Ceph CSI test summary
+      debug:
+        msg: |
+          Ceph CSI Test Summary:
+          Control plane nodes tested: {{ groups['k8s_control_plane'] | length }}
+          Test execution completed at: {{ ansible_date_time.iso8601 }}
+          
+          Next steps:
+          1. Check Prometheus metrics: curl http://NODE:9100/metrics | grep goldentooth_ceph_csi
+          2. Review detailed logs in /tmp/goldentooth-test-report-*
+          3. Monitor Grafana dashboard for storage performance trends
