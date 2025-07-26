@@ -51,6 +51,47 @@
         service_name: cert-canary.service
         host_groups: []
         specific_hosts: ['allyrion']
+      # Kubernetes certificates
+      - name: kubernetes-apiserver
+        cert_path: /etc/kubernetes/pki/apiserver.crt
+        key_path: /etc/kubernetes/pki/apiserver.key
+        service_name: kube-apiserver.service
+        host_groups: ['k8s_control_plane']
+      - name: kubernetes-apiserver-kubelet-client
+        cert_path: /etc/kubernetes/pki/apiserver-kubelet-client.crt
+        key_path: /etc/kubernetes/pki/apiserver-kubelet-client.key
+        service_name: kube-apiserver.service
+        host_groups: ['k8s_control_plane']
+      - name: kubernetes-apiserver-etcd-client
+        cert_path: /etc/kubernetes/pki/apiserver-etcd-client.crt
+        key_path: /etc/kubernetes/pki/apiserver-etcd-client.key
+        service_name: kube-apiserver.service
+        host_groups: ['k8s_control_plane']
+      - name: kubernetes-front-proxy-client
+        cert_path: /etc/kubernetes/pki/front-proxy-client.crt
+        key_path: /etc/kubernetes/pki/front-proxy-client.key
+        service_name: kube-apiserver.service
+        host_groups: ['k8s_control_plane']
+      - name: kubernetes-etcd-server
+        cert_path: /etc/kubernetes/pki/etcd/server.crt
+        key_path: /etc/kubernetes/pki/etcd/server.key
+        service_name: etcd.service
+        host_groups: ['k8s_control_plane']
+      - name: kubernetes-etcd-peer
+        cert_path: /etc/kubernetes/pki/etcd/peer.crt
+        key_path: /etc/kubernetes/pki/etcd/peer.key
+        service_name: etcd.service
+        host_groups: ['k8s_control_plane']
+      - name: kubernetes-etcd-healthcheck-client
+        cert_path: /etc/kubernetes/pki/etcd/healthcheck-client.crt
+        key_path: /etc/kubernetes/pki/etcd/healthcheck-client.key
+        service_name: etcd.service
+        host_groups: ['k8s_control_plane']
+      - name: kubernetes-kubelet
+        cert_path: /var/lib/kubelet/pki/kubelet.crt
+        key_path: /var/lib/kubelet/pki/kubelet.key
+        service_name: kubelet.service
+        host_groups: ['k8s_cluster']
 
 # Filter services to only those deployed on this node
 - name: Filter services for current node
@@ -65,7 +106,7 @@
           {%- endif -%}
         {%- elif service.host_groups -%}
           {%- for group in service.host_groups -%}
-            {%- if inventory_hostname in groups.get(group, []) -%}
+            {%- if group == 'all' or inventory_hostname in groups.get(group, []) -%}
               {%- set should_include = true -%}
             {%- endif -%}
           {%- endfor -%}
@@ -75,6 +116,7 @@
         {%- endif -%}
       {%- endfor -%}
       {{ filtered_services }}
+
 
 # Test certificate presence and validity for each service
 - name: Check certificate files exist
