@@ -69,6 +69,12 @@ frontend services-https
   use_backend nomad-backend if { hdr(host) -i nomad.services.goldentooth.net }
   use_backend consul-backend if { hdr(host) -i consul.services.goldentooth.net }
   use_backend authelia-backend if { hdr(host) -i auth.services.goldentooth.net }
+  use_backend mcp-backend if { hdr(host) -i mcp.services.goldentooth.net }
+  
+  # Per-node MCP server routing
+{% for host in groups['mcp_server'] %}
+  use_backend mcp-{{ host }}-backend if { hdr(host) -i mcp.services.{{ host }}.nodes.goldentooth.net }
+{% endfor %}
   
   # Default to grafana for backwards compatibility
   default_backend grafana-backend
@@ -215,4 +221,34 @@ backend authelia-backend
   # Authelia server configuration (HTTPS backend)
 {% for host in groups['authelia'] %}
   server {{ host }} {{ hostvars[host]['ipv4_address'] }}:9091 check ssl verify none fall 3 rise 2
+{% endfor %}
+
+# MCP server backend configuration (load balanced across all nodes).
+backend mcp-backend
+  # Use HTTP mode
+  mode http
+  # Sets the load balancing algorithm
+  balance roundrobin
+  # Enable health checks (MCP server v0.0.26+ has /health endpoint)
+  option httpchk GET /health
+  # Sets the maximum inactivity time on the server side
+  timeout server 30s
+  # MCP server configuration (HTTP backend)
+{% for host in groups['mcp_server'] %}
+  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:{{ hostvars[host]['mcp_server_port'] | default(mcp_server_port) }} check fall 3 rise 2
+{% endfor %}
+
+# Per-node MCP server backend configurations.
+{% for host in groups['mcp_server'] %}
+backend mcp-{{ host }}-backend
+  # Use HTTP mode
+  mode http
+  # No load balancing needed (single server)
+  # Enable health checks (MCP server v0.0.26+ has /health endpoint)
+  option httpchk GET /health
+  # Sets the maximum inactivity time on the server side
+  timeout server 30s
+  # Single node MCP server configuration
+  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:{{ hostvars[host]['mcp_server_port'] | default(mcp_server_port) }} check fall 3 rise 2
+
 {% endfor %}

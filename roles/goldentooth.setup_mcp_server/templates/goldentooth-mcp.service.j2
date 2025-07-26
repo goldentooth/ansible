@@ -14,7 +14,7 @@ Environment=MCP_PORT={{ mcp_server_port }}
 Environment=OAUTH_CLIENT_ID={{ mcp_server_oauth_client_id | default('goldentooth-mcp') }}
 Environment=OAUTH_CLIENT_SECRET={{ secret_vault.authelia.oidc.mcp_secret }}
 Environment=AUTHELIA_BASE_URL={{ mcp_server_authelia_base_url | default('https://auth.services.goldentooth.net') }}
-Environment=OAUTH_REDIRECT_URI={{ mcp_server_oauth_redirect_uri | default('https://mcp.goldentooth.net/callback') }}
+Environment=OAUTH_REDIRECT_URI={{ mcp_server_oauth_redirect_uri | default('https://mcp.services.goldentooth.net/callback') }}
 Restart={{ mcp_server_restart_policy }}
 RestartSec={{ mcp_server_restart_delay }}
 StandardInput=null

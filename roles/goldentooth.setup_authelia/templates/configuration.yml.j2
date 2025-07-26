@@ -177,9 +177,9 @@ identity_providers:
 {{ authelia_oidc_issuer_certificate_chain_content | default('') }}
 
     lifespans:
-      access_token: 1h
+      access_token: 30d
       authorize_code: 1m
-      id_token: 1h
+      id_token: 30d
       refresh_token: 90d
 
     enable_client_debug_messages: false
@@ -197,18 +197,19 @@ identity_providers:
     clients:
       - client_id: goldentooth-mcp
         client_name: Goldentooth MCP Server
-        client_secret: "$argon2id$v=19$m=65536,t=3,p=4$GGnGdsWz0JeODXS8canVtA$wcRGpf5DJMYm15nhFBjOMqPyD+IhzLIhfmCCRlESTZU"
+        client_secret: "$argon2id$v=19$m=65536,t=3,p=4$jwd+xWQp7v3Jy82a+upMVA$JpyAAH7qo/FyLv18UAQnu5UPW1lBkuIYl0BVqLfwXLs"
         authorization_policy: one_factor
         redirect_uris:
-          - https://mcp.{{ authelia_domain }}/callback
+          - https://mcp.services.{{ authelia_domain }}/callback
         scopes:
+          - openid
           - profile
           - email
           - groups
+          - offline_access
         grant_types:
           - authorization_code
           - refresh_token
-          - client_credentials
         response_types:
           - code
         response_modes:
