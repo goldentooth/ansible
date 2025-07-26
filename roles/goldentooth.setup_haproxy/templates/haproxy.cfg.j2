@@ -207,11 +207,12 @@ backend authelia-backend
   mode http
   # Sets the load balancing algorithm
   balance roundrobin
-  # Enable health checks via HTTP (Authelia uses HTTP)
+  # Enable health checks via HTTPS (Authelia now uses HTTPS)
   option httpchk GET /api/health
+  http-check connect ssl
   # Sets the maximum inactivity time on the server side
   timeout server 30s
-  # Authelia server configuration (HTTP backend)
+  # Authelia server configuration (HTTPS backend)
 {% for host in groups['authelia'] %}
-  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:9091 check fall 3 rise 2
+  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:9091 check ssl verify none fall 3 rise 2
 {% endfor %}

@@ -8,6 +8,9 @@ server:
   buffers:
     read: 4096
     write: 4096
+  tls:
+    certificate: /etc/authelia/tls.crt
+    key: /etc/authelia/tls.key
 
 log:
   level: info
@@ -108,7 +111,7 @@ session:
 
   cookies:
     - domain: {{ authelia_session_domain }}
-      authelia_url: https://auth.{{ authelia_domain }}:9091
+      authelia_url: https://auth.services.{{ authelia_domain }}
       default_redirection_url: https://{{ authelia_domain }}
 
 {% if authelia_redis_enabled %}
@@ -194,19 +197,18 @@ identity_providers:
     clients:
       - client_id: goldentooth-mcp
         client_name: Goldentooth MCP Server
-        client_secret: "$argon2id$v=19$m=65536,t=3,p=4$Flm7xRevvcylW25CMnHEag$bCIXo3jBkJ1Q/S0ffMcYXGfz5eoEWTcq2erdN59lyQk"
+        client_secret: "$argon2id$v=19$m=65536,t=3,p=4$GGnGdsWz0JeODXS8canVtA$wcRGpf5DJMYm15nhFBjOMqPyD+IhzLIhfmCCRlESTZU"
         authorization_policy: one_factor
         redirect_uris:
           - https://mcp.{{ authelia_domain }}/callback
         scopes:
-          - openid
           - profile
           - email
           - groups
-          - offline_access
         grant_types:
           - authorization_code
           - refresh_token
+          - client_credentials
         response_types:
           - code
         response_modes:

@@ -101,6 +101,58 @@
     - "{{ authelia_oidc_issuer_certificate_chain_path }}"
   when: authelia_oidc_enabled
 
+- name: Generate TLS certificate for Authelia server
+  ansible.builtin.shell: |
+    step ca certificate \
+      "authelia.{{ authelia_domain }}" \
+      /etc/authelia/tls.crt \
+      /etc/authelia/tls.key \
+      --provisioner="default" \
+      --password-file="/root/.step/jwk_provisioner_password.txt" \
+      --san="authelia.{{ authelia_domain }}" \
+      --san="auth.services.{{ authelia_domain }}" \
+      --san="{{ ansible_hostname }}" \
+      --san="{{ ansible_hostname }}.{{ cluster.node_domain }}" \
+      --san="{{ ipv4_address }}" \
+      --not-after='24h' \
+      --console \
+      --force
+  args:
+    creates: /etc/authelia/tls.crt
+  notify:
+    - restart authelia
+
+- name: Set TLS certificate permissions
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: "{{ authelia_user }}"
+    group: "{{ authelia_group }}"
+    mode: '0600'
+  loop:
+    - /etc/authelia/tls.crt
+    - /etc/authelia/tls.key
+
+- name: Ensure Authelia cert-renewer service directory exists
+  ansible.builtin.file:
+    path: '/etc/systemd/system/cert-renewer@authelia.service.d'
+    state: directory
+    owner: 'root'
+    group: 'root'
+    mode: '0755'
+
+- name: Copy Authelia certificate renewer configuration into place
+  ansible.builtin.template:
+    src: 'cert-renewer@authelia.conf.j2'
+    dest: '/etc/systemd/system/cert-renewer@authelia.service.d/override.conf'
+  notify:
+    - restart authelia
+
+- name: Enable cert-renewer service for Authelia
+  ansible.builtin.systemd_service:
+    name: 'cert-renewer@authelia.timer'
+    enabled: true
+    state: 'started'
+
 - name: Read OIDC private key content for JWKS
   ansible.builtin.slurp:
     src: "{{ authelia_oidc_issuer_private_key_path }}"

@@ -94,16 +94,31 @@
 - name: Check certificate validity and expiration
   shell: |
     if [ -f "{{ item.cert_path }}" ]; then
-      # Check if certificate is valid (not expired)
-      if openssl x509 -in "{{ item.cert_path }}" -noout -checkend 0 > /dev/null 2>&1; then
-        # Get days until expiration
-        expiry_date=$(openssl x509 -in "{{ item.cert_path }}" -noout -enddate | cut -d= -f2)
-        expiry_epoch=$(date -d "$expiry_date" +%s)
-        current_epoch=$(date +%s)
-        days_remaining=$(( (expiry_epoch - current_epoch) / 86400 ))
-        echo "VALID:$days_remaining"
-      else
+      # Get expiration info
+      expiry_date=$(openssl x509 -in "{{ item.cert_path }}" -noout -enddate | cut -d= -f2)
+      expiry_epoch=$(date -d "$expiry_date" +%s)
+      current_epoch=$(date +%s)
+      seconds_remaining=$((expiry_epoch - current_epoch))
+      
+      # Check if certificate is actually expired
+      if [ $seconds_remaining -lt 0 ]; then
         echo "EXPIRED:0"
+      else
+        # Calculate time remaining - show hours for short-lived certs like cert-canary
+        days_remaining=$(( seconds_remaining / 86400 ))
+        hours_remaining=$(( (seconds_remaining % 86400) / 3600 ))
+        minutes_remaining=$(( (seconds_remaining % 3600) / 60 ))
+        
+        # For cert-canary and other short-lived certs, be more granular
+        if [ $days_remaining -eq 0 ] && [ $hours_remaining -lt 24 ]; then
+          if [ $hours_remaining -gt 0 ]; then
+            echo "VALID_HOURS:${hours_remaining}h${minutes_remaining}m"
+          else
+            echo "VALID_MINUTES:${minutes_remaining}m"
+          fi
+        else
+          echo "VALID:$days_remaining"
+        fi
       fi
     else
       echo "MISSING:-1"
@@ -112,16 +127,17 @@
   loop: "{{ node_certificate_services }}"
   changed_when: false
   ignore_errors: yes
+  become: yes
 
 - name: Parse certificate validity results
   set_fact:
-    cert_validity_results: "{{ cert_validity_results | default([]) + [{'service': item.item.name, 'status': item.stdout.split(':')[0], 'days': item.stdout.split(':')[1] | int}] }}"
+    cert_validity_results: "{{ cert_validity_results | default([]) + [{'service': item.item.name, 'status': item.stdout.split(':')[0], 'time_info': item.stdout.split(':')[1] if ':' in item.stdout else '', 'raw_output': item.stdout}] }}"
   loop: "{{ cert_validity_check.results }}"
   when: item is not skipped and item.stdout is defined
 
 - name: Record certificate validity tests
   set_fact:
-    cert_renewal_tests: "{{ cert_renewal_tests + [{'name': 'certificate_valid_' + item.service, 'category': 'certificate_renewal', 'success': (item.status == 'VALID'), 'duration': 0.2, 'service': item.service, 'days_remaining': item.days}] }}"
+    cert_renewal_tests: "{{ cert_renewal_tests + [{'name': 'certificate_valid_' + item.service, 'category': 'certificate_renewal', 'success': (item.status in ['VALID', 'VALID_HOURS', 'VALID_MINUTES']), 'duration': 0.2, 'service': item.service, 'time_remaining': item.time_info, 'status_detail': item.raw_output, 'permission_issue': (item.status == 'PERMISSION_DENIED')}] }}"
   loop: "{{ cert_validity_results | default([]) }}"
 
 # Test cert-renewer service and timer status
@@ -150,6 +166,7 @@
   loop: "{{ node_certificate_services }}"
   changed_when: false
   ignore_errors: yes
+  become: yes
 
 - name: Record certificate renewal capability tests
   set_fact:
@@ -201,12 +218,13 @@
       register: canary_cert_age
       changed_when: false
       ignore_errors: yes
+      become: yes
 
     - name: Record certificate canary tests
       set_fact:
         cert_renewal_tests: "{{ cert_renewal_tests + [
           {'name': 'cert_canary_service_running', 'category': 'certificate_renewal', 'success': (canary_service_status.status.ActiveState == 'active' if canary_service_status.status is defined else false), 'duration': 0.1, 'service': 'cert-canary'},
-          {'name': 'cert_canary_certificate_fresh', 'category': 'certificate_renewal', 'success': (canary_cert_age.stdout.split(':')[1] | int < 600 if canary_cert_age.stdout is defined and ':' in canary_cert_age.stdout else false), 'duration': 0.2, 'service': 'cert-canary', 'age_minutes': (canary_cert_age.stdout.split(':')[1] | int if canary_cert_age.stdout is defined and ':' in canary_cert_age.stdout else -1)}
+          {'name': 'cert_canary_certificate_fresh', 'category': 'certificate_renewal', 'success': (canary_cert_age.stdout.split(':')[1] | int < 30 if canary_cert_age.stdout is defined and ':' in canary_cert_age.stdout else false), 'duration': 0.2, 'service': 'cert-canary', 'age_minutes': (canary_cert_age.stdout.split(':')[1] | int if canary_cert_age.stdout is defined and ':' in canary_cert_age.stdout else -1)}
         ] }}"
   when: inventory_hostname == 'allyrion'
 
@@ -223,6 +241,7 @@
   loop: "{{ node_certificate_services }}"
   changed_when: false
   ignore_errors: yes
+  become: yes
 
 - name: Record certificate chain validation tests
   set_fact:
@@ -238,8 +257,8 @@
 # Export certificate expiration information for metrics
 - name: Build certificate status for metrics export
   set_fact:
-    certificate_status: "{{ certificate_status | default([]) + [{'service': item.service, 'days_remaining': item.days_remaining | default(0)}] }}"
-  loop: "{{ cert_renewal_tests | selectattr('days_remaining', 'defined') | list }}"
+    certificate_status: "{{ certificate_status | default([]) + [{'service': item.service, 'time_remaining': item.time_remaining | default('unknown'), 'status': item.status_detail | default('unknown')}] }}"
+  loop: "{{ cert_renewal_tests | selectattr('time_remaining', 'defined') | list }}"
 
 # Export results for integration with test framework
 - name: Export certificate renewal test results
