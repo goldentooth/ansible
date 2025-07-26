@@ -6,4 +6,4 @@ Environment=KEY_LOCATION={{ vector.key_path }}
 WorkingDirectory={{ vector.key_path | dirname }}
 
 ; Restart Vector service after certificate renewal
-ExecStartPost=/usr/bin/env sh -c "! systemctl --quiet is-active vector.service || systemctl try-reload-or-restart vector.service"
+ExecStartPost=systemctl restart vector
