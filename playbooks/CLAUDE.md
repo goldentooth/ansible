@@ -1,138 +1,269 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with the playbooks directory.
+This file provides guidance to Claude Code (claude.ai/code) when working with Goldentooth cluster test playbooks.
 
 ## Overview
 
-This directory contains Ansible playbooks that define the high-level orchestration for cluster operations. Each playbook typically combines multiple roles to achieve a specific goal.
+The `/ansible/tests/playbooks/` directory contains orchestration playbooks that coordinate test execution across the Goldentooth cluster. These playbooks manage test role execution, result aggregation, and metric export to Prometheus.
 
-## Playbook Categories
+## Playbook Architecture
 
-### Cluster Management
-- `configure_cluster.yaml`: Configure all hosts with base settings (hostname, MOTD, security, user setup)
-- `cleanup.yaml`: Perform various cleanup tasks across the cluster
-- `shutdown.yaml`: Cleanly shut down all hosts in the cluster
-- `pi_config.yaml`: Configure Raspberry Pi-specific settings
+Test playbooks follow a consistent pattern:
+1. **Preparation**: Set up test environment and variables
+2. **Execution**: Run test roles in appropriate order
+3. **Aggregation**: Collect and format results
+4. **Export**: Write metrics to Prometheus textfile format
+5. **Reporting**: Optional result summary and notifications
 
-### Certificate Authority
-- `init_cluster_ca.yaml`: Initialize Root and Intermediate Certificate Authorities
-- `bootstrap_cluster_ca.yaml`: Bootstrap cluster CA client configuration (one-time setup)
-- `setup_cluster_ca.yaml`: Setup cluster CA components and certificate renewal system
-- `zap_cluster_ca.yaml`: Delete the old cluster Certificate Authority
+## Primary Playbooks
 
-### Kubernetes Operations
-- `bootstrap_k8s.yaml`: Bootstrap Kubernetes cluster with kubeadm
-- `reset_k8s.yaml`: Reset Kubernetes cluster (destructive operation)
-- `install_k8s_packages.yaml`: Install Kubernetes packages on nodes
-- `uninstall_k8s_packages.yaml`: Remove Kubernetes packages
-- `upgrade_k8s.yaml`: Upgrade Kubernetes to newer version
-- `install_helm.yaml`: Install Helm package manager
-- `install_argo_cd.yaml`: Install Argo CD for GitOps
-- `install_argo_cd_apps.yaml`: Install Argo CD applications
+### `test_all.yaml` - Comprehensive Cluster Testing
 
-### HashiCorp Stack
-- `setup_consul.yaml`: Setup Consul service mesh
-- `setup_nomad.yaml`: Setup Nomad workload orchestration
-- `setup_vault.yaml`: Setup HashiCorp Vault secrets management
-- `bootstrap_consul.yaml`: Bootstrap Consul (generate gossip key and ACL management token)
-- `setup_consul_acl.yaml`: Setup Consul ACL policies and tokens
+**Purpose**: Execute complete cluster health validation across all services and nodes
 
-### Certificate Rotation
-- `rotate_consul_certs.yaml`: Rotate Consul TLS certificates
-- `rotate_nomad_certs.yaml`: Rotate Nomad TLS certificates
-- `rotate_vault_certs.yaml`: Rotate Vault TLS certificates
-- `rotate_grafana_certs.yaml`: Rotate Grafana TLS certificates
-- `rotate_loki_certs.yaml`: Rotate Loki TLS certificates
-- `rotate_vector_certs.yaml`: Rotate Vector TLS certificates
+**Execution Flow**:
+```yaml
+1. System resource checks (CPU, memory, disk)
+2. Storage system validation (NFS, ZFS)
+3. Core infrastructure services (Consul, Vault)
+4. Container orchestration (Kubernetes, Nomad)
+5. Observability stack (Prometheus, Grafana, Loki)
+6. Certificate authority and PKI health
+7. Result aggregation and metric export
+```
 
-### Infrastructure Services
-- `setup_docker.yaml`: Setup Docker container runtime
-- `setup_envoy.yaml`: Setup Envoy proxy
-- `setup_load_balancer.yaml`: Setup HAProxy load balancer
-- `setup_networking.yaml`: Configure network settings
-- `setup_nfs_exports.yaml`: Setup NFS exports
-- `setup_nfs_mounts.yaml`: Setup NFS mounts
-- `setup_ntp.yaml`: Setup NTP time synchronization
-- `setup_apt_repos.yaml`: Setup package repositories
-- `setup_zfs.yaml`: Setup ZFS storage
+**Usage**:
+```bash
+# Via goldentooth CLI (recommended)
+goldentooth test all
 
-### Observability
-- `setup_prometheus.yaml`: Setup Prometheus metrics collection
-- `setup_grafana.yaml`: Setup Grafana dashboards
-- `setup_loki.yaml`: Setup Loki log aggregation
-- `setup_vector.yaml`: Setup Vector log shipping
-- `setup_node_homepages.yaml`: Setup node status pages
+# Direct Ansible execution
+ansible-playbook -i ../inventory/hosts test_all.yaml
+```
 
-### Compute Workloads
-- `setup_slurm.yaml`: Setup Slurm job scheduler
-- `setup_ray.yaml`: Setup Ray distributed computing
+**Key Features**:
+- Comprehensive coverage of all cluster services
+- Parallel execution where safe (using `serial` and `strategy`)
+- Detailed timing and performance metrics
+- Automatic failure isolation (continues testing other services)
+- Results exported to `/var/lib/prometheus/node-exporter/goldentooth_tests.prom`
 
-### Certificate Authority Tools
-- `install_step_ca.yaml`: Install Step-CA certificate authority
-- `install_step_cli.yaml`: Install Step CLI tools
+### `test_system.yaml` - Quick System Health
 
-### Utility Playbooks
-- `adhoc.yaml`: Run ad-hoc Ansible tasks
-- `msg.yaml`: Evaluate messages on hosts (debugging)
-- `var.yaml`: Evaluate variables on hosts (debugging)
+**Purpose**: Fast system resource and connectivity checks for rapid status assessment
+
+**Execution Flow**:
+```yaml
+1. Basic connectivity (ping, SSH)
+2. System load and resource utilization
+3. Critical filesystem availability
+4. Network interface status
+5. Essential service process checks
+```
+
+**Usage**:
+```bash
+# Via goldentooth CLI
+goldentooth test quick
+
+# Direct execution
+ansible-playbook -i ../inventory/hosts test_system.yaml
+```
+
+**Optimization**:
+- Designed for sub-30 second execution
+- Minimal external dependencies
+- Focuses on critical system indicators
+- Suitable for frequent automated runs
+
+### `test_step_ca.yaml` - Certificate Authority Focus
+
+**Purpose**: Detailed testing of Step-CA certificate authority and PKI infrastructure
+
+**Execution Flow**:
+```yaml
+1. Step-CA service availability
+2. Root and intermediate certificate validation
+3. Certificate expiration monitoring
+4. Automatic renewal system health
+5. Certificate distribution verification
+6. Client certificate authentication testing
+```
+
+**Usage**:
+```bash
+# Via goldentooth CLI
+goldentooth test step_ca
+
+# Direct execution  
+ansible-playbook -i ../inventory/hosts test_step_ca.yaml
+```
+
+**Certificate Testing Scope**:
+- **Root CA**: Certificate chain validation and trust
+- **Intermediate CA**: Signing capability and expiration
+- **Service Certificates**: Consul, Vault, Kubernetes, etc.
+- **Client Certificates**: SSH CA, user authentication
+- **Renewal Status**: Systemd timer health and execution
 
 ## Playbook Patterns
 
-### Common Structure
-Most playbooks follow this pattern:
+### Variable Management
 ```yaml
-# Description comment
-- name: 'Descriptive task name'
-  hosts: 'target_group'
-  remote_user: 'root'  # or specific user
-  roles:
-    - { role: 'goldentooth.role_name' }
-  handlers:
-    - name: 'Handler name'
-      # Handler tasks
+vars:
+  test_start_time: "{{ ansible_date_time.epoch }}"
+  test_categories:
+    - system
+    - storage  
+    - consul
+    - kubernetes
+    - vault
+  
+# Results aggregation
+pre_tasks:
+  - name: Initialize test results
+    ansible.builtin.set_fact:
+      all_test_results: []
+      service_health_summary: {}
 ```
 
-### Multi-Play Playbooks
-Some playbooks have multiple plays for different user contexts:
-- Root user configuration
-- Regular user configuration
-- Service-specific configurations
+### Role Execution Pattern
+```yaml
+# Standard role invocation with error handling
+- name: "Run {{ service }} health tests"
+  ansible.builtin.include_role:
+    name: "test_{{ service }}"
+  rescue:
+    - name: "Mark {{ service }} tests as failed"
+      ansible.builtin.set_fact:
+        service_health_summary: "{{ service_health_summary | combine({service: 0}) }}"
+```
 
-### Error Handling
-Playbooks include appropriate handlers for:
-- Service restarts
-- System reboots
-- Configuration reloads
+### Result Aggregation
+```yaml
+post_tasks:
+  - name: "Aggregate test results"
+    ansible.builtin.include_role:
+      name: test_reporter
+    vars:
+      collected_results: "{{ all_test_results }}"
+      test_execution_time: "{{ ansible_date_time.epoch | int - test_start_time | int }}"
+```
 
-## Usage via CLI
+## Execution Strategies
 
-All playbooks should be run via the `goldentooth` CLI tool:
+### Parallel Execution
+For independent tests that can run simultaneously:
+```yaml
+strategy: free
+serial: "{{ groups['all'] | length }}"
+```
+
+### Sequential Execution  
+For tests with dependencies or resource constraints:
+```yaml
+strategy: linear
+serial: 1
+```
+
+### Targeted Execution
+Run tests on specific host groups:
 ```bash
-goldentooth <command_name>
+# Test only control plane nodes
+ansible-playbook test_all.yaml --limit consul_server
+
+# Test specific services
+ansible-playbook test_all.yaml --tags "consul,vault"
 ```
 
-For direct Ansible execution (not recommended):
+## Integration Points
+
+### Goldentooth CLI Mapping
+Each playbook maps to specific CLI commands:
 ```bash
-ansible-playbook -i inventory/hosts playbooks/<playbook_name>.yaml
+goldentooth test all      -> test_all.yaml
+goldentooth test quick    -> test_system.yaml  
+goldentooth test step_ca  -> test_step_ca.yaml
+goldentooth test consul   -> test_all.yaml --tags consul
 ```
 
-## Dependencies
+### Automation Integration
+```bash
+# Cron automation via setup script
+./scripts/setup_cron.sh
 
-- Playbooks rely on roles in the `roles/` directory
-- Many playbooks require vault secrets to be accessible
-- Some playbooks have ordering dependencies (e.g., CA must be setup before services)
+# Systemd timer integration (alternative)
+systemctl enable --now goldentooth-tests.timer
+```
 
-## Best Practices
+### Monitoring Integration
+- **Prometheus**: Automatic metric collection from textfiles
+- **Grafana**: Dashboard visualization of test results
+- **Alerting**: Prometheus AlertManager rules based on test failures
 
-- Use descriptive names for plays and tasks
-- Include helpful comments explaining complex operations
-- Use appropriate host targeting
-- Include necessary handlers for service management
-- Test playbooks in development before production use
+## Development Guidelines
 
-## Related Documentation
+### Adding New Test Playbooks
 
-For more information about playbook components:
-- See `../inventory/CLAUDE.md` for host groups and variables used by playbooks
-- See `../roles/CLAUDE.md` for role organization and conventions
-- See `../roles/goldentooth.*/CLAUDE.md` for detailed documentation on each role used in playbooks
+1. **Follow Naming Convention**: `test_<category>.yaml`
+2. **Include Standard Variables**: Test timing, categories, results
+3. **Implement Error Handling**: Graceful failure and recovery
+4. **Export Metrics**: Consistent format for Prometheus consumption
+5. **Document Integration**: Update CLI and cron configurations
+
+### Best Practices
+
+#### Performance Optimization
+- Use `gather_facts: false` when facts aren't needed
+- Implement conditional execution for expensive tests
+- Consider `async` execution for long-running checks
+- Use `changed_when: false` for read-only operations
+
+#### Error Handling
+```yaml
+# Graceful error handling pattern
+block:
+  - name: "Execute test sequence"
+    # Test implementation
+rescue:
+  - name: "Log test failure"
+    ansible.builtin.debug:
+      msg: "Test failed: {{ ansible_failed_result.msg }}"
+  - name: "Continue with other tests"
+    ansible.builtin.meta: clear_host_errors
+```
+
+#### Result Consistency
+Ensure all playbooks export results in the standard format:
+```yaml
+goldentooth_test_success{test,category,node} = 0|1
+goldentooth_test_duration_seconds{test,category,node} = float
+goldentooth_service_health{service,node} = 0|1
+```
+
+### Debugging and Troubleshooting
+
+#### Verbose Execution
+```bash
+# Detailed output for debugging
+goldentooth test all -v
+
+# Ansible verbose levels
+ansible-playbook test_all.yaml -vvv
+```
+
+#### Manual Result Inspection
+```bash
+# Check exported metrics
+cat /var/lib/prometheus/node-exporter/goldentooth_tests.prom
+
+# Verify Prometheus scraping
+curl http://localhost:9090/api/v1/query?query=goldentooth_test_success
+```
+
+#### Common Issues
+- **Permission errors**: Check node exporter textfile directory
+- **Timeout failures**: Adjust test timeout values in role defaults
+- **Network connectivity**: Verify SSH access and firewall rules
+
+This playbook structure provides flexible, maintainable test orchestration while supporting both automated monitoring and manual troubleshooting workflows.
