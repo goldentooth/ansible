@@ -70,3 +70,45 @@ parameters:
 reclaimPolicy: Delete
 allowVolumeExpansion: true
 volumeBindingMode: Immediate
+---
+# CephFS StorageClass for ReadWriteMany support
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ceph-cephfs
+provisioner: cephfs.csi.ceph.com
+parameters:
+  # Ceph cluster details
+  clusterID: goldentooth-ceph
+  fsName: cephfs
+  
+  # Authentication  
+  csi.storage.k8s.io/provisioner-secret-name: ceph-csi-cephfs-provisioner-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: ceph-csi
+  csi.storage.k8s.io/controller-expand-secret-name: ceph-csi-cephfs-provisioner-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: ceph-csi
+  csi.storage.k8s.io/node-stage-secret-name: ceph-csi-cephfs-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: ceph-csi
+
+reclaimPolicy: Delete
+allowVolumeExpansion: true
+volumeBindingMode: Immediate
+---
+# CephFS StorageClass with Retain policy
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ceph-cephfs-retain
+provisioner: cephfs.csi.ceph.com
+parameters:
+  clusterID: goldentooth-ceph
+  fsName: cephfs
+  csi.storage.k8s.io/provisioner-secret-name: ceph-csi-cephfs-provisioner-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: ceph-csi
+  csi.storage.k8s.io/controller-expand-secret-name: ceph-csi-cephfs-provisioner-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: ceph-csi
+  csi.storage.k8s.io/node-stage-secret-name: ceph-csi-cephfs-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: ceph-csi
+reclaimPolicy: Retain
+allowVolumeExpansion: true
+volumeBindingMode: Immediate

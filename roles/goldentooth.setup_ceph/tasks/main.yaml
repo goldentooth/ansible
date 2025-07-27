@@ -171,6 +171,56 @@
     - 'ceph'
     - 'pools'
 
+# CephFS setup for ReadWriteMany support
+- name: 'Create CephFS metadata pool.'
+  ansible.builtin.command: >
+    cephadm shell -- ceph osd pool create cephfs-metadata 16
+  when: inventory_hostname == groups['ceph'][0]
+  ignore_errors: true
+  tags:
+    - 'ceph'
+    - 'cephfs'
+
+- name: 'Create CephFS data pool.'
+  ansible.builtin.command: >
+    cephadm shell -- ceph osd pool create cephfs-data 32
+  when: inventory_hostname == groups['ceph'][0]
+  ignore_errors: true
+  tags:
+    - 'ceph'
+    - 'cephfs'
+
+- name: 'Deploy MDS service for CephFS.'
+  ansible.builtin.command: >
+    cephadm shell -- ceph orch apply mds cephfs "{{ (groups['ceph'] | length / 2) | round(0, 'ceil') | int }}"
+  when: inventory_hostname == groups['ceph'][0]
+  ignore_errors: true
+  tags:
+    - 'ceph'
+    - 'cephfs'
+
+- name: 'Wait for MDS to be available.'
+  ansible.builtin.command: >
+    cephadm shell -- ceph mds stat
+  register: 'mds_stat'
+  until: '"up:active" in mds_stat.stdout'
+  retries: 20
+  delay: 10
+  when: inventory_hostname == groups['ceph'][0]
+  ignore_errors: true
+  tags:
+    - 'ceph'
+    - 'cephfs'
+
+- name: 'Create CephFS filesystem.'
+  ansible.builtin.command: >
+    cephadm shell -- ceph fs new cephfs cephfs-metadata cephfs-data
+  when: inventory_hostname == groups['ceph'][0]
+  ignore_errors: true
+  tags:
+    - 'ceph'
+    - 'cephfs'
+
 - name: 'Display final cluster status.'
   ansible.builtin.command: 'cephadm shell -- ceph -s'
   register: 'ceph_status'

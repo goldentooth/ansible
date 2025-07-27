@@ -1,0 +1,175 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ceph-csi-cephfs-nodeplugin
+  namespace: {{ ceph_csi.namespace }}
+  labels:
+    app: ceph-csi-cephfs-nodeplugin
+spec:
+  selector:
+    matchLabels:
+      app: ceph-csi-cephfs-nodeplugin
+  template:
+    metadata:
+      labels:
+        app: ceph-csi-cephfs-nodeplugin
+    spec:
+      serviceAccountName: ceph-csi-cephfs-nodeplugin
+      hostNetwork: true
+      hostPID: true
+      priorityClassName: system-node-critical
+      # to use e.g. Rook orchestrated cluster, and mons' FQDN is
+      # resolved through k8s service, set dns policy to cluster first
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+      - name: driver-registrar
+        # This is necessary only for systems with SELinux, where
+        # non-privileged sidecar containers cannot access unix domain socket
+        # created by privileged CSI driver container.
+        securityContext:
+          privileged: true
+          capabilities:
+            add: ["SYS_ADMIN"]
+          allowPrivilegeEscalation: true
+        image: {{ ceph_csi.sidecars.registrar }}
+        args:
+        - "--v=2"
+        - "--csi-address=/csi/csi.sock"
+        - "--kubelet-registration-path=/var/lib/kubelet/plugins/cephfs.csi.ceph.com/csi.sock"
+        env:
+        - name: KUBE_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: socket-dir
+          mountPath: /csi
+        - name: registration-dir
+          mountPath: /registration
+        resources:
+          requests:
+            memory: {{ ceph_csi.resources.sidecars.requests.memory }}
+            cpu: {{ ceph_csi.resources.sidecars.requests.cpu }}
+          limits:
+            memory: {{ ceph_csi.resources.sidecars.limits.memory }}
+      - name: csi-cephfsplugin
+        securityContext:
+          privileged: true
+          capabilities:
+            add: ["SYS_ADMIN"]
+          allowPrivilegeEscalation: true
+        image: {{ ceph_csi.driver.image }}
+        args:
+        - "--nodeid=$(NODE_ID)"
+        - "--type=cephfs"
+        - "--nodeserver=true"
+        - "--endpoint=$(CSI_ENDPOINT)"
+        - "--v={{ ceph_csi.driver.log_level }}"
+        - "--drivername=cephfs.csi.ceph.com"
+        - "--metricspath=/metrics"
+        - "--forcecephkernelclient=false"
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: NODE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: CSI_ENDPOINT
+          value: unix:///csi/csi.sock
+        volumeMounts:
+        - name: socket-dir
+          mountPath: /csi
+        - name: mountpoint-dir
+          mountPath: /var/lib/kubelet/pods
+          mountPropagation: Bidirectional
+        - name: plugin-dir
+          mountPath: /var/lib/kubelet/plugins
+          mountPropagation: "Bidirectional"
+        - name: host-sys
+          mountPath: /sys
+        - name: lib-modules
+          mountPath: /lib/modules
+          readOnly: true
+        - name: host-dev
+          mountPath: /dev
+        - name: ceph-csi-config
+          mountPath: /etc/ceph-csi-config/
+        - name: keys-tmp-dir
+          mountPath: /tmp/csi/keys
+        - name: host-run-mount
+          mountPath: /run/mount
+        resources:
+          requests:
+            memory: {{ ceph_csi.resources.rbd_plugin.requests.memory }}
+            cpu: {{ ceph_csi.resources.rbd_plugin.requests.cpu }}
+          limits:
+            memory: {{ ceph_csi.resources.rbd_plugin.limits.memory }}
+      - name: liveness-prometheus
+        securityContext:
+          privileged: true
+          capabilities:
+            add: ["SYS_ADMIN"]
+          allowPrivilegeEscalation: true
+        image: {{ ceph_csi.driver.image }}
+        args:
+        - "--type=liveness"
+        - "--endpoint=$(CSI_ENDPOINT)"
+        - "--metricsport=8684"
+        - "--metricspath=/metrics"
+        - "--polltime=60s"
+        - "--timeout=3s"
+        env:
+        - name: CSI_ENDPOINT
+          value: unix:///csi/csi.sock
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        volumeMounts:
+        - name: socket-dir
+          mountPath: /csi
+        resources:
+          requests:
+            memory: {{ ceph_csi.resources.liveness.requests.memory }}
+            cpu: {{ ceph_csi.resources.liveness.requests.cpu }}
+          limits:
+            memory: {{ ceph_csi.resources.liveness.limits.memory }}
+      volumes:
+      - name: socket-dir
+        hostPath:
+          path: /var/lib/kubelet/plugins/cephfs.csi.ceph.com
+          type: DirectoryOrCreate
+      - name: registration-dir
+        hostPath:
+          path: /var/lib/kubelet/plugins_registry
+          type: Directory
+      - name: mountpoint-dir
+        hostPath:
+          path: /var/lib/kubelet/pods
+          type: DirectoryOrCreate
+      - name: plugin-dir
+        hostPath:
+          path: /var/lib/kubelet/plugins
+          type: Directory
+      - name: host-sys
+        hostPath:
+          path: /sys
+      - name: lib-modules
+        hostPath:
+          path: /lib/modules
+      - name: host-dev
+        hostPath:
+          path: /dev
+      - name: ceph-csi-config
+        configMap:
+          name: ceph-csi-config
+      - name: keys-tmp-dir
+        emptyDir:
+          medium: "Memory"
+      - name: host-run-mount
+        hostPath:
+          path: /run/mount

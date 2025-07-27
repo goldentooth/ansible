@@ -1,0 +1,166 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ceph-csi-cephfs-provisioner
+  namespace: {{ ceph_csi.namespace }}
+  labels:
+    app: ceph-csi-cephfs-provisioner
+spec:
+  replicas: {{ ceph_csi.provisioner_replicas }}
+  selector:
+    matchLabels:
+      app: ceph-csi-cephfs-provisioner
+  template:
+    metadata:
+      labels:
+        app: ceph-csi-cephfs-provisioner
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: ceph-csi-cephfs-provisioner
+              topologyKey: kubernetes.io/hostname
+      serviceAccountName: ceph-csi-cephfs-provisioner
+      priorityClassName: system-cluster-critical
+      containers:
+      - name: csi-provisioner
+        image: {{ ceph_csi.sidecars.provisioner }}
+        args:
+        - "--csi-address=$(ADDRESS)"
+        - "--v=2"
+        - "--timeout=150s"
+        - "--retry-interval-start=500ms"
+        - "--leader-election=true"
+        - "--leader-election-namespace={{ ceph_csi.namespace }}"
+        - "--leader-election-lease-duration=137s"
+        - "--leader-election-renew-deadline=107s"
+        - "--leader-election-retry-period=26s"
+        - "--default-fstype=ext4"
+        env:
+        - name: ADDRESS
+          value: unix:///csi/csi-provisioner.sock
+        volumeMounts:
+        - name: socket-dir
+          mountPath: /csi
+        resources:
+          requests:
+            memory: {{ ceph_csi.resources.sidecars.requests.memory }}
+            cpu: {{ ceph_csi.resources.sidecars.requests.cpu }}
+          limits:
+            memory: {{ ceph_csi.resources.sidecars.limits.memory }}
+      - name: csi-resizer
+        image: {{ ceph_csi.sidecars.resizer }}
+        args:
+        - "--csi-address=$(ADDRESS)"
+        - "--v=2"
+        - "--timeout=150s"
+        - "--leader-election"
+        - "--leader-election-namespace={{ ceph_csi.namespace }}"
+        - "--handle-volume-inuse-error=false"
+        env:
+        - name: ADDRESS
+          value: unix:///csi/csi-provisioner.sock
+        volumeMounts:
+        - name: socket-dir
+          mountPath: /csi
+        resources:
+          requests:
+            memory: {{ ceph_csi.resources.sidecars.requests.memory }}
+            cpu: {{ ceph_csi.resources.sidecars.requests.cpu }}
+          limits:
+            memory: {{ ceph_csi.resources.sidecars.limits.memory }}
+      - name: csi-cephfsplugin
+        image: {{ ceph_csi.driver.image }}
+        args:
+        - "--nodeid=$(NODE_ID)"
+        - "--type=cephfs"
+        - "--controllerserver=true"
+        - "--endpoint=$(CSI_ENDPOINT)"
+        - "--v={{ ceph_csi.driver.log_level }}"
+        - "--drivername=cephfs.csi.ceph.com"
+        - "--pidlimit=-1"
+        - "--metricsport=8681"
+        - "--forcecephkernelclient=false"
+        - "--metricspath=/metrics"
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: NODE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: CSI_ENDPOINT
+          value: unix:///csi/csi-provisioner.sock
+        volumeMounts:
+        - name: socket-dir
+          mountPath: /csi
+        - name: host-sys
+          mountPath: /sys
+        - name: lib-modules
+          mountPath: /lib/modules
+          readOnly: true
+        - name: host-dev
+          mountPath: /dev
+        - name: ceph-csi-config
+          mountPath: /etc/ceph-csi-config/
+        - name: keys-tmp-dir
+          mountPath: /tmp/csi/keys
+        resources:
+          requests:
+            memory: {{ ceph_csi.resources.rbd_plugin.requests.memory }}
+            cpu: {{ ceph_csi.resources.rbd_plugin.requests.cpu }}
+          limits:
+            memory: {{ ceph_csi.resources.rbd_plugin.limits.memory }}
+      - name: liveness-prometheus
+        image: {{ ceph_csi.driver.image }}
+        args:
+        - "--type=liveness"
+        - "--endpoint=$(CSI_ENDPOINT)"
+        - "--metricsport=8681"
+        - "--metricspath=/metrics"
+        - "--polltime=60s"
+        - "--timeout=3s"
+        env:
+        - name: CSI_ENDPOINT
+          value: unix:///csi/csi-provisioner.sock
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        volumeMounts:
+        - name: socket-dir
+          mountPath: /csi
+        resources:
+          requests:
+            memory: {{ ceph_csi.resources.liveness.requests.memory }}
+            cpu: {{ ceph_csi.resources.liveness.requests.cpu }}
+          limits:
+            memory: {{ ceph_csi.resources.liveness.limits.memory }}
+      volumes:
+      - name: socket-dir
+        emptyDir: {
+          medium: "Memory"
+        }
+      - name: host-sys
+        hostPath:
+          path: /sys
+      - name: lib-modules
+        hostPath:
+          path: /lib/modules
+      - name: host-dev
+        hostPath:
+          path: /dev
+      - name: ceph-csi-config
+        configMap:
+          name: ceph-csi-config
+      - name: keys-tmp-dir
+        emptyDir: {
+          medium: "Memory"
+        }

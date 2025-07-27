@@ -55,19 +55,19 @@ ceph_csi:
   storage_classes:
     default:
       name: 'ceph-rbd'
-      pool: '{{ ceph_csi.pools.main }}'
+      pool: 'kubernetes'
       reclaim_policy: 'Delete'
       is_default: true
       allow_expansion: true
     retain:
       name: 'ceph-rbd-retain'
-      pool: '{{ ceph_csi.pools.main }}'
+      pool: 'kubernetes'
       reclaim_policy: 'Retain'
       is_default: false
       allow_expansion: true
     fast:
       name: 'ceph-rbd-fast'
-      pool: '{{ ceph_csi.pools.fast }}'
+      pool: 'goldentooth-storage'
       reclaim_policy: 'Delete'
       is_default: false
       allow_expansion: true

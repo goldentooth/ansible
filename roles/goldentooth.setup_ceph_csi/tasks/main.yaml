@@ -59,9 +59,10 @@
 - name: 'Get or create Ceph client.kubernetes key'
   ansible.builtin.command: >
     cephadm shell -- ceph auth get-or-create client.kubernetes 
-    mon 'profile rbd' 
+    mon 'profile rbd, allow r' 
     osd 'profile rbd pool={{ ceph_csi.pools.main }},profile rbd pool={{ ceph_csi.pools.fast }}' 
-    mgr 'profile rbd pool={{ ceph_csi.pools.main }},profile rbd pool={{ ceph_csi.pools.fast }}'
+    mgr 'profile rbd pool={{ ceph_csi.pools.main }},profile rbd pool={{ ceph_csi.pools.fast }}' 
+    mds 'allow rw path=/'
   register: 'ceph_kubernetes_auth'
   delegate_to: "{{ groups['ceph'][0] }}"
   run_once: true
@@ -134,6 +135,30 @@
   tags:
     - 'ceph-csi'
     - 'manifests'
+
+- name: 'Generate CephFS CSI Provisioner manifest'
+  ansible.builtin.template:
+    src: 'cephfs-provisioner.yaml.j2'
+    dest: '/opt/goldentooth/ceph-csi/manifests/cephfs-provisioner.yaml'
+    mode: '0644'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'manifests'
+    - 'cephfs'
+
+- name: 'Generate CephFS CSI Node Plugin manifest'
+  ansible.builtin.template:
+    src: 'cephfs-nodeplugin.yaml.j2'
+    dest: '/opt/goldentooth/ceph-csi/manifests/cephfs-nodeplugin.yaml'
+    mode: '0644'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'manifests'
+    - 'cephfs'
 
 - name: 'Apply Ceph CSI namespace'
   kubernetes.core.k8s:
@@ -223,6 +248,30 @@
     - 'ceph-csi'
     - 'deploy'
 
+- name: 'Apply CephFS CSI Provisioner'
+  kubernetes.core.k8s:
+    state: 'present'
+    src: '/opt/goldentooth/ceph-csi/manifests/cephfs-provisioner.yaml'
+    kubeconfig: '/etc/kubernetes/admin.conf'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'deploy'
+    - 'cephfs'
+
+- name: 'Apply CephFS CSI Node Plugin'
+  kubernetes.core.k8s:
+    state: 'present'
+    src: '/opt/goldentooth/ceph-csi/manifests/cephfs-nodeplugin.yaml'
+    kubeconfig: '/etc/kubernetes/admin.conf'
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'deploy'
+    - 'cephfs'
+
 - name: 'Wait for CSI provisioner pods to be ready'
   kubernetes.core.k8s_info:
     api_version: 'apps/v1'
@@ -259,6 +308,45 @@
     - 'ceph-csi'
     - 'deploy'
     - 'wait'
+
+- name: 'Wait for CephFS CSI provisioner pods to be ready'
+  kubernetes.core.k8s_info:
+    api_version: 'apps/v1'
+    kind: 'Deployment'
+    name: 'ceph-csi-cephfs-provisioner'
+    namespace: "{{ ceph_csi.namespace }}"
+    kubeconfig: '/etc/kubernetes/admin.conf'
+    wait: true
+    wait_condition:
+      type: 'Available'
+      status: 'True'
+    wait_timeout: 300
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'deploy'
+    - 'wait'
+    - 'cephfs'
+
+- name: 'Wait for CephFS CSI node plugin pods to be ready'
+  kubernetes.core.k8s_info:
+    api_version: 'apps/v1'
+    kind: 'DaemonSet'
+    name: 'ceph-csi-cephfs-nodeplugin'
+    namespace: "{{ ceph_csi.namespace }}"
+    kubeconfig: '/etc/kubernetes/admin.conf'
+    wait: true
+    wait_condition:
+      type: 'Ready'
+    wait_timeout: 300
+  delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+  run_once: true
+  tags:
+    - 'ceph-csi'
+    - 'deploy'
+    - 'wait'
+    - 'cephfs'
 
 - name: 'Verify StorageClasses are available'
   kubernetes.core.k8s_info:
