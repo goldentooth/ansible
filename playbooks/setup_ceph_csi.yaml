@@ -1,7 +1,0 @@
-# Description: Setup Ceph CSI driver for Kubernetes persistent storage.
-
-- name: 'Setup Ceph CSI driver for Kubernetes.'
-  hosts: 'k8s_control_plane'
-  remote_user: 'root'
-  roles:
-    - { role: 'goldentooth.setup_ceph_csi' }

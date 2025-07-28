@@ -1,7 +1,0 @@
-# Description: Setup Ceph distributed storage.
-
-- name: 'Setup Ceph distributed storage.'
-  hosts: 'ceph'
-  remote_user: 'root'
-  roles:
-    - { role: 'goldentooth.setup_ceph' }

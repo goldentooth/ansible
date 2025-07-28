@@ -223,18 +223,18 @@ all:
         gardener:
 
     # -----------------------------------
-    # Ceph
+    # SeaweedFS
     # -----------------------------------
-    ceph:
+    seaweed:
       hosts:
         fenn:
         karstark:
         lipps:
 
     # -----------------------------------
-    # Seaweed
+    # Longhorn
     # -----------------------------------
-    seaweed:
+    longhorn:
       hosts:
         inchfield:
         jast:
