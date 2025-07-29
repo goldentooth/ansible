@@ -3,8 +3,8 @@ mac_address: dc:a6:32:8c:98:75
 ipv4_address: 10.4.0.21
 prompt:
   colors:
-    primary: 11
-    secondary: 58
-    tertiary: 145
+    primary: 201
+    secondary: 197
+    tertiary: 220
   emoji: 👄
 host_index: 10

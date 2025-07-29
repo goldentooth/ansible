@@ -225,7 +225,7 @@ all:
     # -----------------------------------
     # SeaweedFS
     # -----------------------------------
-    seaweed:
+    seaweedfs:
       hosts:
         fenn:
         karstark:

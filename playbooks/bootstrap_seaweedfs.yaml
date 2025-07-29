@@ -1,0 +1,7 @@
+# Description: Bootstrap SeaweedFS
+
+- name: 'Bootstrap SeaweedFS.'
+  hosts: 'seaweedfs'
+  remote_user: 'root'
+  roles:
+    - { role: 'goldentooth.bootstrap_seaweedfs' }

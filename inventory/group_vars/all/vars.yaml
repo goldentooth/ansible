@@ -461,6 +461,23 @@ loki:
   cert_path: '/etc/loki/tls/tls.crt'
   key_path: '/etc/loki/tls/tls.key'
 
+# SeaweedFS data:
+seaweedfs:
+  mount_path: '/mnt/seaweedfs-ssd'
+  device: '/dev/sda'
+  filesystem_type: 'ext4'
+  allocations:
+    data: '350Gi'
+    index: '50Gi'
+    filer: '100Gi'
+  user: 'seaweedfs'
+  uid: 985
+  gid: 985
+  storage_class_name: 'seaweedfs-ssd-storage'
+  reclaim_policy: 'Delete'
+  volume_binding_mode: 'WaitForFirstConsumer'
+  namespace: 'seaweedfs'
+
 # Vector data:
 vector:
   consul:
