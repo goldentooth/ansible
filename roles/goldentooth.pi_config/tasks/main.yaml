@@ -16,16 +16,25 @@
 
 - name: 'Enable fan control.'
   ansible.builtin.lineinfile:
-    path: '/boot/config.txt'
+    path: '/boot/firmware/config.txt'
     regexp: '^#?dtoverlay=gpio-fan'
     line: "dtoverlay=gpio-fan,gpiopin={{ pi.fan_gpio }},temp={{ pi.fan_temp }}"
     state: 'present'
   notify:
     - 'Reboot.'
 
+- name: 'Disable WiFi hardware.'
+  ansible.builtin.lineinfile:
+    path: '/boot/firmware/config.txt'
+    regexp: '^#?dtoverlay=disable-wifi'
+    line: 'dtoverlay=disable-wifi'
+    state: 'present'
+  notify:
+    - 'Reboot.'
+
 - name: 'Enable overclocking.'
   ansible.builtin.lineinfile:
-    path: '/boot/config.txt'
+    path: '/boot/firmware/config.txt'
     regexp: "^#?{{ line.prefix }}"
     line: "{{ line.line }}"
     state: 'present'
