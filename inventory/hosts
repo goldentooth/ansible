@@ -229,7 +229,6 @@ all:
       hosts:
         fenn:
         karstark:
-        lipps:
 
     # -----------------------------------
     # Longhorn
