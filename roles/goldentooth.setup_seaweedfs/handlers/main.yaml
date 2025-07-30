@@ -1,0 +1,14 @@
+---
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: restart seaweedfs-master
+  ansible.builtin.systemd:
+    name: seaweedfs-master
+    state: restarted
+
+- name: restart seaweedfs-volume
+  ansible.builtin.systemd:
+    name: seaweedfs-volume
+    state: restarted

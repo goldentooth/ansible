@@ -463,6 +463,7 @@ loki:
 
 # SeaweedFS data:
 seaweedfs:
+  version: '3.66'
   mount_path: '/mnt/seaweedfs-ssd'
   device: '/dev/sda'
   filesystem_type: 'ext4'

@@ -1,0 +1,26 @@
+# Description: Setup SeaweedFS distributed storage cluster
+---
+- name: Setup SeaweedFS cluster
+  hosts: seaweedfs
+  become: true
+  gather_facts: true
+  serial: 1
+
+  pre_tasks:
+    - name: Ensure bootstrap is complete
+      ansible.builtin.stat:
+        path: "{{ seaweedfs.mount_path }}/data"
+      register: bootstrap_check
+      failed_when: not bootstrap_check.stat.exists
+
+  roles:
+    - goldentooth.setup_seaweedfs
+
+  post_tasks:
+    - name: Display cluster formation status
+      ansible.builtin.debug:
+        msg: |
+          SeaweedFS node {{ inventory_hostname }} ready:
+          - Master API: http://{{ ansible_default_ipv4.address }}:9333
+          - Volume API: http://{{ ansible_default_ipv4.address }}:8080
+          - Data path: {{ seaweedfs.mount_path }}/data

@@ -1,0 +1,31 @@
+[Unit]
+Description=SeaweedFS Volume Server
+After=network.target seaweedfs-master.service
+Wants=network.target
+
+[Service]
+Type=simple
+User={{ seaweedfs.user }}
+Group={{ seaweedfs.user }}
+ExecStart=/usr/local/bin/weed volume \
+    -port=8080 \
+    -dir={{ seaweedfs.mount_path }}/data \
+    -max=64 \
+    -mserver={{ ansible_default_ipv4.address }}:9333 \
+    -ip={{ ansible_default_ipv4.address }}
+Restart=always
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=seaweedfs-volume
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths={{ seaweedfs.mount_path }}
+ReadWritePaths=/var/log/seaweedfs
+
+[Install]
+WantedBy=multi-user.target

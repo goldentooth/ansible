@@ -1,0 +1,119 @@
+---
+# Installation
+- name: Create SeaweedFS directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - /etc/seaweedfs
+    - /var/log/seaweedfs
+
+- name: Download SeaweedFS binary
+  ansible.builtin.get_url:
+    url: "https://github.com/seaweedfs/seaweedfs/releases/download/{{ seaweedfs.version }}/linux_arm64.tar.gz"
+    dest: "/tmp/seaweedfs-{{ seaweedfs.version }}.tar.gz"
+    mode: '0644'
+  when: ansible_architecture == "aarch64"
+
+- name: Download SeaweedFS binary (x86_64)
+  ansible.builtin.get_url:
+    url: "https://github.com/seaweedfs/seaweedfs/releases/download/{{ seaweedfs.version }}/linux_amd64.tar.gz"
+    dest: "/tmp/seaweedfs-{{ seaweedfs.version }}.tar.gz"
+    mode: '0644'
+  when: ansible_architecture == "x86_64"
+
+- name: Extract SeaweedFS binary
+  ansible.builtin.unarchive:
+    src: "/tmp/seaweedfs-{{ seaweedfs.version }}.tar.gz"
+    dest: /tmp
+    remote_src: true
+    creates: /tmp/weed
+
+- name: Install SeaweedFS binary
+  ansible.builtin.copy:
+    src: /tmp/weed
+    dest: /usr/local/bin/weed
+    remote_src: true
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Clean up downloaded files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "/tmp/seaweedfs-{{ seaweedfs.version }}.tar.gz"
+    - /tmp/weed
+
+# Master setup
+- name: Create SeaweedFS master data directory
+  ansible.builtin.file:
+    path: "{{ seaweedfs.mount_path }}/master"
+    state: directory
+    owner: "{{ seaweedfs.uid }}"
+    group: "{{ seaweedfs.gid }}"
+    mode: '0755'
+
+- name: Create SeaweedFS master systemd service
+  ansible.builtin.template:
+    src: seaweedfs-master.service.j2
+    dest: /etc/systemd/system/seaweedfs-master.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - reload systemd
+    - restart seaweedfs-master
+
+# Volume server setup
+- name: Create SeaweedFS volume systemd service
+  ansible.builtin.template:
+    src: seaweedfs-volume.service.j2
+    dest: /etc/systemd/system/seaweedfs-volume.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - reload systemd
+    - restart seaweedfs-volume
+
+- name: Enable and start SeaweedFS services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop:
+    - seaweedfs-master
+    - seaweedfs-volume
+
+- name: Wait for SeaweedFS master to be ready
+  ansible.builtin.uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9333/cluster/status"
+    method: GET
+    timeout: 30
+  register: master_health_check
+  until: master_health_check.status == 200
+  retries: 10
+  delay: 5
+
+- name: Wait for SeaweedFS volume server to be ready
+  ansible.builtin.uri:
+    url: "http://{{ ansible_default_ipv4.address }}:8080/status"
+    method: GET
+    timeout: 30
+  register: volume_health_check
+  until: volume_health_check.status == 200
+  retries: 10
+  delay: 5
+
+- name: Display SeaweedFS cluster status
+  ansible.builtin.debug:
+    msg: |
+      SeaweedFS services started on {{ inventory_hostname }}:
+      - Master: http://{{ ansible_default_ipv4.address }}:9333
+      - Volume: http://{{ ansible_default_ipv4.address }}:8080
