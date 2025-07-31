@@ -1,0 +1,19 @@
+service_prefix "" {
+  policy = "read"
+}
+
+service "seaweedfs-master" {
+  policy = "write"
+}
+
+service "seaweedfs-volume" {
+  policy = "write"
+}
+
+node_prefix "" {
+  policy = "read"
+}
+
+session_prefix "" {
+  policy = "read"
+}

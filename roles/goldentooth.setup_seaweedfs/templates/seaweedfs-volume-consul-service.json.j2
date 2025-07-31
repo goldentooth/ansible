@@ -1,0 +1,31 @@
+{
+  "service": {
+    "name": "seaweedfs-volume",
+    "id": "seaweedfs-volume-{{ ansible_hostname }}",
+    "address": "{{ ansible_default_ipv4.address }}",
+    "port": 8080,
+    "tags": [
+      "storage",
+      "distributed", 
+      "volume",
+      "seaweedfs",
+      "goldentooth",
+      "data"
+    ],
+    "meta": {
+      "version": "{{ seaweedfs.version }}",
+      "environment": "production",
+      "service_type": "storage_volume",
+      "cluster": "goldentooth",
+      "hostname": "{{ ansible_hostname }}",
+      "master_servers": "fenn:9333,karstark:9333",
+      "max_volumes": "64",
+      "storage_path": "{{ seaweedfs.mount_path }}/data"
+    },
+    "check": {
+      "http": "http://{{ ansible_default_ipv4.address }}:8080/status",
+      "interval": "30s",
+      "timeout": "10s"
+    }
+  }
+}

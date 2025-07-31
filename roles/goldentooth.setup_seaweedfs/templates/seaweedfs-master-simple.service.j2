@@ -1,0 +1,33 @@
+[Unit]
+Description=SeaweedFS Master Server
+After=network.target
+
+[Service]
+Type=simple
+User={{ seaweedfs.user }}
+Group={{ seaweedfs.user }}
+ExecStart=/usr/local/bin/weed master \
+    -port=9333 \
+    -mdir={{ seaweedfs.mount_path }}/master \
+    -peers=fenn:9333,karstark:9333 \
+    -ip={{ ansible_default_ipv4.address }} \
+    -raftHashicorp=true \
+    -defaultReplication=001 \
+    -volumeSizeLimitMB=1024
+Restart=always
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=seaweedfs-master
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths={{ seaweedfs.mount_path }}
+ReadWritePaths=/var/log/seaweedfs
+ReadWritePaths={{ seaweedfs.certs_path }}
+
+[Install]
+WantedBy=multi-user.target

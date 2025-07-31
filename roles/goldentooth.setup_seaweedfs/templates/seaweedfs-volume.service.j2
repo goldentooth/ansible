@@ -1,18 +1,28 @@
 [Unit]
 Description=SeaweedFS Volume Server
-After=network.target seaweedfs-master.service
-Wants=network.target
+After=network.target consul.service seaweedfs-master.service
+Wants=consul.service
 
 [Service]
 Type=simple
 User={{ seaweedfs.user }}
 Group={{ seaweedfs.user }}
+# Wait for Consul to be ready
+ExecStartPre=/bin/bash -c 'source /etc/profile.d/consul-acl-env.sh && until curl -s $CONSUL_HTTP_ADDR/v1/status/leader; do sleep 1; done'
+# Register service with Consul before starting
+ExecStartPre=/bin/bash -c 'source /etc/profile.d/consul-acl-env.sh && curl -X PUT $CONSUL_HTTP_ADDR/v1/agent/service/register \
+  -H "X-Consul-Token: $CONSUL_SEAWEEDFS_SERVICE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d @/etc/seaweedfs/consul-volume-service.json'
 ExecStart=/usr/local/bin/weed volume \
     -port=8080 \
     -dir={{ seaweedfs.mount_path }}/data \
     -max=64 \
     -mserver=karstark:9333 \
     -ip={{ ansible_default_ipv4.address }}
+# Deregister service when stopping
+ExecStopPost=/bin/bash -c 'source /etc/profile.d/consul-acl-env.sh && curl -X PUT $CONSUL_HTTP_ADDR/v1/agent/service/deregister/seaweedfs-volume-{{ ansible_hostname }} \
+  -H "X-Consul-Token: $CONSUL_SEAWEEDFS_SERVICE_TOKEN" || true'
 Restart=always
 RestartSec=5s
 StandardOutput=journal

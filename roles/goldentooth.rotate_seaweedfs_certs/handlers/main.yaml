@@ -1,0 +1,8 @@
+---
+- name: 'Restart SeaweedFS services.'
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: restarted
+  loop:
+    - seaweedfs-master
+    - seaweedfs-volume

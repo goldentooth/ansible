@@ -60,7 +60,7 @@
 
 - name: Create SeaweedFS master systemd service
   ansible.builtin.template:
-    src: seaweedfs-master.service.j2
+    src: seaweedfs-master-simple.service.j2
     dest: /etc/systemd/system/seaweedfs-master.service
     owner: root
     group: root
@@ -72,7 +72,7 @@
 # Volume server setup
 - name: Create SeaweedFS volume systemd service
   ansible.builtin.template:
-    src: seaweedfs-volume.service.j2
+    src: seaweedfs-volume-simple.service.j2
     dest: /etc/systemd/system/seaweedfs-volume.service
     owner: root
     group: root
@@ -111,9 +111,70 @@
   retries: 10
   delay: 5
 
+# Consul integration
+- name: Create Consul service directory
+  ansible.builtin.file:
+    path: /etc/consul.d/services
+    state: directory
+    owner: consul
+    group: consul
+    mode: '0755'
+
+- name: Register SeaweedFS master with Consul
+  ansible.builtin.template:
+    src: seaweedfs-master-consul-service.json.j2
+    dest: /etc/consul.d/services/seaweedfs-master.json
+    owner: consul
+    group: consul
+    mode: '0644'
+  notify: reload consul
+
+- name: Register SeaweedFS volume server with Consul
+  ansible.builtin.template:
+    src: seaweedfs-volume-consul-service.json.j2
+    dest: /etc/consul.d/services/seaweedfs-volume.json
+    owner: consul
+    group: consul
+    mode: '0644'
+  notify: reload consul
+
+# Step-CA certificate management integration
+- name: Generate initial SeaweedFS TLS certificates
+  include_role:
+    name: goldentooth.rotate_seaweedfs_certs
+
+- name: Deploy SeaweedFS certificate renewal configuration
+  ansible.builtin.template:
+    src: cert-renewer@seaweedfs.conf.j2
+    dest: "/etc/systemd/system/cert-renewer@seaweedfs.conf"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Enable and start SeaweedFS certificate renewal timer
+  ansible.builtin.systemd:
+    name: cert-renewer@seaweedfs.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+
+# Prometheus monitoring integration
+- name: Deploy SeaweedFS Prometheus targets
+  ansible.builtin.template:
+    src: seaweedfs-targets.yaml.j2
+    dest: "{{ prometheus_config_dir | default('/etc/prometheus') }}/file_sd/seaweedfs.yaml"
+    owner: prometheus
+    group: prometheus
+    mode: '0644'
+  delegate_to: "{{ groups['prometheus'] | first }}"
+  run_once: true
+  when: groups['prometheus'] is defined and groups['prometheus'] | length > 0
+
 - name: Display SeaweedFS cluster status
   ansible.builtin.debug:
     msg: |
       SeaweedFS services started on {{ inventory_hostname }}:
       - Master: http://{{ ansible_default_ipv4.address }}:9333
       - Volume: http://{{ ansible_default_ipv4.address }}:8080
+      - Consul: Services registered for discovery
+      - Prometheus: Metrics endpoints configured for monitoring

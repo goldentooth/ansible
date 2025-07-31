@@ -1,0 +1,41 @@
+# SeaweedFS Master Servers (monitoring cluster status endpoints)
+- targets:
+    - "{{ hostvars['fenn']['ipv4_address'] }}:9333"
+  labels:
+    job: 'seaweedfs-master'
+    service: 'seaweedfs'
+    component: 'master'
+    cluster: 'goldentooth'
+    instance: 'fenn'
+    __metrics_path__: '/cluster/status'
+
+- targets:
+    - "{{ hostvars['karstark']['ipv4_address'] }}:9333"
+  labels:
+    job: 'seaweedfs-master'
+    service: 'seaweedfs'
+    component: 'master'
+    cluster: 'goldentooth'
+    instance: 'karstark'
+    __metrics_path__: '/cluster/status'
+
+# SeaweedFS Volume Servers (monitoring status endpoints)
+- targets:
+    - "{{ hostvars['fenn']['ipv4_address'] }}:8080"
+  labels:
+    job: 'seaweedfs-volume'
+    service: 'seaweedfs'
+    component: 'volume'
+    cluster: 'goldentooth'
+    instance: 'fenn'
+    __metrics_path__: '/status'
+
+- targets:
+    - "{{ hostvars['karstark']['ipv4_address'] }}:8080"
+  labels:
+    job: 'seaweedfs-volume'
+    service: 'seaweedfs'
+    component: 'volume'
+    cluster: 'goldentooth'
+    instance: 'karstark'
+    __metrics_path__: '/status'

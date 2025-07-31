@@ -12,3 +12,16 @@
   ansible.builtin.systemd:
     name: seaweedfs-volume
     state: restarted
+
+- name: reload consul
+  ansible.builtin.systemd:
+    name: consul
+    state: reloaded
+
+- name: 'Restart SeaweedFS services.'
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: restarted
+  loop:
+    - seaweedfs-master
+    - seaweedfs-volume

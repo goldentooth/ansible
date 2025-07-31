@@ -1,0 +1,43 @@
+---
+- name: 'Ensure directory for SeaweedFS certs exists.'
+  ansible.builtin.file:
+    path: "{{ seaweedfs.certs_path }}"
+    state: 'directory'
+    owner: "{{ seaweedfs.uid }}"
+    group: "{{ seaweedfs.gid }}"
+    mode: '0755'
+
+- name: 'Generate SeaweedFS certificate using step-ca.'
+  ansible.builtin.shell:
+    cmd: |
+      {{ step_ca.executable }} \
+        ca certificate \
+        "{{ clean_hostname }}.seaweedfs.storage.{{ cluster_domain | default('goldentooth.net') }}" \
+        "{{ seaweedfs.certs_path }}/seaweedfs.crt" \
+        "{{ seaweedfs.certs_path }}/seaweedfs.key" \
+        --provisioner="{{ step_ca.default_provisioner.name }}" \
+        --password-file="{{ step_ca.default_provisioner.password_path }}" \
+        --san="{{ clean_hostname }}" \
+        --san="{{ clean_hostname }}.seaweedfs.storage.{{ cluster_domain | default('goldentooth.net') }}" \
+        --san="seaweedfs.storage.{{ cluster_domain | default('goldentooth.net') }}" \
+        --san="{{ ipv4_address }}" \
+        --san="localhost" \
+        --san="127.0.0.1" \
+        --not-after="24h" \
+        --console \
+        --force
+  notify:
+    - 'Restart SeaweedFS services.'
+
+- name: 'Repair permissions on SeaweedFS certs directory.'
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: 'file'
+    owner: "{{ seaweedfs.uid }}"
+    group: "{{ seaweedfs.gid }}"
+    mode: '0600'
+  loop:
+    - "{{ seaweedfs.certs_path }}/seaweedfs.key"
+    - "{{ seaweedfs.certs_path }}/seaweedfs.crt"
+  loop_control:
+    loop_var: 'item'

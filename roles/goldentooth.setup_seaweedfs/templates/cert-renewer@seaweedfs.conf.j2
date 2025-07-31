@@ -1,0 +1,10 @@
+[Service]
+; `Environment=` overrides are applied per environment variable. This line does not
+; affect any other variables set in the service template.
+Environment=CERT_LOCATION={{ seaweedfs.certs_path }}/seaweedfs.crt
+Environment=KEY_LOCATION={{ seaweedfs.certs_path }}/seaweedfs.key
+WorkingDirectory={{ seaweedfs.certs_path }}
+
+; Restart SeaweedFS services after certificate renewal
+ExecStartPost=/usr/bin/env sh -c "! systemctl --quiet is-active seaweedfs-master.service || systemctl try-reload-or-restart seaweedfs-master.service"
+ExecStartPost=/usr/bin/env sh -c "! systemctl --quiet is-active seaweedfs-volume.service || systemctl try-reload-or-restart seaweedfs-volume.service"

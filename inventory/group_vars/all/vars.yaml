@@ -478,6 +478,9 @@ seaweedfs:
   reclaim_policy: 'Delete'
   volume_binding_mode: 'WaitForFirstConsumer'
   namespace: 'seaweedfs'
+  certs_path: '/etc/seaweedfs/tls'
+  cert_path: '/etc/seaweedfs/tls/seaweedfs.crt'
+  key_path: '/etc/seaweedfs/tls/seaweedfs.key'
 
 # Vector data:
 vector:
@@ -572,6 +575,11 @@ blackbox_https_internal_targets:
   - "https://grafana.{{ cluster.services_domain }}"
   - "https://argocd.{{ cluster.k8s_services_domain }}"
   - "https://loki.{{ cluster.services_domain }}"
+  # SeaweedFS endpoints for certificate monitoring
+  - "https://fenn.{{ cluster.node_domain }}:9333"
+  - "https://karstark.{{ cluster.node_domain }}:9333"
+  - "https://fenn.{{ cluster.node_domain }}:8080"
+  - "https://karstark.{{ cluster.node_domain }}:8080"
 
 blackbox_http_targets:
   # Direct IP access for immediate testing
@@ -631,6 +639,11 @@ blackbox_api_targets:
   - "http://10.4.0.11:8200/v1/sys/health"     # Vault health (bettley)
   - "http://10.4.0.11:4646/v1/status/leader"  # Nomad leader (bettley)
   - "http://10.4.0.18:3100/ready"             # Loki ready (inchfield)
+  # SeaweedFS cluster health APIs
+  - "http://10.4.0.15:9333/cluster/status"    # SeaweedFS master (fenn)
+  - "http://10.4.0.20:9333/cluster/status"    # SeaweedFS master (karstark)
+  - "http://10.4.0.15:8080/status"            # SeaweedFS volume (fenn)
+  - "http://10.4.0.20:8080/status"            # SeaweedFS volume (karstark)
   # Future domain-based targets (when DNS is configured)
   - "https://consul.{{ cluster.services_domain }}/v1/status/leader"
   - "https://vault.{{ cluster.services_domain }}/v1/sys/health"
@@ -728,25 +741,89 @@ prometheus_alert_rules:
       summary: "Service is unavailable"
       description: "Blackbox probe failed - service may be down"
 
-  - alert: CertificateExpiration
+  # Step-CA Certificate Expiration Alerts
+  - alert: CertificateExpiringWarning
     expr: goldentooth_certificate_expiry_days < 30
     for: 1m
     labels:
       severity: warning
-      service: infrastructure
+      service: step_ca
     annotations:
-      summary: "Certificate expiring soon"
-      description: "Certificate expiring soon"
-
-  - alert: CertificateExpirationCritical
+      summary: "Step-CA certificate expiring in {% raw %}{{ $value }}{% endraw %} days"
+      description: "Certificate for {% raw %}{{ $labels.service }}{% endraw %} on {% raw %}{{ $labels.node }}{% endraw %} expires in {% raw %}{{ $value }}{% endraw %} days"
+  
+  - alert: CertificateExpiringCritical
     expr: goldentooth_certificate_expiry_days < 7
     for: 1m
     labels:
       severity: critical
-      service: infrastructure
+      service: step_ca
     annotations:
-      summary: "Certificate expiring very soon"
-      description: "Certificate expiring soon"
+      summary: "Step-CA certificate expiring SOON in {% raw %}{{ $value }}{% endraw %} days"
+      description: "CRITICAL: Certificate for {% raw %}{{ $labels.service }}{% endraw %} on {% raw %}{{ $labels.node }}{% endraw %} expires in {% raw %}{{ $value }}{% endraw %} days"
+  
+  - alert: CertificateExpiringEmergency
+    expr: goldentooth_certificate_expiry_days < 2
+    for: 0m
+    labels:
+      severity: emergency
+      service: step_ca
+    annotations:
+      summary: "Step-CA certificate expiring IMMINENT in {% raw %}{{ $value }}{% endraw %} days"
+      description: "EMERGENCY: Certificate for {% raw %}{{ $labels.service }}{% endraw %} on {% raw %}{{ $labels.node }}{% endraw %} expires in {% raw %}{{ $value }}{% endraw %} days - immediate action required"
+
+  # Certificate Renewal System Alerts
+  - alert: CertificateRenewalFailed
+    expr: goldentooth_test_success{test=~"certificate_renewal_.*"} == 0
+    for: 5m
+    labels:
+      severity: critical
+      service: step_ca
+    annotations:
+      summary: "Certificate renewal failed for {% raw %}{{ $labels.test }}{% endraw %}"
+      description: "Certificate renewal test failed for {% raw %}{{ $labels.test }}{% endraw %} on {% raw %}{{ $labels.node }}{% endraw %}"
+  
+  - alert: CertificateRenewalTimerInactive
+    expr: node_systemd_timer_last_trigger_seconds{name=~"cert-renewer@.*\\.timer"} < (time() - 900)
+    for: 10m
+    labels:
+      severity: warning
+      service: step_ca
+    annotations:
+      summary: "Certificate renewal timer hasn't run recently"
+      description: "Timer {% raw %}{{ $labels.name }}{% endraw %} on {% raw %}{{ $labels.instance }}{% endraw %} hasn't triggered in 15+ minutes"
+
+  # TLS Endpoint Certificate Monitoring via Blackbox
+  - alert: TLSCertificateExpiringBlackbox
+    expr: (probe_ssl_earliest_cert_expiry{job="blackbox-https-internal"} - time()) / 86400 < 30
+    for: 5m
+    labels:
+      severity: warning
+      service: tls_monitoring
+    annotations:
+      summary: "TLS certificate expiring for {% raw %}{{ $labels.__param_target }}{% endraw %}"
+      description: "TLS certificate for {% raw %}{{ $labels.__param_target }}{% endraw %} expires in {% raw %}{{ $value | humanizeDuration }}{% endraw %}"
+  
+  - alert: TLSCertificateExpiringCriticalBlackbox
+    expr: (probe_ssl_earliest_cert_expiry{job="blackbox-https-internal"} - time()) / 86400 < 7
+    for: 1m
+    labels:
+      severity: critical
+      service: tls_monitoring
+    annotations:
+      summary: "TLS certificate expiring SOON for {% raw %}{{ $labels.__param_target }}{% endraw %}"
+      description: "CRITICAL: TLS certificate for {% raw %}{{ $labels.__param_target }}{% endraw %} expires in {% raw %}{{ $value | humanizeDuration }}{% endraw %}"
+
+  # Step-CA Server Availability
+  - alert: StepCAServerDown
+    expr: probe_success{job="blackbox-tcp", __param_target="10.4.0.19:9443"} == 0
+    for: 2m
+    labels:
+      severity: critical
+      service: step_ca
+    annotations:
+      summary: "Step-CA server is unreachable"
+      description: "Step-CA server on jast (10.4.0.19:9443) is not responding to TCP probes"
 
   - alert: HighStorageUsage
     expr: (node_filesystem_size_bytes{fstype="ext4"} - node_filesystem_avail_bytes{fstype="ext4"}) / node_filesystem_size_bytes{fstype="ext4"} * 100 > 80

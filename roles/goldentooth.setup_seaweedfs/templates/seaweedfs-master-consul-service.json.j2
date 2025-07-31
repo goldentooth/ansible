@@ -1,0 +1,31 @@
+{
+  "service": {
+    "name": "seaweedfs-master",
+    "id": "seaweedfs-master-{{ ansible_hostname }}",
+    "address": "{{ ansible_default_ipv4.address }}",
+    "port": 9333,
+    "tags": [
+      "storage",
+      "distributed",
+      "master",
+      "seaweedfs",
+      "goldentooth",
+      "raft"
+    ],
+    "meta": {
+      "version": "{{ seaweedfs.version }}",
+      "environment": "production",
+      "service_type": "storage_master",
+      "cluster": "goldentooth",
+      "hostname": "{{ ansible_hostname }}",
+      "peer_addresses": "fenn:9333,karstark:9333",
+      "replication": "001",
+      "raft_enabled": "true"
+    },
+    "check": {
+      "http": "http://{{ ansible_default_ipv4.address }}:9333/cluster/status",
+      "interval": "30s",
+      "timeout": "10s"
+    }
+  }
+}

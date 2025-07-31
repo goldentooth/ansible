@@ -1,0 +1,6 @@
+---
+- name: 'Rotate SeaweedFS certificates'
+  hosts: fenn,karstark
+  become: true
+  roles:
+    - 'goldentooth.rotate_seaweedfs_certs'
