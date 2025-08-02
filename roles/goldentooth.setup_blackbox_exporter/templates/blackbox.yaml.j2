@@ -85,3 +85,56 @@ modules:
         ca_file: {{ step_ca_cert_path }}
         cert_file: {{ step_ca_client_cert_path }}
         key_file: {{ step_ca_client_key_path }}
+        
+  # SSH connectivity probe  
+  ssh_banner:
+    prober: tcp
+    timeout: 10s
+    tcp:
+      preferred_ip_protocol: "ip4"
+      query_response:
+        - expect: "SSH-2.0"
+          
+  # Certificate expiry probe (specialized for certificate monitoring)
+  cert_expiry:
+    prober: http
+    timeout: 15s
+    http:
+      valid_http_versions: ["HTTP/1.1", "HTTP/2.0"] 
+      follow_redirects: false
+      preferred_ip_protocol: "ip4"
+      tls_config:
+        ca_file: {{ step_ca_cert_path }}
+        insecure_skip_verify: false
+      fail_if_not_ssl: true
+      
+  # Kubernetes API probe with specific headers
+  k8s_api:
+    prober: http
+    timeout: 10s
+    http:
+      valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+      follow_redirects: false
+      preferred_ip_protocol: "ip4"
+      headers:
+        User-Agent: "blackbox-exporter/goldentooth"
+      valid_status_codes: [200, 401, 403]  # 401/403 acceptable for auth-required endpoints
+      
+  # DNS query with specific record types
+  dns_a_query:
+    prober: dns
+    timeout: 5s
+    dns:
+      query_name: "goldentooth.net"
+      query_type: "A"
+      valid_rcodes: ["NOERROR"]
+      preferred_ip_protocol: "ip4"
+      
+  dns_aaaa_query:
+    prober: dns  
+    timeout: 5s
+    dns:
+      query_name: "goldentooth.net"
+      query_type: "AAAA"
+      valid_rcodes: ["NOERROR", "NXDOMAIN"]  # IPv6 may not exist
+      preferred_ip_protocol: "ip4"

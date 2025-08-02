@@ -74,3 +74,30 @@
     job: 'blackbox-api'
     __param_target: "{{ api }}"
 {% endfor %}
+
+# Certificate expiry monitoring
+{% for cert in blackbox_cert_targets %}
+- targets:
+    - "{{ cert }}"
+  labels:
+    job: 'blackbox-cert'
+    __param_target: "{{ cert }}"
+{% endfor %}
+
+# SSH banner checks
+{% for ssh in blackbox_ssh_targets %}
+- targets:
+    - "{{ ssh }}"
+  labels:
+    job: 'blackbox-ssh'
+    __param_target: "{{ ssh }}"
+{% endfor %}
+
+# Kubernetes API health checks
+{% for k8s in blackbox_k8s_targets %}
+- targets:
+    - "{{ k8s }}"
+  labels:
+    job: 'blackbox-k8s'
+    __param_target: "{{ k8s }}"
+{% endfor %}

@@ -569,36 +569,56 @@ prometheus_slurm_exporter:
 
 # Blackbox Exporter target lists
 blackbox_https_internal_targets:
+  # Core HashiCorp Services
   - "https://consul.{{ cluster.services_domain }}"
   - "https://vault.{{ cluster.services_domain }}"
   - "https://nomad.{{ cluster.services_domain }}"
+  # Observability Stack
   - "https://grafana.{{ cluster.services_domain }}"
-  - "https://argocd.{{ cluster.k8s_services_domain }}"
   - "https://loki.{{ cluster.services_domain }}"
+  - "https://prometheus.{{ cluster.services_domain }}"
+  # Kubernetes Services
+  - "https://argocd.{{ cluster.k8s_services_domain }}"
+  # Authentication & Authorization
+  - "https://auth.{{ cluster.services_domain }}"
+  # Storage Services
+  - "https://seaweedfs.{{ cluster.services_domain }}:9333"
+  # MCP Server
+  - "https://mcp.{{ cluster.services_domain }}"
+  # Step-CA Server (Certificate monitoring)
+  - "https://jast.{{ cluster.node_domain }}:9443"
   # SeaweedFS endpoints for certificate monitoring
   - "https://fenn.{{ cluster.node_domain }}:9333"
   - "https://karstark.{{ cluster.node_domain }}:9333"
   - "https://fenn.{{ cluster.node_domain }}:8080"
   - "https://karstark.{{ cluster.node_domain }}:8080"
+  # Node Homepages (new Pi 5 nodes)
+  - "https://manderly.{{ cluster.node_domain }}"
+  - "https://oakheart.{{ cluster.node_domain }}"
+  - "https://payne.{{ cluster.node_domain }}"
+  - "https://norcross.{{ cluster.node_domain }}"
 
 blackbox_http_targets:
   # Direct IP access for immediate testing
   - "http://10.4.0.10:9090"  # Prometheus on allyrion
-  # Future domain-based targets (when DNS is configured)
-  - "https://prometheus.{{ cluster.k8s_services_domain }}"
-  - "https://allyrion.{{ cluster.node_domain }}"
-  - "https://bettley.{{ cluster.node_domain }}"
-  - "https://cargyll.{{ cluster.node_domain }}"
-  - "https://dalt.{{ cluster.node_domain }}"
-  - "https://erenford.{{ cluster.node_domain }}"
-  - "https://fenn.{{ cluster.node_domain }}"
-  - "https://gardener.{{ cluster.node_domain }}"
-  - "https://harlton.{{ cluster.node_domain }}"
-  - "https://inchfield.{{ cluster.node_domain }}"
-  - "https://jast.{{ cluster.node_domain }}"
-  - "https://karstark.{{ cluster.node_domain }}"
-  - "https://lipps.{{ cluster.node_domain }}"
-  - "https://velaryon.{{ cluster.node_domain }}"
+  # Node Homepages (HTTP for performance testing)
+  - "http://allyrion.{{ cluster.node_domain }}"
+  - "http://bettley.{{ cluster.node_domain }}"
+  - "http://cargyll.{{ cluster.node_domain }}"
+  - "http://dalt.{{ cluster.node_domain }}"
+  - "http://erenford.{{ cluster.node_domain }}"
+  - "http://fenn.{{ cluster.node_domain }}"
+  - "http://gardener.{{ cluster.node_domain }}"
+  - "http://harlton.{{ cluster.node_domain }}"
+  - "http://inchfield.{{ cluster.node_domain }}"
+  - "http://jast.{{ cluster.node_domain }}"
+  - "http://karstark.{{ cluster.node_domain }}"
+  - "http://lipps.{{ cluster.node_domain }}"
+  - "http://manderly.{{ cluster.node_domain }}"
+  - "http://norcross.{{ cluster.node_domain }}"
+  - "http://oakheart.{{ cluster.node_domain }}"
+  - "http://payne.{{ cluster.node_domain }}"
+  - "http://velaryon.{{ cluster.node_domain }}"
 
 blackbox_https_external_targets:
   - "https://clearbrook.{{ cluster.domain }}"
@@ -606,26 +626,51 @@ blackbox_https_external_targets:
   - "https://clog.{{ cluster.domain }}"
 
 blackbox_tcp_targets:
-  # Direct IP access for immediate testing
+  # Core Infrastructure Services (Direct IP for reliability)
   - "10.4.0.11:8500"  # Consul HTTP API (bettley)
   - "10.4.0.11:8200"  # Vault API (bettley)
   - "10.4.0.11:4646"  # Nomad API (bettley)
   - "10.4.0.19:9443"  # Step-CA (jast)
   - "10.4.0.10:6443"  # K8s API via HAProxy (allyrion)
+  # SSH connectivity (cluster internal)
+  - "10.4.0.10:22"    # allyrion SSH
+  - "10.4.0.11:22"    # bettley SSH
+  - "10.4.0.19:22"    # jast SSH
+  - "10.4.0.22:22"    # manderly SSH (new node)
+  - "10.4.0.23:22"    # norcross SSH (new node)
+  - "10.4.0.24:22"    # oakheart SSH (new node)
+  - "10.4.0.25:22"    # payne SSH (new node)
   # Future domain-based targets (when DNS is configured)
   - "consul.{{ cluster.services_domain }}:443"
   - "vault.{{ cluster.services_domain }}:443"
   - "nomad.{{ cluster.services_domain }}:443"
+  - "mcp.{{ cluster.services_domain }}:443"
+  - "auth.{{ cluster.services_domain }}:443"
 
 blackbox_dns_targets:
+  # Core Domain Resolution
   - "{{ cluster.domain }}"
   - "{{ cluster.node_domain }}"
   - "{{ cluster.services_domain }}"
   - "k8s.{{ cluster.domain }}"
+  # Service Discovery DNS
   - "consul.{{ cluster.services_domain }}"
   - "vault.{{ cluster.services_domain }}"
   - "nomad.{{ cluster.services_domain }}"
   - "grafana.{{ cluster.services_domain }}"
+  - "prometheus.{{ cluster.services_domain }}"
+  - "loki.{{ cluster.services_domain }}"
+  - "auth.{{ cluster.services_domain }}"
+  - "mcp.{{ cluster.services_domain }}"
+  # New Node DNS Resolution
+  - "manderly.{{ cluster.node_domain }}"
+  - "norcross.{{ cluster.node_domain }}"
+  - "oakheart.{{ cluster.node_domain }}"
+  - "payne.{{ cluster.node_domain }}"
+  # External DNS Dependencies
+  - "github.com"
+  - "docker.io"
+  - "k8s.gcr.io"
 
 blackbox_http_auth_targets:
   # Direct IP access for immediate testing
@@ -634,21 +679,63 @@ blackbox_http_auth_targets:
   - "https://haproxy.{{ cluster.services_domain }}/stats"
 
 blackbox_api_targets:
-  # Direct IP access for immediate testing
+  # HashiCorp Stack Health Checks (Direct IP for reliability)
   - "http://10.4.0.11:8500/v1/status/leader"  # Consul leader (bettley)
   - "http://10.4.0.11:8200/v1/sys/health"     # Vault health (bettley)
   - "http://10.4.0.11:4646/v1/status/leader"  # Nomad leader (bettley)
+  # Observability Stack
   - "http://10.4.0.18:3100/ready"             # Loki ready (inchfield)
+  - "http://10.4.0.10:9090/-/ready"           # Prometheus ready (allyrion)
+  - "http://10.4.0.16:3000/api/health"        # Grafana health (gardener)
+  # Kubernetes Health
+  - "http://10.4.0.10:6443/readyz"            # K8s API server readiness
+  - "http://10.4.0.10:6443/livez"             # K8s API server liveness
   # SeaweedFS cluster health APIs
   - "http://10.4.0.15:9333/cluster/status"    # SeaweedFS master (fenn)
   - "http://10.4.0.20:9333/cluster/status"    # SeaweedFS master (karstark)
   - "http://10.4.0.15:8080/status"            # SeaweedFS volume (fenn)
   - "http://10.4.0.20:8080/status"            # SeaweedFS volume (karstark)
+  # Step-CA Health
+  - "https://10.4.0.19:9443/health"           # Step-CA health (jast)
   # Future domain-based targets (when DNS is configured)
   - "https://consul.{{ cluster.services_domain }}/v1/status/leader"
   - "https://vault.{{ cluster.services_domain }}/v1/sys/health"
   - "https://nomad.{{ cluster.services_domain }}/v1/status/leader"
   - "https://loki.{{ cluster.services_domain }}/ready"
+  - "https://prometheus.{{ cluster.services_domain }}/-/ready"
+  - "https://mcp.{{ cluster.services_domain }}/health"
+
+# Certificate expiry monitoring targets
+blackbox_cert_targets:
+  # Step-CA and Internal Certificates
+  - "https://jast.{{ cluster.node_domain }}:9443"
+  - "https://consul.{{ cluster.services_domain }}"
+  - "https://vault.{{ cluster.services_domain }}"
+  - "https://nomad.{{ cluster.services_domain }}"
+  - "https://grafana.{{ cluster.services_domain }}"
+  - "https://loki.{{ cluster.services_domain }}"
+  - "https://auth.{{ cluster.services_domain }}"
+  - "https://mcp.{{ cluster.services_domain }}"
+  # External Certificates
+  - "https://clearbrook.{{ cluster.domain }}"
+  - "https://home-proxy.{{ cluster.domain }}"
+  - "https://clog.{{ cluster.domain }}"
+
+# SSH Banner Check Targets (New Node Focus)
+blackbox_ssh_targets:
+  - "10.4.0.22:22"    # manderly SSH
+  - "10.4.0.23:22"    # norcross SSH  
+  - "10.4.0.24:22"    # oakheart SSH
+  - "10.4.0.25:22"    # payne SSH
+  - "10.4.0.10:22"    # allyrion SSH (control)
+  - "10.4.0.11:22"    # bettley SSH (control)
+  - "10.4.0.19:22"    # jast SSH (Step-CA)
+
+# Kubernetes API specific probes
+blackbox_k8s_targets:
+  - "https://10.4.0.10:6443/readyz"
+  - "https://10.4.0.10:6443/livez"
+  - "https://10.4.0.10:6443/version"
 
 # Blackbox Exporter certificate paths
 step_ca_cert_path: "{{ step_ca.root_cert_path }}"
@@ -1042,6 +1129,18 @@ prometheus_scrape_configs:
         target_label: __param_module
         regex: 'blackbox-api'
         replacement: 'https_api_2xx'
+      - source_labels: [job]
+        target_label: __param_module
+        regex: 'blackbox-cert'
+        replacement: 'cert_expiry'
+      - source_labels: [job]
+        target_label: __param_module
+        regex: 'blackbox-ssh'
+        replacement: 'ssh_banner'
+      - source_labels: [job]
+        target_label: __param_module
+        regex: 'blackbox-k8s'
+        replacement: 'k8s_api'
 # Slurm exporter
   - job_name: 'slurm'
     file_sd_configs:
