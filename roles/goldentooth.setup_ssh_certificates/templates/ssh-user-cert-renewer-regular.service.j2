@@ -11,7 +11,7 @@ User=root
 Environment=STEPPATH=/etc/step-ca
 
 # Check if certificate needs renewal
-ExecCondition=/usr/bin/step certificate needs-renewal /etc/step/certs/{{ my.name.lower }}_ssh_key-cert.pub
+ExecCondition=/usr/bin/step ssh needs-renewal /etc/step/certs/{{ my.name.lower }}_ssh_key-cert.pub
 
 # Renew the certificate
 ExecStart=/usr/bin/step ssh certificate \
