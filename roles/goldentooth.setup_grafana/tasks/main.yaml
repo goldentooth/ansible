@@ -61,7 +61,7 @@
     path: '/var/lib/grafana'
     src: 'tmpfs'
     fstype: 'tmpfs'
-    opts: 'size=100M,mode=0755'
+    opts: 'size=100M,mode=0755,uid=109,gid=114'
     state: 'present'
   when: 'not grafana_data_mounted'
   notify:
