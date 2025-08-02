@@ -1,0 +1,10 @@
+clean_hostname: payne
+mac_address: 2c:cf:67:ed:2f:d7
+ipv4_address: 10.4.0.25
+prompt:
+  colors:
+    primary: 93
+    secondary: 220
+    tertiary: 177
+  emoji: 🪙
+host_index: 15

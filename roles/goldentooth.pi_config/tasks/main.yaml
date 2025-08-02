@@ -150,3 +150,24 @@
     mode: '0644'
   notify:
     - 'Restart journald service.'
+
+- name: 'Pi 5: Enable PCIe external connector.'
+  ansible.builtin.lineinfile:
+    path: '/boot/firmware/config.txt'
+    regexp: '^#?dtparam=pciex1'
+    line: 'dtparam=pciex1'
+    state: 'present'
+  when: 'clean_hostname in groups["all_pi_5"]'
+  notify:
+    - 'Reboot.'
+
+- name: 'Pi 5: Enable PCIe Gen 3.0.'
+  ansible.builtin.lineinfile:
+    path: '/boot/firmware/config.txt'
+    regexp: '^#?dtparam=pciex1_gen=3'
+    line: '#dtparam=pciex1_gen=3'
+    state: 'present'
+  when: 'clean_hostname in groups["all_pi_5"]'
+  notify:
+    - 'Reboot.'
+

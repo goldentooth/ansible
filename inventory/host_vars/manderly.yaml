@@ -1,0 +1,10 @@
+clean_hostname: manderly
+mac_address: 2c:cf:67:ed:02:1a
+ipv4_address: 10.4.0.22
+prompt:
+  colors:
+    primary: 36
+    secondary: 159
+    tertiary: 25
+  emoji: 🧜‍♂️
+host_index: 12

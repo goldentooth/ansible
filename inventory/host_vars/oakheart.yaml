@@ -1,0 +1,10 @@
+clean_hostname: oakheart
+mac_address: 2c:cf:67:ec:ff:48
+ipv4_address: 10.4.0.24
+prompt:
+  colors:
+    primary: 34
+    secondary: 220
+    tertiary: 94
+  emoji: 🍃
+host_index: 14

@@ -8,19 +8,31 @@ all:
     all_nodes:
       children:
         all_pis:
-          hosts:
-            allyrion:
-            bettley:
-            cargyll:
-            dalt:
-            erenford:
-            fenn:
-            gardener:
-            harlton:
-            inchfield:
-            jast:
-            karstark:
-            lipps:
+          children:
+            all_pi_4b:
+              children:
+                all_pi_4b_8gb:
+                  hosts:
+                    allyrion:
+                    bettley:
+                    cargyll:
+                    dalt:
+                    erenford:
+                    fenn:
+                    gardener:
+                    harlton:
+                    inchfield:
+                    jast:
+                all_pi_4b_4gb:
+                  hosts:
+                    karstark:
+                    lipps:
+            all_pi_5:
+              hosts:
+                manderly:
+                norcross:
+                oakheart:
+                payne:
         all_non_pis:
           hosts:
             velaryon:
@@ -49,6 +61,10 @@ all:
             jast:
             karstark:
             lipps:
+            manderly:
+            norcross:
+            oakheart:
+            payne:
 
     # -----------------------------------
     # Slurm
@@ -71,6 +87,12 @@ all:
             harlton:
             inchfield:
             jast:
+            karstark:
+            lipps:
+            manderly:
+            norcross:
+            oakheart:
+            payne:
 
     # -----------------------------------
     # Ray
@@ -97,6 +119,10 @@ all:
             jast:
             karstark:
             lipps:
+            manderly:
+            norcross:
+            oakheart:
+            payne:
 
     # -----------------------------------
     # Consul
@@ -120,6 +146,10 @@ all:
             velaryon:
             karstark:
             lipps:
+            manderly:
+            norcross:
+            oakheart:
+            payne:
 
     # -----------------------------------
     # Nomad
@@ -145,6 +175,10 @@ all:
             jast:
             karstark:
             lipps:
+            manderly:
+            norcross:
+            oakheart:
+            payne:
             velaryon:
 
     # -----------------------------------
@@ -262,4 +296,8 @@ all:
         jast:
         karstark:
         lipps:
+        manderly:
+        norcross:
+        oakheart:
+        payne:
         velaryon:

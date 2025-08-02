@@ -25,3 +25,21 @@
         owner: 'root'
         group: 'root'
         mode: '0644'
+
+    - name: 'Source bash prompt script in root .bashrc'
+      ansible.builtin.lineinfile:
+        path: '/root/.bashrc'
+        line: 'source /etc/bash_prompt.sh'
+        create: true
+        owner: 'root'
+        group: 'root'
+        mode: '0644'
+
+    - name: 'Source bash prompt script in user .bashrc'
+      ansible.builtin.lineinfile:
+        path: '/home/{{ my.name.lower }}/.bashrc'
+        line: 'source /etc/bash_prompt.sh'
+        create: true
+        owner: '{{ my.name.lower }}'
+        group: '{{ my.name.lower }}'
+        mode: '0644'

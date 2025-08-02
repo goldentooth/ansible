@@ -23,13 +23,13 @@
 - name: 'Configure general settings for the root user.'
   hosts: 'all'
   roles:
-    - { role: 'goldentooth.set_bash_prompt' }
+    - { role: 'goldentooth.setup_bash_prompt' }
     - { role: 'goldentooth.setup_user' }
   remote_user: 'root'
 
 - name: 'Configure general settings for the normie user.'
   hosts: 'all'
   roles:
-    - { role: 'goldentooth.set_bash_prompt' }
+    - { role: 'goldentooth.setup_bash_prompt' }
     - { role: 'goldentooth.setup_user' }
   remote_user: "{{ my.name.lower }}"

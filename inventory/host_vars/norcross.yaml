@@ -1,0 +1,10 @@
+clean_hostname: norcross
+mac_address: 88:a2:9e:1b:f0:26
+ipv4_address: 10.4.0.23
+prompt:
+  colors:
+    primary: 22
+    secondary: 34
+    tertiary: 178
+  emoji: ➕
+host_index: 13
