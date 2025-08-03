@@ -78,3 +78,30 @@
   run_once: true
   notify:
   - 'Restart Nginx on the load balancer.'
+
+# Consul Service Discovery Registration
+- name: 'Register node homepage with Consul service discovery.'
+  ansible.builtin.template:
+    src: '../../goldentooth.setup_consul/templates/consul-service-registration.json.j2'
+    dest: '/etc/consul.d/{{ ansible_hostname }}-homepage-service.json'
+    owner: 'consul'
+    group: 'consul'
+    mode: '0644'
+  vars:
+    consul_service_name: "{{ ansible_hostname }}-homepage"
+    consul_service_port: 8090
+    consul_service_tags:
+      - goldentooth
+      - homepage
+      - status
+      - node
+      - http
+    consul_service_type: homepage
+    consul_service_protocol: http
+    consul_service_health_path: /
+    consul_service_health_http: "http://{{ ipv4_address }}:8090/"
+  notify:
+    - 'Reload Consul configuration.'
+
+- name: 'Add Consul reload handler for node homepage service registration.'
+  ansible.builtin.meta: flush_handlers

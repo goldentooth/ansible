@@ -250,3 +250,30 @@
     loop_var: 'template'
   notify: 'Restart Nginx.'
 
+# Consul Service Discovery Registration for HAProxy Dataplane API
+- name: 'Register HAProxy Dataplane API with Consul service discovery.'
+  ansible.builtin.template:
+    src: '../../goldentooth.setup_consul/templates/consul-service-registration.json.j2'
+    dest: '/etc/consul.d/haproxy-api-service.json'
+    owner: 'consul'
+    group: 'consul'
+    mode: '0644'
+  vars:
+    consul_service_name: haproxy-api
+    consul_service_port: 5555
+    consul_service_tags:
+      - goldentooth
+      - api
+      - haproxy
+      - dataplane
+      - http
+    consul_service_type: api
+    consul_service_protocol: http
+    consul_service_health_path: /v2/info
+    consul_service_health_http: "http://{{ ipv4_address }}:5555/v2/info"
+  notify:
+    - 'Reload Consul configuration.'
+
+- name: 'Add Consul reload handler for HAProxy API service registration.'
+  ansible.builtin.meta: flush_handlers
+

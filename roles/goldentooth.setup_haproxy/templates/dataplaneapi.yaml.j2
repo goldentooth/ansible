@@ -81,3 +81,20 @@ service_discovery:
           balance: roundrobin
           check: enabled
           check_path: /health
+          
+        - name: authelia
+          backend_name: consul-authelia
+          mode: http
+          balance: roundrobin
+          check: enabled
+          check_ssl: enabled
+          check_path: /api/health
+          ssl: enabled
+          ssl_verify: none
+          
+        - name: haproxy-api
+          backend_name: consul-haproxy-api
+          mode: http
+          balance: roundrobin
+          check: enabled
+          check_path: /v2/info

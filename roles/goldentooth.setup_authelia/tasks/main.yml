@@ -237,14 +237,30 @@
     group: "{{ authelia_group }}"
     mode: '0750'
 
-- name: Deploy Authelia Consul service definition
+# Consul Service Discovery Registration
+- name: 'Register Authelia with Consul service discovery.'
   ansible.builtin.template:
-    src: authelia-consul-service.json.j2
-    dest: "{{ authelia_config_dir }}/consul-service.json"
-    owner: "{{ authelia_user }}"
-    group: "{{ authelia_group }}"
+    src: '../../goldentooth.setup_consul/templates/consul-service-registration.json.j2'
+    dest: '/etc/consul.d/authelia-service.json'
+    owner: 'consul'
+    group: 'consul'
     mode: '0644'
-  notify: restart authelia
+  vars:
+    consul_service_name: authelia
+    consul_service_port: "{{ authelia_port }}"
+    consul_service_tags:
+      - goldentooth
+      - authentication
+      - sso
+      - oidc
+      - https
+    consul_service_type: authentication
+    consul_service_protocol: https
+    consul_service_health_path: /api/health
+    consul_service_health_http: "https://{{ ipv4_address }}:{{ authelia_port }}/api/health"
+    consul_service_health_tls_skip_verify: true
+  notify:
+    - 'Reload Consul configuration.'
 
 
 - name: Deploy users database
