@@ -11,13 +11,15 @@ This role sets up HAProxy load balancer with Nginx for the cluster, providing lo
 - Configure HAProxy for load balancing
 - Set up Nginx for reverse proxy and basic auth
 - Configure load balancing for Kubernetes API server
-- Set up MetalLB service proxying
+- Set up HAProxy Data Plane API for dynamic configuration
 - Configure monitoring and health checks
 
 ## Files
 
 - `tasks/main.yaml`: Main task file
 - `templates/haproxy.cfg.j2`: HAProxy configuration template
+- `templates/dataplaneapi.yml.j2`: HAProxy Data Plane API configuration
+- `templates/haproxy-dataplaneapi.service.j2`: Systemd service for Data Plane API
 - `templates/nginx.basic_auth_gateway.conf.j2`: Nginx basic auth configuration
 - `templates/nginx.zzz_metallb_services.conf.j2`: MetalLB service proxy configuration
 
@@ -33,10 +35,12 @@ This role sets up HAProxy load balancer with Nginx for the cluster, providing lo
 - Configures basic authentication for sensitive endpoints
 - Provides SSL termination capabilities
 
-### MetalLB Integration
-- Configures proxy for MetalLB LoadBalancer services
-- Enables external access to cluster services
-- Supports dynamic service discovery
+### HAProxy Data Plane API
+- Provides RESTful API for dynamic HAProxy configuration
+- Enables runtime configuration changes without restarts
+- Supports backend management, server weights, and health checks
+- Available at https://haproxy-api.services.goldentooth.net
+- Authenticated access using cluster credentials
 
 ### Monitoring
 - Configures HAProxy stats endpoint
@@ -47,8 +51,9 @@ This role sets up HAProxy load balancer with Nginx for the cluster, providing lo
 
 - Requires HAProxy and Nginx to be installed
 - Depends on Kubernetes control plane nodes
-- Uses MetalLB for service load balancing
+- HAProxy Data Plane API binary downloaded from GitHub releases
 - Requires proper network configuration
+- Step-CA for TLS certificate management
 
 ## Variables
 

@@ -94,6 +94,14 @@
   notify:
     - 'Restart HAProxy.'
 
+- name: 'Ensure HAProxy run directory exists.'
+  ansible.builtin.file:
+    path: '/var/run/haproxy'
+    state: directory
+    owner: 'haproxy'
+    group: 'haproxy'
+    mode: '0755'
+
 - name: 'Configure HAProxy.'
   ansible.builtin.template:
     src: 'haproxy.cfg.j2'
@@ -102,6 +110,117 @@
     group: 'root'
     mode: '0644'
   notify: 'Restart HAProxy.'
+
+- name: 'Create HAProxy dataplane API directory.'
+  ansible.builtin.file:
+    path: '/etc/haproxy-dataplane'
+    state: directory
+    owner: 'haproxy'
+    group: 'haproxy'
+    mode: '0755'
+
+- name: 'Create HAProxy dataplane storage directory.'
+  ansible.builtin.file:
+    path: '/etc/haproxy/dataplane'
+    state: directory
+    owner: 'haproxy'
+    group: 'haproxy'
+    mode: '0755'
+
+- name: 'Create HAProxy maps directory.'
+  ansible.builtin.file:
+    path: '/etc/haproxy/maps'
+    state: directory
+    owner: 'haproxy'
+    group: 'haproxy'
+    mode: '0755'
+
+- name: 'Create HAProxy SSL directory.'
+  ansible.builtin.file:
+    path: '/etc/haproxy/ssl'
+    state: directory
+    owner: 'haproxy'
+    group: 'haproxy'
+    mode: '0755'
+
+- name: 'Create additional HAProxy dataplane directories.'
+  ansible.builtin.file:
+    path: '/etc/haproxy/{{ item }}'
+    state: directory
+    owner: 'haproxy'
+    group: 'haproxy'
+    mode: '0755'
+  loop:
+    - 'general'
+    - 'spoe'
+    - 'acl'
+    - 'transactions'
+
+- name: 'Create SPOE temporary directory.'
+  ansible.builtin.file:
+    path: '/tmp/spoe-haproxy'
+    state: directory
+    owner: 'haproxy'
+    group: 'haproxy'
+    mode: '0755'
+
+- name: 'Download HAProxy dataplane API binary.'
+  ansible.builtin.get_url:
+    url: 'https://github.com/haproxytech/dataplaneapi/releases/download/v3.2.1/dataplaneapi_3.2.1_linux_{% if ansible_architecture == "aarch64" %}arm64{% else %}{{ ansible_architecture }}{% endif %}.tar.gz'
+    dest: '/tmp/dataplaneapi.tar.gz'
+    mode: '0644'
+    timeout: 60
+
+- name: 'Extract HAProxy dataplane API binary.'
+  ansible.builtin.unarchive:
+    src: '/tmp/dataplaneapi.tar.gz'
+    dest: '/tmp'
+    remote_src: yes
+    creates: '/tmp/dataplaneapi'
+
+- name: 'Install HAProxy dataplane API binary.'
+  ansible.builtin.copy:
+    src: '/tmp/dataplaneapi'
+    dest: '/usr/local/bin/haproxy-dataplaneapi'
+    remote_src: yes
+    owner: 'root'
+    group: 'root'
+    mode: '0755'
+
+- name: 'Configure HAProxy dataplane API.'
+  ansible.builtin.template:
+    src: 'dataplaneapi.yaml.j2'
+    dest: '/etc/haproxy-dataplane/dataplaneapi.yaml'
+    owner: 'haproxy'
+    group: 'haproxy'
+    mode: '0600'
+  notify: 'Restart HAProxy dataplane API.'
+
+- name: 'Create HAProxy transaction directory.'
+  ansible.builtin.file:
+    path: '/tmp/haproxy'
+    state: directory
+    owner: 'haproxy'
+    group: 'haproxy'
+    mode: '0755'
+
+- name: 'Create HAProxy dataplane API systemd service.'
+  ansible.builtin.template:
+    src: 'haproxy-dataplaneapi.service.j2'
+    dest: '/etc/systemd/system/haproxy-dataplaneapi.service'
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+  notify:
+    - 'Trigger systemd daemon-reload.'
+    - 'Restart HAProxy dataplane API.'
+
+- name: 'Enable and start HAProxy dataplane API service.'
+  ansible.builtin.systemd_service:
+    name: 'haproxy-dataplaneapi'
+    enabled: yes
+    state: started
+    daemon_reload: yes
 
 - name: 'Install Nginx.'
   ansible.builtin.apt:

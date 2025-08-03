@@ -15,6 +15,11 @@ global
   # Configure logging.
   log /dev/log local0
   log /dev/log local1 notice
+  # Enable master-worker mode for dataplane API
+  master-worker
+  # Stats socket for dataplane API
+  stats socket /var/run/haproxy/admin.sock mode 660 level admin group haproxy
+  stats timeout 30s
 
 # Default parameters
 defaults
@@ -22,6 +27,10 @@ defaults
   log global
   # Sets the maximum time to wait for a connection.
   timeout connect 10s
+
+# Userlist for dataplane API authentication
+userlist dataplaneapi
+  user {{ my.name.lower }} insecure-password {{ secret_vault.easy_password }}
 
 # Frontend configuration for the HAProxy stats page.
 frontend stats-frontend
@@ -60,7 +69,7 @@ frontend services-http
   option httplog
   # Sets the maximum inactivity time on the client side
   timeout client 30s
-  
+
   # Redirect all HTTP traffic to HTTPS
   redirect scheme https
 
@@ -74,7 +83,7 @@ frontend services-https
   option httplog
   # Sets the maximum inactivity time on the client side
   timeout client 30s
-  
+
   # Route to appropriate backend based on SNI/Host header
   use_backend grafana-backend if { hdr(host) -i grafana.services.goldentooth.net }
   use_backend prometheus-backend if { hdr(host) -i prometheus.services.goldentooth.net }
@@ -84,7 +93,8 @@ frontend services-https
   use_backend consul-backend if { hdr(host) -i consul.services.goldentooth.net }
   use_backend authelia-backend if { hdr(host) -i auth.services.goldentooth.net }
   use_backend mcp-backend if { hdr(host) -i mcp.services.goldentooth.net }
-  
+  use_backend haproxy-api-backend if { hdr(host) -i haproxy-api.services.goldentooth.net }
+
   # Per-node MCP server routing
 {% for host in groups['mcp_server'] %}
   use_backend mcp-{{ host }}-backend if { hdr(host) -i mcp.services.{{ host }}.nodes.goldentooth.net }
@@ -94,7 +104,7 @@ frontend services-https
 {% for host in groups['all'] %}
   use_backend {{ host }}-homepage-backend if { hdr(host) -i {{ host }}.nodes.goldentooth.net }
 {% endfor %}
-  
+
   # Default to grafana for backwards compatibility
   default_backend grafana-backend
 
@@ -286,3 +296,15 @@ backend {{ host }}-homepage-backend
   server {{ host }} {{ hostvars[host]['ipv4_address'] }}:8090 check fall 3 rise 2
 
 {% endfor %}
+
+# HAProxy Data Plane API backend configuration.
+backend haproxy-api-backend
+  # Use HTTP mode
+  mode http
+  # No load balancing needed (single server)
+  # Enable health checks for HAProxy API
+  option httpchk GET /v2/info
+  # Sets the maximum inactivity time on the server side
+  timeout server 30s
+  # HAProxy Data Plane API configuration
+  server allyrion {{ hostvars['allyrion']['ipv4_address'] }}:5555 check fall 3 rise 2
