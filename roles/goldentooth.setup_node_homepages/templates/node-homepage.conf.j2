@@ -1,7 +1,9 @@
 error_log /var/log/nginx/error.log debug;
 
+# Node homepage server (accessed via HAProxy on port 8090)
 server {
-  listen 80;
+  listen 8090 default_server;
+  server_name _;
   location / {
     root {{ node_homepage.web_root }};
     index index.html;

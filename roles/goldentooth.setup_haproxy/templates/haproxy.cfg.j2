@@ -50,6 +50,20 @@ frontend prometheus
   http-request use-service prometheus-exporter if { path /metrics }
   no log
 
+# HTTP frontend - redirect everything to HTTPS
+frontend services-http
+  # Listen on port 80 for HTTP traffic
+  bind *:80
+  # Use HTTP mode
+  mode http
+  # Enable logging
+  option httplog
+  # Sets the maximum inactivity time on the client side
+  timeout client 30s
+  
+  # Redirect all HTTP traffic to HTTPS
+  redirect scheme https
+
 # HTTPS frontend configuration for services.
 frontend services-https
   # Listen on port 443 for HTTPS traffic
@@ -74,6 +88,11 @@ frontend services-https
   # Per-node MCP server routing
 {% for host in groups['mcp_server'] %}
   use_backend mcp-{{ host }}-backend if { hdr(host) -i mcp.services.{{ host }}.nodes.goldentooth.net }
+{% endfor %}
+
+  # Node homepage routing
+{% for host in groups['all'] %}
+  use_backend {{ host }}-homepage-backend if { hdr(host) -i {{ host }}.nodes.goldentooth.net }
 {% endfor %}
   
   # Default to grafana for backwards compatibility
@@ -250,5 +269,20 @@ backend mcp-{{ host }}-backend
   timeout server 30s
   # Single node MCP server configuration
   server {{ host }} {{ hostvars[host]['ipv4_address'] }}:{{ hostvars[host]['mcp_server_port'] | default(mcp_server_port) }} check fall 3 rise 2
+
+{% endfor %}
+
+# Node homepage backend configurations.
+{% for host in groups['all'] %}
+backend {{ host }}-homepage-backend
+  # Use HTTP mode
+  mode http
+  # No load balancing needed (single server)
+  # Enable health checks for homepage
+  option httpchk GET /
+  # Sets the maximum inactivity time on the server side
+  timeout server 30s
+  # Node homepage configuration (HTTP backend to nginx on port 8090)
+  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:8090 check fall 3 rise 2
 
 {% endfor %}

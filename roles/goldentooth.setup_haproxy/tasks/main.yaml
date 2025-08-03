@@ -120,13 +120,10 @@
     group: "{{ haproxy.nginx.group }}"
     mode: 0640
 
-- name: 'Configure Nginx.'
-  ansible.builtin.template:
-    src: "nginx.{{ template }}.conf.j2"
-    dest: "/etc/nginx/sites-enabled/{{ template }}.conf"
-    owner: "{{ haproxy.nginx.user }}"
-    group: "{{ haproxy.nginx.group }}"
-    mode: '0644'
+- name: 'Remove legacy nginx configurations.'
+  ansible.builtin.file:
+    path: "/etc/nginx/sites-enabled/{{ template }}.conf"
+    state: absent
   loop:
     - 'basic_auth_gateway'
     - 'zzz_metallb_services'

@@ -6,6 +6,6 @@ server {
   resolver 10.4.0.1 valid=10s;
   server_name ~^(?<nodename>{{ groups['all'] | join('|') }})\.(?<subdomain>[^.]+)\.{{ cluster.domain }}$;
   location / {
-    proxy_pass http://$nodename:80;
+    proxy_pass http://$nodename:8090;
   }
 }
