@@ -118,3 +118,26 @@
 - name: Display service status
   debug:
     msg: "MCP server service is {{ service_status.status.ActiveState }} ({{ service_status.status.SubState }})"
+
+# Consul Service Discovery Registration
+- name: 'Register MCP server with Consul service discovery.'
+  ansible.builtin.template:
+    src: '../../goldentooth.setup_consul/templates/consul-service-registration.json.j2'
+    dest: '/etc/consul.d/mcp-server-service.json'
+    owner: 'consul'
+    group: 'consul'
+    mode: '0644'
+  vars:
+    consul_service_name: mcp-server
+    consul_service_port: 8080
+    consul_service_tags:
+      - goldentooth
+      - api
+      - mcp
+      - http
+    consul_service_type: api
+    consul_service_protocol: http
+    consul_service_health_path: /health
+    consul_service_health_http: "http://{{ ipv4_address }}:8080/health"
+  notify:
+    - 'Reload Consul configuration.'

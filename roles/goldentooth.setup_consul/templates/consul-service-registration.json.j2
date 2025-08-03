@@ -1,0 +1,46 @@
+{
+  "name": "{{ consul_service_name }}",
+  "id": "{{ consul_service_name }}-{{ ansible_hostname }}",
+  "address": "{{ consul_service_address | default(ipv4_address) }}",
+  "port": {{ consul_service_port }},
+  "tags": {{ consul_service_tags | default(['goldentooth']) | to_json }},
+  "meta": {
+    "version": "{{ consul_service_version | default('unknown') }}",
+    "environment": "{{ consul_service_environment | default('production') }}",
+    "service_type": "{{ consul_service_type | default('application') }}",
+    "cluster": "goldentooth",
+    "hostname": "{{ ansible_hostname }}",
+    "protocol": "{{ consul_service_protocol | default('http') }}",
+    "path": "{{ consul_service_health_path | default('/') }}"
+  },
+  "checks": [
+{% if consul_service_health_http is defined %}
+    {
+      "id": "{{ consul_service_name }}-http-health",
+      "name": "{{ consul_service_name | title }} HTTP Health Check",
+      "http": "{{ consul_service_health_http }}",
+      "method": "{{ consul_service_health_method | default('GET') }}",
+      "interval": "{{ consul_service_health_interval | default('30s') }}",
+      "timeout": "{{ consul_service_health_timeout | default('10s') }}",
+      "status": "passing",
+      "notes": "HTTP health check for {{ consul_service_name }}"
+{% if consul_service_health_tls_skip_verify | default(false) %},
+      "tls_skip_verify": true
+{% endif %}
+    },
+{% endif %}
+    {
+      "id": "{{ consul_service_name }}-tcp-port",
+      "name": "{{ consul_service_name | title }} TCP Port Check",
+      "tcp": "{{ consul_service_address | default(ipv4_address) }}:{{ consul_service_port }}",
+      "interval": "{{ consul_service_tcp_interval | default('10s') }}",
+      "timeout": "{{ consul_service_tcp_timeout | default('3s') }}",
+      "notes": "TCP port check for {{ consul_service_name }}"
+    }
+  ],
+  "enable_tag_override": false,
+  "weights": {
+    "passing": 10,
+    "warning": 1
+  }
+}

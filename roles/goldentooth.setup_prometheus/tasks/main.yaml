@@ -60,3 +60,29 @@
   run_once: true
   notify:
     - 'Restart Nginx on the load balancer.'
+
+# Consul Service Discovery Registration
+- name: 'Register Prometheus with Consul service discovery.'
+  ansible.builtin.template:
+    src: '../../goldentooth.setup_consul/templates/consul-service-registration.json.j2'
+    dest: '/etc/consul.d/prometheus-service.json'
+    owner: 'consul'
+    group: 'consul'
+    mode: '0644'
+  vars:
+    consul_service_name: prometheus
+    consul_service_port: 9090
+    consul_service_tags:
+      - goldentooth
+      - monitoring
+      - metrics
+      - http
+    consul_service_type: monitoring
+    consul_service_protocol: http
+    consul_service_health_path: /-/healthy
+    consul_service_health_http: "http://{{ ipv4_address }}:9090/-/healthy"
+  notify:
+    - 'Reload Consul configuration.'
+
+- name: 'Add Consul reload handler for Prometheus service registration.'
+  ansible.builtin.meta: flush_handlers

@@ -19,3 +19,8 @@
     state: started
     enabled: true
   become: true
+
+- name: 'Reload Consul configuration.'
+  ansible.builtin.systemd_service:
+    name: 'consul'
+    state: 'reloaded'

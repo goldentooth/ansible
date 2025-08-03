@@ -85,14 +85,16 @@ frontend services-https
   timeout client 30s
 
   # Route to appropriate backend based on SNI/Host header
-  use_backend grafana-backend if { hdr(host) -i grafana.services.goldentooth.net }
-  use_backend prometheus-backend if { hdr(host) -i prometheus.services.goldentooth.net }
-  use_backend loki-backend if { hdr(host) -i loki.services.goldentooth.net }
+  # Dynamic backends created by Consul service discovery
+  use_backend consul-grafana if { hdr(host) -i grafana.services.goldentooth.net }
+  use_backend consul-prometheus if { hdr(host) -i prometheus.services.goldentooth.net }
+  use_backend consul-loki if { hdr(host) -i loki.services.goldentooth.net }
+  use_backend consul-mcp-server if { hdr(host) -i mcp.services.goldentooth.net }
+  # Static backends for HashiCorp services (require client certs)
   use_backend vault-backend if { hdr(host) -i vault.services.goldentooth.net }
   use_backend nomad-backend if { hdr(host) -i nomad.services.goldentooth.net }
   use_backend consul-backend if { hdr(host) -i consul.services.goldentooth.net }
   use_backend authelia-backend if { hdr(host) -i auth.services.goldentooth.net }
-  use_backend mcp-backend if { hdr(host) -i mcp.services.goldentooth.net }
   use_backend haproxy-api-backend if { hdr(host) -i haproxy-api.services.goldentooth.net }
 
   # Per-node MCP server routing
@@ -106,7 +108,7 @@ frontend services-https
 {% endfor %}
 
   # Default to grafana for backwards compatibility
-  default_backend grafana-backend
+  default_backend consul-grafana
 
 # Kubernetes API server frontend configuration.
 frontend k8s-api-server
@@ -147,52 +149,8 @@ backend k8s-api-server
   server {{ host }} {{ hostvars[host]['ipv4_address'] }}:6443 check fall 3 rise 2
 {% endfor %}
 
-# Grafana backend configuration.
-backend grafana-backend
-  # Use HTTP mode
-  mode http
-  # Sets the load balancing algorithm
-  balance roundrobin
-  # Enable health checks via HTTPS
-  option httpchk GET /api/health
-  http-check connect ssl
-  # Sets the maximum inactivity time on the server side
-  timeout server 30s
-  # Grafana server configuration (HTTPS backend)
-{% for host in groups['grafana'] %}
-  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:3000 check ssl verify none fall 3 rise 2
-{% endfor %}
-
-# Prometheus backend configuration.
-backend prometheus-backend
-  # Use HTTP mode
-  mode http
-  # Sets the load balancing algorithm
-  balance roundrobin
-  # Enable health checks via HTTP (Prometheus uses HTTP only)
-  option httpchk GET /-/healthy
-  # Sets the maximum inactivity time on the server side
-  timeout server 30s
-  # Prometheus server configuration (HTTP backend)
-{% for host in groups['prometheus'] %}
-  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:9090 check fall 3 rise 2
-{% endfor %}
-
-# Loki backend configuration.
-backend loki-backend
-  # Use HTTP mode
-  mode http
-  # Sets the load balancing algorithm
-  balance roundrobin
-  # Enable health checks via HTTPS (Loki uses HTTPS)
-  option httpchk GET /ready
-  http-check connect ssl
-  # Sets the maximum inactivity time on the server side
-  timeout server 30s
-  # Loki server configuration (HTTPS backend)
-{% for host in groups['loki'] %}
-  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:3100 check ssl verify none fall 3 rise 2
-{% endfor %}
+# Dynamic backends for Consul-discovered services will be created automatically
+# by the HAProxy Dataplane API based on Consul service registrations
 
 # Vault backend configuration.
 backend vault-backend
@@ -252,22 +210,7 @@ backend authelia-backend
   server {{ host }} {{ hostvars[host]['ipv4_address'] }}:9091 check ssl verify none fall 3 rise 2
 {% endfor %}
 
-# MCP server backend configuration (load balanced across all nodes).
-backend mcp-backend
-  # Use HTTP mode
-  mode http
-  # Sets the load balancing algorithm
-  balance roundrobin
-  # Enable health checks (MCP server v0.0.26+ has /health endpoint)
-  option httpchk GET /health
-  # Sets the maximum inactivity time on the server side
-  timeout server 30s
-  # MCP server configuration (HTTP backend)
-{% for host in groups['mcp_server'] %}
-  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:{{ hostvars[host]['mcp_server_port'] | default(mcp_server_port) }} check fall 3 rise 2
-{% endfor %}
-
-# Per-node MCP server backend configurations.
+# Per-node MCP server backend configurations (still static for per-node access).
 {% for host in groups['mcp_server'] %}
 backend mcp-{{ host }}-backend
   # Use HTTP mode

@@ -3,13 +3,12 @@
   ansible.builtin.systemd:
     daemon_reload: 'yes'
 
-- name: 'Restart Grafana service.'
+- name: 'Restart Loki service.'
   ansible.builtin.systemd_service:
-    name: 'grafana-server'
+    name: 'loki'
     state: 'restarted'
 
 - name: 'Reload Consul configuration.'
   ansible.builtin.systemd_service:
     name: 'consul'
     state: 'reloaded'
-

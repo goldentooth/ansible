@@ -33,3 +33,51 @@ haproxy:
 # Transaction settings
 transaction:
   transaction_dir: /tmp/haproxy
+
+# Service Discovery Configuration
+service_discovery:
+  consuls:
+    - address: 127.0.0.1:8500
+      enabled: true
+      id: goldentooth-consul
+      name: goldentooth-consul
+      retry_timeout: 10
+      server_slots_base: 10
+      server_slots_growth_type: "exponential"
+      server_slots_increment: 5
+      
+      # Service to backend mappings
+      services:
+        - name: grafana
+          backend_name: consul-grafana
+          mode: http
+          balance: roundrobin
+          check: enabled
+          check_ssl: enabled
+          check_path: /api/health
+          ssl: enabled
+          ssl_verify: none
+          
+        - name: prometheus  
+          backend_name: consul-prometheus
+          mode: http
+          balance: roundrobin
+          check: enabled
+          check_path: /-/healthy
+          
+        - name: loki
+          backend_name: consul-loki
+          mode: http
+          balance: roundrobin
+          check: enabled
+          check_ssl: enabled
+          check_path: /ready
+          ssl: enabled
+          ssl_verify: none
+          
+        - name: mcp-server
+          backend_name: consul-mcp-server
+          mode: http
+          balance: roundrobin
+          check: enabled
+          check_path: /health

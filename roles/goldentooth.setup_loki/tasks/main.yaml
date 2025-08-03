@@ -60,3 +60,30 @@
     mode: '0644'
   notify:
     - 'Restart Loki service.'
+
+# Consul Service Discovery Registration
+- name: 'Register Loki with Consul service discovery.'
+  ansible.builtin.template:
+    src: '../../goldentooth.setup_consul/templates/consul-service-registration.json.j2'
+    dest: '/etc/consul.d/loki-service.json'
+    owner: 'consul'
+    group: 'consul'
+    mode: '0644'
+  vars:
+    consul_service_name: loki
+    consul_service_port: 3100
+    consul_service_tags:
+      - goldentooth
+      - logging
+      - aggregation
+      - https
+    consul_service_type: logging
+    consul_service_protocol: https
+    consul_service_health_path: /ready
+    consul_service_health_http: "https://{{ ipv4_address }}:3100/ready"
+    consul_service_health_tls_skip_verify: true
+  notify:
+    - 'Reload Consul configuration.'
+
+- name: 'Add Consul reload handler for Loki service registration.'
+  ansible.builtin.meta: flush_handlers

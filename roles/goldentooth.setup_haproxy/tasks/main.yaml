@@ -249,3 +249,4 @@
   loop_control:
     loop_var: 'template'
   notify: 'Restart Nginx.'
+
