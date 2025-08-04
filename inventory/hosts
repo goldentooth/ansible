@@ -257,20 +257,14 @@ all:
         gardener:
 
     # -----------------------------------
-    # SeaweedFS
+    # SeaweedFS - High-performance 1TB NVMe cluster
     # -----------------------------------
     seaweedfs:
       hosts:
-        fenn:
-        karstark:
-
-    # -----------------------------------
-    # Longhorn
-    # -----------------------------------
-    longhorn:
-      hosts:
-        inchfield:
-        jast:
+        manderly:
+        norcross:
+        oakheart:
+        payne:
 
     # -----------------------------------
     # Authelia

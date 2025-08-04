@@ -1,0 +1,108 @@
+---
+- name: 'Completely remove SeaweedFS and Longhorn from old nodes'
+  hosts: fenn,karstark,inchfield,jast
+  become: true
+  gather_facts: true
+  tasks:
+
+    - name: 'Stop SeaweedFS services'
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        state: 'stopped'
+        enabled: false
+      loop:
+        - 'seaweedfs-master'
+        - 'seaweedfs-volume' 
+        - 'seaweedfs-filer'
+      ignore_errors: true
+
+    - name: 'Stop Longhorn services if they exist'
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        state: 'stopped'
+        enabled: false
+      loop:
+        - 'longhorn-manager'
+        - 'longhorn-engine'
+      ignore_errors: true
+
+    - name: 'Remove SeaweedFS systemd service files'
+      ansible.builtin.file:
+        path: "/etc/systemd/system/{{ item }}"
+        state: 'absent'
+      loop:
+        - 'seaweedfs-master.service'
+        - 'seaweedfs-volume.service'
+        - 'seaweedfs-filer.service'
+
+    - name: 'Remove SeaweedFS cert-renewer services'
+      ansible.builtin.file:
+        path: "/etc/systemd/system/cert-renewer@seaweedfs-{{ item }}.service.d"
+        state: 'absent'
+      loop:
+        - 'master'
+        - 'volume'
+        - 'filer'
+
+    - name: 'Unmount SeaweedFS volumes'
+      ansible.posix.mount:
+        path: "{{ seaweedfs.mount_path }}"
+        state: 'absent'
+      ignore_errors: true
+
+    - name: 'Remove SeaweedFS directories and data'
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: 'absent'
+      loop:
+        - '/etc/seaweedfs'
+        - '/var/log/seaweedfs'
+        - '/home/seaweedfs'
+        - "{{ seaweedfs.mount_path }}"
+
+    - name: 'Remove SeaweedFS user'
+      ansible.builtin.user:
+        name: "{{ seaweedfs.user }}"
+        state: 'absent'
+        remove: true
+      ignore_errors: true
+
+    - name: 'Remove SeaweedFS binaries'
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: 'absent'
+      loop:
+        - '/usr/local/bin/weed'
+        - '/usr/local/bin/seaweedfs'
+
+    - name: 'Wipe filesystem signatures from storage devices'
+      ansible.builtin.command:
+        cmd: "wipefs -a {{ seaweedfs.device }}"
+      ignore_errors: true
+      when: ansible_hostname in groups['seaweedfs']
+
+    - name: 'Remove Kubernetes node labels for storage'
+      ansible.builtin.command:
+        cmd: "kubectl label node {{ ansible_hostname }} node.goldentooth.net/storage-"
+      ignore_errors: true
+      delegate_to: "{{ kubernetes.first }}"
+
+    - name: 'Deregister services from Consul'
+      ansible.builtin.uri:
+        url: "http://{{ ansible_default_ipv4.address }}:8500/v1/agent/service/deregister/{{ item }}"
+        method: 'PUT'
+        headers:
+          X-Consul-Token: "{{ consul_seaweedfs_service_token | default('') }}"
+      loop:
+        - "seaweedfs-master-{{ ansible_hostname }}"
+        - "seaweedfs-volume-{{ ansible_hostname }}"
+        - "seaweedfs-filer-{{ ansible_hostname }}"
+      ignore_errors: true
+
+    - name: 'Reload systemd daemon'
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+
+    - name: 'Display cleanup status'
+      ansible.builtin.debug:
+        msg: "Storage cleanup completed on {{ ansible_hostname }}"

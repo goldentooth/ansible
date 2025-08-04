@@ -17,11 +17,11 @@ ExecStartPre=/bin/bash -c 'source /etc/profile.d/consul-acl-env.sh && curl -X PU
 ExecStart=/usr/local/bin/weed master \
     -port=9333 \
     -mdir={{ seaweedfs.mount_path }}/master \
-    -peers=fenn:9333,karstark:9333 \
+    -peers={% for host in groups['seaweedfs'] %}{{ hostvars[host]['ansible_default_ipv4']['address'] }}:9333{% if not loop.last %},{% endif %}{% endfor %} \
     -ip={{ ansible_default_ipv4.address }} \
     -raftHashicorp=true \
     -defaultReplication=001 \
-    -volumeSizeLimitMB=1024
+    -volumeSizeLimitMB=2048
 # Deregister service when stopping
 ExecStopPost=/bin/bash -c 'source /etc/profile.d/consul-acl-env.sh && curl -X PUT $CONSUL_HTTP_ADDR/v1/agent/service/deregister/seaweedfs-master-{{ ansible_hostname }} \
   -H "X-Consul-Token: $CONSUL_SEAWEEDFS_SERVICE_TOKEN" || true'

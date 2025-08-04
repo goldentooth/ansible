@@ -472,17 +472,19 @@ loki:
 # SeaweedFS data:
 seaweedfs:
   version: '3.66'
-  mount_path: '/mnt/seaweedfs-ssd'
-  device: '/dev/sda'
+  mount_path: '/mnt/seaweedfs-nvme'
+  device: '/dev/nvme0n1'
   filesystem_type: 'ext4'
   allocations:
-    data: '350Gi'
+    # Allocations for 1TB NVMe drives on Pi 5 nodes
+    # Leave ~100GB free for OS, logs, etc.
+    data: '800Gi'
     index: '50Gi'
-    filer: '100Gi'
+    filer: '50Gi'
   user: 'seaweedfs'
   uid: 985
   gid: 985
-  storage_class_name: 'seaweedfs-ssd-storage'
+  storage_class_name: 'seaweedfs-nvme-storage'
   reclaim_policy: 'Delete'
   volume_binding_mode: 'WaitForFirstConsumer'
   namespace: 'seaweedfs'
