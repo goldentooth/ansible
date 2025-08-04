@@ -4,8 +4,6 @@
   hosts: 'haproxy'
   remote_user: 'root'
   roles:
-    - { role: 'prometheus.prometheus.node_exporter' }
-    - { role: 'prometheus.prometheus.nginx_exporter' }
     - { role: 'goldentooth.setup_haproxy' }
   handlers:
     - name: 'Restart HAProxy.'
