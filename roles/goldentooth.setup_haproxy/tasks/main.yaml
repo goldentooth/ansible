@@ -70,6 +70,8 @@
       --provisioner="default" \
       --password-file="/root/.step/jwk_provisioner_password.txt" \
       --san="*.{{ cluster.services_domain }}" \
+      --san="*.{{ cluster.k8s_services_domain }}" \
+      --san="*.{{ cluster.nomad_services_domain }}" \
       --san="{{ ansible_hostname }}" \
       --san="{{ ansible_hostname }}.{{ cluster.node_domain }}" \
       --san="{{ ipv4_address }}" \
