@@ -85,13 +85,16 @@ frontend services-https
   timeout client 30s
 
   # Route to appropriate backend based on SNI/Host header
-  # Dynamic backends created by Consul service discovery
-  use_backend consul-grafana if { hdr(host) -i grafana.services.goldentooth.net }
-  use_backend consul-prometheus if { hdr(host) -i prometheus.services.goldentooth.net }
-  use_backend consul-loki if { hdr(host) -i loki.services.goldentooth.net }
-  use_backend consul-mcp-server if { hdr(host) -i mcp.services.goldentooth.net }
-  use_backend consul-authelia if { hdr(host) -i auth.services.goldentooth.net }
-  use_backend consul-haproxy-api if { hdr(host) -i haproxy-api.services.goldentooth.net }
+  use_backend grafana-backend if { hdr(host) -i grafana.services.goldentooth.net }
+  use_backend prometheus-backend if { hdr(host) -i prometheus.services.goldentooth.net }
+  use_backend loki-backend if { hdr(host) -i loki.services.goldentooth.net }
+  use_backend mcp-backend if { hdr(host) -i mcp.services.goldentooth.net }
+  use_backend authelia-backend if { hdr(host) -i auth.services.goldentooth.net }
+  use_backend haproxy-api-backend if { hdr(host) -i haproxy-api.services.goldentooth.net }
+  # Kubernetes MetalLB services via HAProxy TLS termination
+  use_backend k8s-argocd-backend if { hdr(host) -i argocd.services.k8s.goldentooth.net }
+  use_backend k8s-httpbin-backend if { hdr(host) -i httpbin.services.k8s.goldentooth.net }
+  use_backend k8s-p5js-backend if { hdr(host) -i p5js-sketches.services.k8s.goldentooth.net }
   # Static backends for HashiCorp services (require client certs)
   use_backend vault-backend if { hdr(host) -i vault.services.goldentooth.net }
   use_backend nomad-backend if { hdr(host) -i nomad.services.goldentooth.net }
@@ -108,7 +111,7 @@ frontend services-https
 {% endfor %}
 
   # Default to grafana for backwards compatibility
-  default_backend consul-grafana
+  default_backend grafana-backend
 
 # Kubernetes API server frontend configuration.
 frontend k8s-api-server
@@ -149,8 +152,131 @@ backend k8s-api-server
   server {{ host }} {{ hostvars[host]['ipv4_address'] }}:6443 check fall 3 rise 2
 {% endfor %}
 
-# Dynamic backends for Consul-discovered services will be created automatically
-# by the HAProxy Dataplane API based on Consul service registrations
+# Static backend definitions for services
+
+# Grafana backend configuration.
+backend grafana-backend
+  # Use HTTP mode
+  mode http
+  # Sets the load balancing algorithm
+  balance roundrobin
+  # Enable health checks via HTTPS
+  option httpchk GET /api/health
+  http-check connect ssl
+  # Sets the maximum inactivity time on the server side
+  timeout server 30s
+  # Grafana server configuration (HTTPS backend)
+{% for host in groups['grafana'] %}
+  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:3000 check ssl verify none fall 3 rise 2
+{% endfor %}
+
+# Prometheus backend configuration.
+backend prometheus-backend
+  # Use HTTP mode
+  mode http
+  # Sets the load balancing algorithm
+  balance roundrobin
+  # Enable health checks via HTTP (Prometheus uses HTTP only)
+  option httpchk GET /-/healthy
+  # Sets the maximum inactivity time on the server side
+  timeout server 30s
+  # Prometheus server configuration (HTTP backend)
+{% for host in groups['prometheus'] %}
+  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:9090 check fall 3 rise 2
+{% endfor %}
+
+# Loki backend configuration.
+backend loki-backend
+  # Use HTTP mode
+  mode http
+  # Sets the load balancing algorithm
+  balance roundrobin
+  # Enable health checks via HTTPS (Loki uses HTTPS)
+  option httpchk GET /ready
+  http-check connect ssl
+  # Sets the maximum inactivity time on the server side
+  timeout server 30s
+  # Loki server configuration (HTTPS backend)
+{% for host in groups['loki'] %}
+  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:3100 check ssl verify none fall 3 rise 2
+{% endfor %}
+
+# MCP server backend configuration (load balanced across all nodes).
+backend mcp-backend
+  # Use HTTP mode
+  mode http
+  # Sets the load balancing algorithm
+  balance roundrobin
+  # Enable health checks (MCP server v0.0.26+ has /health endpoint)
+  option httpchk GET /health
+  # Sets the maximum inactivity time on the server side
+  timeout server 30s
+  # MCP server configuration (HTTP backend)
+{% for host in groups['mcp_server'] %}
+  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:{{ hostvars[host]['mcp_server_port'] | default(mcp_server_port) }} check fall 3 rise 2
+{% endfor %}
+
+# Authelia backend configuration.
+backend authelia-backend
+  # Use HTTP mode
+  mode http
+  # Sets the load balancing algorithm
+  balance roundrobin
+  # Enable health checks via HTTPS (Authelia now uses HTTPS)
+  option httpchk GET /api/health
+  http-check connect ssl
+  # Sets the maximum inactivity time on the server side
+  timeout server 30s
+  # Authelia server configuration (HTTPS backend)
+{% for host in groups['authelia'] %}
+  server {{ host }} {{ hostvars[host]['ipv4_address'] }}:9091 check ssl verify none fall 3 rise 2
+{% endfor %}
+
+# HAProxy Data Plane API backend configuration.
+backend haproxy-api-backend
+  # Use HTTP mode
+  mode http
+  # No load balancing needed (single server)
+  # Enable health checks for HAProxy API
+  option httpchk GET /v2/info
+  # Sets the maximum inactivity time on the server side
+  timeout server 30s
+  # HAProxy Data Plane API configuration
+  server allyrion {{ hostvars['allyrion']['ipv4_address'] }}:5555 check fall 3 rise 2
+
+# Kubernetes MetalLB service backends (HTTP only, HAProxy terminates TLS)
+backend k8s-argocd-backend
+  # Use HTTP mode
+  mode http 
+  # No load balancing needed (single MetalLB IP)
+  # Enable health checks with proper Host header
+  http-check send meth GET uri / ver HTTP/1.1 hdr Host argocd.services.k8s.goldentooth.net
+  # Sets the maximum inactivity time on the server side
+  timeout server 30s
+  # ArgoCD MetalLB service
+  server argocd-metallb 10.4.11.0:80 check fall 3 rise 2
+
+backend k8s-httpbin-backend
+  # Use HTTP mode
+  mode http
+  # No load balancing needed (single MetalLB IP)
+  # Enable health checks with proper Host header
+  http-check send meth GET uri / ver HTTP/1.1 hdr Host httpbin.services.k8s.goldentooth.net
+  # Sets the maximum inactivity time on the server side
+  timeout server 30s
+  # HttpBin MetalLB service
+  server httpbin-metallb 10.4.11.1:80 check fall 3 rise 2
+
+backend k8s-p5js-backend
+  # Use HTTP mode
+  mode http
+  # No load balancing needed (single MetalLB IP)
+  # Enable health checks with proper Host header
+  http-check send meth GET uri / ver HTTP/1.1 hdr Host p5js-sketches.services.k8s.goldentooth.net
+  # Sets the maximum inactivity time on the server side
+  timeout server 30s
+  # P5js-sketches MetalLB service
+  server p5js-metallb 10.4.11.2:80 check fall 3 rise 2
 
 # Vault backend configuration.
 backend vault-backend

@@ -1,6 +1,7 @@
 {
-  "name": "{{ consul_service_name }}",
-  "id": "{{ consul_service_name }}-{{ ansible_hostname }}",
+  "service": {
+    "name": "{{ consul_service_name }}",
+    "id": "{{ consul_service_name }}-{{ ansible_hostname }}",
   "address": "{{ consul_service_address | default(ipv4_address) }}",
   "port": {{ consul_service_port }},
   "tags": {{ consul_service_tags | default(['goldentooth']) | to_json }},
@@ -42,5 +43,6 @@
   "weights": {
     "passing": 10,
     "warning": 1
+  }
   }
 }
