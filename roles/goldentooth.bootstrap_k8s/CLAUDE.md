@@ -13,11 +13,14 @@ This role bootstraps a Kubernetes cluster using kubeadm, configuring control pla
 - Set up Calico networking
 - Configure kubectl access
 - Install cluster networking components
+- Configure kubelet garbage collection for image cleanup
 
 ## Files
 
 - `tasks/main.yaml`: Main task file
 - `templates/kubeadm-controlplane.yaml.j2`: kubeadm configuration template
+- `templates/kubelet-override.conf.j2`: kubelet systemd override for garbage collection
+- `handlers/main.yaml`: Handler for kubelet service restart
 
 ## Key Features
 
@@ -35,6 +38,12 @@ This role bootstraps a Kubernetes cluster using kubeadm, configuring control pla
 - Manages Kubernetes PKI certificates
 - Integrates with cluster certificate authority
 - Configures secure communication
+
+### Image Garbage Collection
+- Configures kubelet to automatically clean up unused container images
+- High threshold: 85% disk usage triggers cleanup
+- Low threshold: 75% disk usage stops cleanup
+- Max age: 24h for image retention
 
 ### Load Balancer Integration
 - Configures control plane behind HAProxy
@@ -56,6 +65,9 @@ Key variables from inventory:
 - `haproxy.domain_name`: Load balancer domain
 - `network.pod.cidr`: Pod network CIDR
 - `network.service.cidr`: Service network CIDR
+- `kubernetes.kubelet.image_gc_high_threshold`: High water mark for image GC (85%)
+- `kubernetes.kubelet.image_gc_low_threshold`: Low water mark for image GC (75%)
+- `kubernetes.kubelet.image_gc_max_age`: Maximum age for images (24h)
 
 ## Usage
 

@@ -205,6 +205,14 @@ kubernetes:
     - 'kubeadm'
     - 'kubectl'
     - 'kubelet'
+  # Kubelet garbage collection settings
+  kubelet:
+    # Start image GC when disk usage reaches this threshold (%)
+    image_gc_high_threshold: 85
+    # Stop image GC when disk usage drops to this threshold (%)  
+    image_gc_low_threshold: 75
+    # Frequency of running image GC (duration)
+    image_gc_max_age: '24h'
   # The Kubernetes Apt repository URL.
   apt_repo_url: "https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_version }}/deb/"
 

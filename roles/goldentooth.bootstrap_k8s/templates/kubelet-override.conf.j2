@@ -1,0 +1,7 @@
+# Kubelet systemd service override for Goldentooth cluster
+# This file configures kubelet garbage collection parameters
+
+[Service]
+# Override the default ExecStart to add garbage collection parameters
+ExecStart=
+ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS --image-gc-high-threshold={{ kubernetes.kubelet.image_gc_high_threshold }} --image-gc-low-threshold={{ kubernetes.kubelet.image_gc_low_threshold }} --image-gc-max-age={{ kubernetes.kubelet.image_gc_max_age }}
