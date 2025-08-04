@@ -271,8 +271,10 @@ backend k8s-p5js-backend
   # Use HTTP mode
   mode http
   # No load balancing needed (single MetalLB IP)
+  # Rewrite Host header to MetalLB domain to avoid nginx redirect loop
+  http-request set-header Host p5js-sketches.metallb.k8s.goldentooth.net
   # Enable health checks with proper Host header
-  http-check send meth GET uri / ver HTTP/1.1 hdr Host p5js-sketches.services.k8s.goldentooth.net
+  http-check send meth GET uri / ver HTTP/1.1 hdr Host p5js-sketches.metallb.k8s.goldentooth.net
   # Sets the maximum inactivity time on the server side
   timeout server 30s
   # P5js-sketches MetalLB service
