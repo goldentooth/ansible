@@ -170,7 +170,7 @@ argo_cd:
         - '--insecure'
       service:
         annotations:
-          external-dns.alpha.kubernetes.io/hostname: "argocd.{{ cluster.k8s_services_domain }}"
+          external-dns.alpha.kubernetes.io/hostname: "argocd.metallb.k8s.{{ cluster_name }}.net"
           external-dns.alpha.kubernetes.io/ttl: "60"
         type: 'LoadBalancer'
 
