@@ -149,13 +149,23 @@
   when: 'route_info_11.stdout.split() | length == 0'
   failed_when: 'route_result.rc != 0 and "File exists" not in route_result.stderr'
 
-- name: 'Persist the route.'
-  ansible.builtin.lineinfile:
-    path: "/etc/network/interfaces.d/{{ metallb_interface | default(network.metallb.interface) }}.cfg"
-    create: true
-    line: 'up route add -net {{ network.metallb.network }} netmask {{ network.metallb.netmask }} dev {{ metallb_interface | default(network.metallb.interface) }}'
+- name: 'Persist the route with proper interface configuration.'
+  ansible.builtin.copy:
+    dest: "/etc/network/interfaces.d/{{ metallb_interface | default(network.metallb.interface) }}-metallb.cfg"
+    content: |
+      # MetalLB route configuration
+      auto {{ metallb_interface | default(network.metallb.interface) }}:metallb
+      iface {{ metallb_interface | default(network.metallb.interface) }}:metallb inet manual
+        up route add -net {{ network.metallb.network }} netmask {{ network.metallb.netmask }} dev {{ metallb_interface | default(network.metallb.interface) }} || true
+        down route del -net {{ network.metallb.network }} netmask {{ network.metallb.netmask }} dev {{ metallb_interface | default(network.metallb.interface) }} || true
+    mode: '0644'
   notify:
     - 'Restart networking service.'
+
+- name: 'Remove malformed interface configuration if it exists.'
+  ansible.builtin.file:
+    path: "/etc/network/interfaces.d/{{ metallb_interface | default(network.metallb.interface) }}.cfg"
+    state: absent
 
 # Verification and status reporting
 - name: 'Verify primary interface configuration'
