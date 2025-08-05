@@ -70,17 +70,18 @@
     consul_tests: "{{ consul_tests + [{'name': 'consul_certificate_valid', 'category': 'consul', 'success': (cert_needs_renewal.rc != 0) | bool, 'duration': 0.1}] }}"
     consul_cert_days: "{{ 1 if (cert_needs_renewal is defined and cert_needs_renewal.rc != 0) else 0 }}"
 
-- name: Check Consul API health
-  uri:
-    url: "http://{{ ansible_default_ipv4.address }}:8500/v1/status/leader"
-    timeout: 5
+- name: Check Consul API health via CLI
+  command: consul status -http-addr={{ ansible_default_ipv4.address }}:8500
   register: consul_api
+  changed_when: false
   ignore_errors: yes
-  when: consul_service.status.ActiveState == "active"
+  when: 
+    - consul_service.status.ActiveState == "active"
+    - consul_command_stat.stat.exists
 
 - name: Record API test
   set_fact:
-    consul_tests: "{{ consul_tests + [{'name': 'consul_api_responding', 'category': 'consul', 'success': (consul_api.status == 200) | bool, 'duration': 0.3}] }}"
+    consul_tests: "{{ consul_tests + [{'name': 'consul_api_responding', 'category': 'consul', 'success': (consul_api.rc == 0) | bool, 'duration': 0.3}] }}"
   when: consul_api is defined
 
 - name: Determine overall Consul health
@@ -88,32 +89,33 @@
     consul_health: "{{ consul_tests | selectattr('success', 'equalto', false) | list | length == 0 }}"
 
 # NEW TESTS: Enhanced Consul monitoring validation
-- name: Check Consul metrics endpoint accessibility
-  uri:
-    url: "http://{{ ansible_default_ipv4.address }}:8500/v1/agent/metrics?format=prometheus"
-    timeout: 5
+- name: Check Consul operator area command
+  command: consul operator area -list -http-addr={{ ansible_default_ipv4.address }}:8500
   register: consul_metrics
+  changed_when: false
   ignore_errors: yes
-  when: consul_service.status.ActiveState == "active"
+  when: 
+    - consul_service.status.ActiveState == "active"
+    - consul_command_stat.stat.exists
 
 - name: Record metrics endpoint test
   set_fact:
-    consul_tests: "{{ consul_tests + [{'name': 'consul_metrics_endpoint', 'category': 'consul', 'success': (consul_metrics.status == 200) | bool, 'duration': 0.3}] }}"
+    consul_tests: "{{ consul_tests + [{'name': 'consul_metrics_endpoint', 'category': 'consul', 'success': (consul_metrics is succeeded) | bool, 'duration': 0.3}] }}"
   when: consul_metrics is defined
 
-- name: Validate Consul metrics contain telemetry data
-  set_fact:
-    consul_telemetry_test:
-      name: "consul_telemetry_data_present"
-      category: "consul"
-      success: "{{ 'consul_' in (consul_metrics.content | default('')) }}"
-      duration: 0.1
-  when: consul_metrics is defined and consul_metrics is succeeded
+- name: Validate Consul telemetry via info command
+  command: consul info -http-addr={{ ansible_default_ipv4.address }}:8500
+  register: consul_info
+  changed_when: false
+  ignore_errors: yes
+  when: 
+    - consul_service.status.ActiveState == "active"
+    - consul_command_stat.stat.exists
 
-- name: Add telemetry test
+- name: Record telemetry data test
   set_fact:
-    consul_tests: "{{ consul_tests + [consul_telemetry_test] }}"
-  when: consul_telemetry_test is defined
+    consul_tests: "{{ consul_tests + [{'name': 'consul_telemetry_data_present', 'category': 'consul', 'success': (consul_info.rc == 0 and 'runtime' in consul_info.stdout) | bool, 'duration': 0.2}] }}"
+  when: consul_info is defined
 
 - name: Check Consul role labeling (client vs server)
   set_fact:

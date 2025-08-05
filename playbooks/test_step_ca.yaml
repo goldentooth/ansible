@@ -12,7 +12,7 @@
         
     - name: Test Step-CA certificate authority
       include_role:
-        name: test_step_ca
+        name: goldentooth.test_step_ca
         
     - name: Debug Step-CA test results
       debug:
@@ -38,5 +38,5 @@
       
     - name: Generate comprehensive test report
       include_role:
-        name: test_reporter
+        name: goldentooth.test_reporter
       when: test_results is defined and test_results | length > 0

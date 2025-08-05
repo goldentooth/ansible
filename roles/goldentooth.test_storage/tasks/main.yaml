@@ -1,0 +1,255 @@
+---
+- name: Initialize test results
+  set_fact:
+    storage_tests: []
+    storage_health: false
+    seaweedfs_health: false
+    nfs_health: false
+
+# #############################################################################
+# NFS Storage Tests
+# #############################################################################
+
+- name: Check NFS mount points
+  command: findmnt -t nfs
+  register: nfs_mounts
+  changed_when: false
+  ignore_errors: yes
+
+- name: Record NFS mount availability test
+  set_fact:
+    storage_tests: "{{ storage_tests + [{'name': 'nfs_mounts_available', 'category': 'storage', 'success': (nfs_mounts.rc == 0) | bool, 'duration': 0.2}] }}"
+
+- name: Test NFS mount accessibility (/mnt/nfs)
+  stat:
+    path: /mnt/nfs
+  register: nfs_mount_stat
+  when: nfs_mounts.rc == 0
+
+- name: Record NFS mount accessibility test
+  set_fact:
+    storage_tests: "{{ storage_tests + [{'name': 'nfs_mount_accessible', 'category': 'storage', 'success': nfs_mount_stat.stat.exists | bool, 'duration': 0.1}] }}"
+  when: nfs_mount_stat is defined
+
+- name: Test NFS read/write operations
+  block:
+    - name: Create test file in NFS mount
+      copy:
+        content: "goldentooth-test-{{ ansible_date_time.epoch }}"
+        dest: /mnt/nfs/goldentooth-test-{{ inventory_hostname }}
+      register: nfs_write_test
+      
+    - name: Read test file from NFS mount  
+      slurp:
+        src: /mnt/nfs/goldentooth-test-{{ inventory_hostname }}
+      register: nfs_read_test
+      
+    - name: Remove test file
+      file:
+        path: /mnt/nfs/goldentooth-test-{{ inventory_hostname }}
+        state: absent
+        
+    - name: Record NFS read/write test
+      set_fact:
+        storage_tests: "{{ storage_tests + [{'name': 'nfs_read_write_operations', 'category': 'storage', 'success': true, 'duration': 0.5}] }}"
+  rescue:
+    - name: Record failed NFS read/write test
+      set_fact:
+        storage_tests: "{{ storage_tests + [{'name': 'nfs_read_write_operations', 'category': 'storage', 'success': false, 'duration': 0.5}] }}"
+  when: nfs_mount_stat is defined and nfs_mount_stat.stat.exists
+
+- name: Check NFS storage space
+  command: df -h /mnt/nfs
+  register: nfs_disk_space
+  changed_when: false
+  ignore_errors: yes
+  when: nfs_mount_stat is defined and nfs_mount_stat.stat.exists
+
+- name: Parse NFS disk usage
+  set_fact:
+    nfs_usage_percent: "{{ nfs_disk_space.stdout_lines[1].split()[4] | regex_replace('%', '') | int }}"
+  when: nfs_disk_space is succeeded
+
+- name: Record NFS storage space test
+  set_fact:
+    storage_tests: "{{ storage_tests + [{'name': 'nfs_storage_space_available', 'category': 'storage', 'success': ((nfs_usage_percent | int) < 90) | bool, 'duration': 0.1}] }}"
+  when: nfs_usage_percent is defined
+
+- name: Determine NFS health
+  set_fact:
+    nfs_health: "{{ storage_tests | selectattr('name', 'search', 'nfs') | selectattr('success', 'equalto', false) | list | length == 0 }}"
+
+# #############################################################################
+# SeaweedFS Cluster Tests (only on SeaweedFS nodes)
+# #############################################################################
+
+- name: SeaweedFS Master Server Tests
+  block:
+    - name: Check SeaweedFS master service status
+      systemd:
+        name: seaweedfs-master
+      register: seaweedfs_master_service
+      ignore_errors: yes
+
+    - name: Record SeaweedFS master service test
+      set_fact:
+        storage_tests: "{{ storage_tests + [{'name': 'seaweedfs_master_service_running', 'category': 'storage', 'success': (seaweedfs_master_service.status.ActiveState == 'active') | bool, 'duration': 0.1}] }}"
+
+    - name: Check SeaweedFS master API
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:9333/cluster/status"
+        method: GET
+        timeout: 5
+      register: seaweedfs_master_api
+      ignore_errors: yes
+      when: seaweedfs_master_service.status.ActiveState == "active"
+
+    - name: Record SeaweedFS master API test
+      set_fact:
+        storage_tests: "{{ storage_tests + [{'name': 'seaweedfs_master_api_responding', 'category': 'storage', 'success': (seaweedfs_master_api.status == 200) | bool, 'duration': 0.3}] }}"
+      when: seaweedfs_master_api is defined
+
+    - name: Check SeaweedFS cluster leader
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:9333/cluster/leader"
+        method: GET
+        timeout: 5
+      register: seaweedfs_leader
+      ignore_errors: yes
+      when: seaweedfs_master_service.status.ActiveState == "active"
+
+    - name: Record SeaweedFS leader election test
+      set_fact:
+        storage_tests: "{{ storage_tests + [{'name': 'seaweedfs_leader_elected', 'category': 'storage', 'success': (seaweedfs_leader.status == 200 and seaweedfs_leader.json.Leader != '') | bool, 'duration': 0.2}] }}"
+      when: seaweedfs_leader is defined
+
+  when: "'seaweedfs' in group_names and inventory_hostname in groups['seaweedfs']"
+
+- name: SeaweedFS Volume Server Tests  
+  block:
+    - name: Check SeaweedFS volume service status
+      systemd:
+        name: seaweedfs-volume
+      register: seaweedfs_volume_service
+      ignore_errors: yes
+
+    - name: Record SeaweedFS volume service test
+      set_fact:
+        storage_tests: "{{ storage_tests + [{'name': 'seaweedfs_volume_service_running', 'category': 'storage', 'success': (seaweedfs_volume_service.status.ActiveState == 'active') | bool, 'duration': 0.1}] }}"
+
+    - name: Check SeaweedFS volume registration with master
+      uri:
+        url: "http://manderly:9333/vol/status"
+        method: GET
+        timeout: 5
+      register: seaweedfs_volume_status
+      ignore_errors: yes
+      when: seaweedfs_volume_service.status.ActiveState == "active"
+
+    - name: Record SeaweedFS volume registration test
+      set_fact:
+        storage_tests: "{{ storage_tests + [{'name': 'seaweedfs_volume_registered', 'category': 'storage', 'success': (seaweedfs_volume_status.status == 200) | bool, 'duration': 0.3}] }}"
+      when: seaweedfs_volume_status is defined
+
+  when: "inventory_hostname == 'payne'"
+
+- name: SeaweedFS Cluster Health Tests
+  block:
+    - name: Check SeaweedFS NVMe storage mount
+      stat:
+        path: /mnt/seaweedfs-nvme
+      register: seaweedfs_storage_mount
+
+    - name: Record SeaweedFS storage mount test
+      set_fact:
+        storage_tests: "{{ storage_tests + [{'name': 'seaweedfs_nvme_storage_mounted', 'category': 'storage', 'success': seaweedfs_storage_mount.stat.exists | bool, 'duration': 0.1}] }}"
+
+    - name: Check SeaweedFS storage space
+      command: df -h /mnt/seaweedfs-nvme
+      register: seaweedfs_disk_space  
+      changed_when: false
+      ignore_errors: yes
+      when: seaweedfs_storage_mount.stat.exists
+
+    - name: Parse SeaweedFS disk usage
+      set_fact:
+        seaweedfs_usage_percent: "{{ seaweedfs_disk_space.stdout_lines[1].split()[4] | regex_replace('%', '') | int }}"
+      when: seaweedfs_disk_space is succeeded
+
+    - name: Record SeaweedFS storage space test
+      set_fact:
+        storage_tests: "{{ storage_tests + [{'name': 'seaweedfs_storage_space_available', 'category': 'storage', 'success': ((seaweedfs_usage_percent | int) < 95) | bool, 'duration': 0.1}] }}"
+      when: seaweedfs_usage_percent is defined
+
+    - name: Test basic SeaweedFS operations (upload test)
+      uri:
+        url: "http://manderly:9333/submit"
+        method: POST
+        body_format: form-multipart
+        body:
+          file:
+            content: "goldentooth-seaweedfs-test-{{ ansible_date_time.epoch }}"
+            filename: "test-{{ inventory_hostname }}"
+        timeout: 10
+      register: seaweedfs_upload_test
+      ignore_errors: yes
+      when: seaweedfs_storage_mount.stat.exists
+
+    - name: Record SeaweedFS upload test
+      set_fact:
+        storage_tests: "{{ storage_tests + [{'name': 'seaweedfs_upload_operations', 'category': 'storage', 'success': (seaweedfs_upload_test.status == 200) | bool, 'duration': 0.5}] }}"
+      when: seaweedfs_upload_test is defined
+
+  when: "'seaweedfs' in group_names and inventory_hostname in groups['seaweedfs']"
+
+- name: Determine SeaweedFS health
+  set_fact:
+    seaweedfs_health: "{{ storage_tests | selectattr('name', 'search', 'seaweedfs') | selectattr('success', 'equalto', false) | list | length == 0 }}"
+  when: "'seaweedfs' in group_names and inventory_hostname in groups['seaweedfs']"
+
+# #############################################################################
+# General Storage Tests
+# #############################################################################
+
+- name: Check local storage space (root filesystem)
+  command: df -h /
+  register: root_disk_space
+  changed_when: false
+
+- name: Parse root disk usage
+  set_fact:
+    root_usage_percent: "{{ root_disk_space.stdout_lines[1].split()[4] | regex_replace('%', '') | int }}"
+
+- name: Record root filesystem space test
+  set_fact:
+    storage_tests: "{{ storage_tests + [{'name': 'root_filesystem_space_available', 'category': 'storage', 'success': ((root_usage_percent | int) < 85) | bool, 'duration': 0.1}] }}"
+
+- name: Check /tmp filesystem space
+  command: df -h /tmp
+  register: tmp_disk_space
+  changed_when: false
+  ignore_errors: yes
+
+- name: Parse tmp disk usage
+  set_fact:
+    tmp_usage_percent: "{{ tmp_disk_space.stdout_lines[1].split()[4] | regex_replace('%', '') | int }}"
+  when: tmp_disk_space is succeeded
+
+- name: Record tmp filesystem space test
+  set_fact:
+    storage_tests: "{{ storage_tests + [{'name': 'tmp_filesystem_space_available', 'category': 'storage', 'success': ((tmp_usage_percent | int) < 95) | bool, 'duration': 0.1}] }}"
+  when: tmp_usage_percent is defined
+
+# #############################################################################
+# Overall Storage Health Assessment
+# #############################################################################
+
+- name: Determine overall storage health
+  set_fact:
+    storage_health: "{{ storage_tests | selectattr('success', 'equalto', false) | list | length == 0 }}"
+
+- name: Export test results
+  set_fact:
+    test_results: "{{ (test_results | default([])) + storage_tests }}"
+    service_health: "{{ (service_health | default({})) | combine({'storage': storage_health}) }}"
+    certificate_status: "{{ (certificate_status | default([])) + [{'service': 'storage', 'days_remaining': 0}] }}"

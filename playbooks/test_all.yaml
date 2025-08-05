@@ -13,76 +13,78 @@
         
     - name: Get system resource usage
       include_role:
-        name: test_system_resources
+        name: goldentooth.test_system_resources
       tags: [always]
       
     - name: Test Consul
       include_role:
-        name: test_consul
+        name: goldentooth.test_consul
       when: inventory_hostname in groups['consul']
       tags: [consul, hashicorp]
       
     - name: Test Vault
       include_role:
-        name: test_vault
+        name: goldentooth.test_vault
       when: inventory_hostname in groups['vault']
       tags: [vault, hashicorp]
       
     - name: Test Kubernetes
       include_role:
-        name: test_kubernetes
+        name: goldentooth.test_kubernetes
       when: inventory_hostname in groups['k8s_cluster']
       tags: [kubernetes, k8s]
       
     - name: Test Prometheus
       include_role:
-        name: test_prometheus
+        name: goldentooth.test_prometheus
       when: inventory_hostname in groups['prometheus']
       tags: [prometheus, observability]
       
     - name: Test Prometheus alerting rules
       include_role:
-        name: test_prometheus_alerts
+        name: goldentooth.test_prometheus_alerts
       when: inventory_hostname in groups['prometheus']
       tags: [prometheus, prometheus_alerts, observability, monitoring_enhancements]
       
     - name: Test Slurm metrics collection
       include_role:
-        name: test_slurm_metrics
+        name: goldentooth.test_slurm_metrics
       tags: [slurm, slurm_metrics, observability, monitoring_enhancements]
       
     - name: Test Nextflow workflow management
       include_role:
-        name: test_nextflow
+        name: goldentooth.test_nextflow
       when: inventory_hostname in groups['slurm_compute']
       tags: [nextflow, workflow, hpc, slurm_integration]
       
-    - name: Test Grafana
-      include_role:
-        name: test_grafana
-      when: inventory_hostname in groups['grafana']
-      tags: [grafana, observability]
+    # TODO: Create test_grafana role
+    # - name: Test Grafana
+    #   include_role:
+    #     name: goldentooth.test_grafana
+    #   when: inventory_hostname in groups['grafana']
+    #   tags: [grafana, observability]
       
     - name: Test Step-CA certificate authority
       include_role:
-        name: test_step_ca
+        name: goldentooth.test_step_ca
       tags: [step_ca, certificates, pki]
       
     - name: Test certificate renewal system
       include_role:
-        name: test_certificate_renewal
+        name: goldentooth.test_certificate_renewal
       tags: [certificates, certificate_renewal, pki]
       
     - name: Test storage services
       include_role:
-        name: test_storage
+        name: goldentooth.test_storage
       tags: [storage]
       
-    - name: Test Ceph CSI storage integration
-      include_role:
-        name: test_ceph_csi
-      when: inventory_hostname in groups['k8s_control_plane']
-      tags: [ceph_csi, storage, integration]
+    # TODO: Create test_ceph_csi role (if Ceph is deployed)
+    # - name: Test Ceph CSI storage integration
+    #   include_role:
+    #     name: goldentooth.test_ceph_csi
+    #   when: inventory_hostname in groups['k8s_control_plane']
+    #   tags: [ceph_csi, storage, integration]
       
     - name: Create metrics directory
       file:
@@ -121,7 +123,7 @@
 
     - name: Generate comprehensive test report
       include_role:
-        name: test_reporter
+        name: goldentooth.test_reporter
       when: test_results is defined and test_results | length > 0
 
 - name: Aggregate test results

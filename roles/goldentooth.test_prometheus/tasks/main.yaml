@@ -1,0 +1,151 @@
+---
+- name: Initialize test results
+  set_fact:
+    prometheus_tests: []
+    prometheus_health: false
+    prometheus_cert_days: 0
+
+- name: Check Prometheus service status
+  systemd:
+    name: prometheus
+  register: prometheus_service
+  ignore_errors: yes
+
+- name: Record Prometheus service test
+  set_fact:
+    prometheus_tests: "{{ prometheus_tests + [{'name': 'prometheus_service_running', 'category': 'prometheus', 'success': (prometheus_service.status.ActiveState == 'active') | bool, 'duration': 0.1}] }}"
+
+- name: Check Prometheus API accessibility
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/query?query=up"
+    method: GET
+    timeout: 10
+  register: prometheus_api
+  ignore_errors: yes
+  when: prometheus_service.status.ActiveState == "active"
+
+- name: Record Prometheus API test
+  set_fact:
+    prometheus_tests: "{{ prometheus_tests + [{'name': 'prometheus_api_responding', 'category': 'prometheus', 'success': (prometheus_api.status == 200) | bool, 'duration': 0.5}] }}"
+  when: prometheus_api is defined
+
+- name: Check Prometheus configuration validity
+  command: prometheus --config.file=/etc/prometheus/prometheus.yml --check-config
+  register: prometheus_config_check
+  changed_when: false
+  ignore_errors: yes
+  when: prometheus_service.status.ActiveState == "active"
+
+- name: Record configuration validity test
+  set_fact:
+    prometheus_tests: "{{ prometheus_tests + [{'name': 'prometheus_config_valid', 'category': 'prometheus', 'success': (prometheus_config_check.rc == 0) | bool, 'duration': 0.2}] }}"
+  when: prometheus_config_check is defined
+
+- name: Query node_exporter targets
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/query?query=up{job=\"node_exporter\"}"
+    method: GET
+    timeout: 5
+  register: node_exporter_targets
+  ignore_errors: yes
+  when: prometheus_service.status.ActiveState == "active"
+
+- name: Count active node_exporter targets
+  set_fact:
+    node_exporter_count: "{{ (node_exporter_targets.json.data.result | selectattr('value.1', 'equalto', '1') | list | length) if node_exporter_targets is succeeded else 0 }}"
+  when: node_exporter_targets is defined
+
+- name: Record node_exporter targets test
+  set_fact:
+    prometheus_tests: "{{ prometheus_tests + [{'name': 'node_exporter_targets_up', 'category': 'prometheus', 'success': ((node_exporter_count | int) >= (groups['all'] | length * 0.8)) | bool, 'duration': 0.3}] }}"
+  when: node_exporter_count is defined
+
+- name: Query Consul metrics availability
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/query?query=consul_up"
+    method: GET
+    timeout: 5
+  register: consul_metrics
+  ignore_errors: yes
+  when: 
+    - prometheus_service.status.ActiveState == "active"
+    - inventory_hostname in groups['consul']
+
+- name: Record Consul metrics test
+  set_fact:
+    prometheus_tests: "{{ prometheus_tests + [{'name': 'consul_metrics_available', 'category': 'prometheus', 'success': (consul_metrics.json.data.result | length > 0) | bool, 'duration': 0.3}] }}"
+  when: consul_metrics is defined
+
+- name: Check Prometheus TSDB health
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/status/tsdb"
+    method: GET
+    timeout: 5
+  register: prometheus_tsdb
+  ignore_errors: yes
+  when: prometheus_service.status.ActiveState == "active"
+
+- name: Record TSDB health test
+  set_fact:
+    prometheus_tests: "{{ prometheus_tests + [{'name': 'prometheus_tsdb_healthy', 'category': 'prometheus', 'success': (prometheus_tsdb.status == 200) | bool, 'duration': 0.2}] }}"
+  when: prometheus_tsdb is defined
+
+- name: Check Prometheus data directory disk space
+  command: df -h /var/lib/prometheus
+  register: prometheus_disk_space
+  changed_when: false
+  ignore_errors: yes
+  when: prometheus_service.status.ActiveState == "active"
+
+- name: Parse disk usage percentage
+  set_fact:
+    prometheus_disk_usage: "{{ prometheus_disk_space.stdout_lines[1].split()[4] | regex_replace('%', '') | int }}"
+  when: prometheus_disk_space is succeeded
+
+- name: Record disk space test
+  set_fact:
+    prometheus_tests: "{{ prometheus_tests + [{'name': 'prometheus_disk_space_available', 'category': 'prometheus', 'success': ((prometheus_disk_usage | int) < 90) | bool, 'duration': 0.1}] }}"
+  when: prometheus_disk_usage is defined
+
+- name: Check Prometheus certificate (if TLS enabled)
+  stat:
+    path: /etc/prometheus/certs/tls.crt
+  register: prometheus_cert
+
+- name: Check certificate expiration
+  command: step certificate needs-renewal /etc/prometheus/certs/tls.crt
+  register: prometheus_cert_renewal
+  when: prometheus_cert.stat.exists
+  changed_when: false
+  failed_when: false
+  become: true
+
+- name: Record certificate test
+  set_fact:
+    prometheus_tests: "{{ prometheus_tests + [{'name': 'prometheus_certificate_valid', 'category': 'prometheus', 'success': (prometheus_cert_renewal.rc != 0) | bool, 'duration': 0.1}] }}"
+    prometheus_cert_days: "{{ 30 if (prometheus_cert_renewal is defined and prometheus_cert_renewal.rc != 0) else 0 }}"
+  when: prometheus_cert.stat.exists
+
+- name: Test basic query performance
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/query?query=prometheus_build_info"
+    method: GET
+    timeout: 10
+  register: prometheus_query_perf
+  ignore_errors: yes
+  when: prometheus_service.status.ActiveState == "active"
+
+- name: Record query performance test
+  set_fact:
+    prometheus_tests: "{{ prometheus_tests + [{'name': 'prometheus_query_performance', 'category': 'prometheus', 'success': (prometheus_query_perf.elapsed < 2.0) | bool, 'duration': prometheus_query_perf.elapsed | default(5.0)}] }}"
+  when: prometheus_query_perf is defined
+
+- name: Determine overall Prometheus health
+  set_fact:
+    prometheus_health: "{{ prometheus_tests | selectattr('success', 'equalto', false) | list | length == 0 }}"
+
+- name: Export test results
+  set_fact:
+    test_results: "{{ (test_results | default([])) + prometheus_tests }}"
+    service_health: "{{ (service_health | default({})) | combine({'prometheus': prometheus_health}) }}"
+    certificate_status: "{{ (certificate_status | default([])) + [{'service': 'prometheus', 'days_remaining': prometheus_cert_days | int}] }}"

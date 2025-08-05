@@ -13,7 +13,7 @@
         
     - name: Get system resource usage
       include_role:
-        name: test_system_resources
+        name: goldentooth.test_system_resources
         
     - name: Debug test results
       debug:

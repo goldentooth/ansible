@@ -13,21 +13,21 @@
 
     - name: Test enhanced Consul monitoring
       include_role:
-        name: test_consul
+        name: goldentooth.test_consul
       when: inventory_hostname in groups['consul']
 
     - name: Test Prometheus alerting rules (Prometheus server only)
       include_role:
-        name: test_prometheus_alerts
+        name: goldentooth.test_prometheus_alerts
       when: inventory_hostname in groups['prometheus']
 
     - name: Test Slurm metrics collection
       include_role:
-        name: test_slurm_metrics
+        name: goldentooth.test_slurm_metrics
 
     - name: Generate and export test metrics
       include_role:
-        name: test_reporter
+        name: goldentooth.test_reporter
 
 - name: Display monitoring enhancement test summary
   hosts: prometheus
