@@ -478,9 +478,9 @@ seaweedfs:
   allocations:
     # Allocations for 1TB NVMe drives on Pi 5 nodes
     # Leave ~100GB free for OS, logs, etc.
-    data: '800Gi'
-    index: '50Gi'
-    filer: '50Gi'
+    data: '800G'
+    index: '50G'
+    filer: '50G'
   user: 'seaweedfs'
   uid: 985
   gid: 985
