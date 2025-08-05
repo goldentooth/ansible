@@ -18,7 +18,7 @@
       "service_type": "storage_master",
       "cluster": "goldentooth",
       "hostname": "{{ ansible_hostname }}",
-      "peer_addresses": "fenn:9333,karstark:9333",
+      "peer_addresses": "{% for host in groups['seaweedfs'] %}{{ host }}:9333{% if not loop.last %},{% endif %}{% endfor %}",
       "replication": "001",
       "raft_enabled": "true"
     },
