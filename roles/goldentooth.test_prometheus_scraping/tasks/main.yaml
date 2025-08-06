@@ -4,6 +4,9 @@
     prometheus_scraping_tests: []
     prometheus_targets_healthy: 0
     prometheus_scraping_health: false
+    vault_up_count: 0
+    expected_vault_instances: 0
+    slurm_up_count: 0
 
 - name: Check Prometheus service availability for testing
   systemd:
@@ -104,12 +107,12 @@
   set_fact:
     vault_up_count: "{{ (vault_scraping.json.data.result | selectattr('value.1', 'equalto', '1') | list | length) if vault_scraping is succeeded else 0 }}"
     expected_vault_instances: "{{ groups['vault'] | length }}"
-  when: vault_scraping is defined
+  when: vault_scraping is defined and vault_scraping.status is defined
 
 - name: Record Vault scraping test
   set_fact:
     prometheus_scraping_tests: "{{ prometheus_scraping_tests + [{'name': 'vault_scraping_healthy', 'category': 'prometheus_scraping', 'success': ((vault_up_count | int) >= (expected_vault_instances | int * 0.8)) | bool, 'duration': 0.4}] }}"
-  when: vault_up_count is defined
+  when: vault_up_count is defined and expected_vault_instances is defined
 
 # Test Slurm scraping (if Slurm is configured)
 - name: Test Slurm scraping
@@ -126,7 +129,7 @@
 - name: Count healthy Slurm exporters
   set_fact:
     slurm_up_count: "{{ (slurm_scraping.json.data.result | selectattr('value.1', 'equalto', '1') | list | length) if slurm_scraping is succeeded else 0 }}"
-  when: slurm_scraping is defined
+  when: slurm_scraping is defined and slurm_scraping is succeeded
 
 - name: Record Slurm scraping test
   set_fact:

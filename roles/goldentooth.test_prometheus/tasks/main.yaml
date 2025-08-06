@@ -30,7 +30,7 @@
   when: prometheus_api is defined
 
 - name: Check Prometheus configuration validity
-  command: prometheus --config.file=/etc/prometheus/prometheus.yml --check-config
+  command: promtool check config /etc/prometheus/prometheus.yml
   register: prometheus_config_check
   changed_when: false
   ignore_errors: yes

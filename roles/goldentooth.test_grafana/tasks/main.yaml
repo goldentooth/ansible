@@ -18,8 +18,11 @@
 
 - name: Wait for Grafana to be ready
   uri:
-    url: "http://{{ ansible_default_ipv4.address }}:3000/api/health"
+    url: "http://{{ ansible_default_ipv4.address }}:3000/api/admin/stats"
     method: GET
+    user: admin
+    password: "{{ grafana.admin_password | default('admin') }}"
+    force_basic_auth: yes
     timeout: 10
     status_code: 200
   register: grafana_health_check
@@ -30,7 +33,7 @@
 
 - name: Record Grafana health check test
   set_fact:
-    grafana_tests: "{{ grafana_tests + [{'name': 'grafana_api_health', 'category': 'grafana', 'success': (grafana_health_check.status == 200) | bool, 'duration': 0.5}] }}"
+    grafana_tests: "{{ grafana_tests + [{'name': 'grafana_api_health', 'category': 'grafana', 'success': (grafana_health_check is succeeded and grafana_health_check.status == 200) | bool, 'duration': 0.5}] }}"
   when: grafana_health_check is defined
 
 # Test Grafana API authentication and basic functionality
@@ -39,7 +42,7 @@
     url: "http://{{ ansible_default_ipv4.address }}:3000/api/orgs"
     method: GET
     user: admin
-    password: "{{ grafana_admin_password }}"
+    password: "{{ grafana.admin_password | default('admin') }}"
     force_basic_auth: yes
     timeout: 10
   register: grafana_api_test
@@ -48,7 +51,7 @@
 
 - name: Record Grafana API authentication test
   set_fact:
-    grafana_tests: "{{ grafana_tests + [{'name': 'grafana_api_auth', 'category': 'grafana', 'success': (grafana_api_test.status == 200) | bool, 'duration': 0.3}] }}"
+    grafana_tests: "{{ grafana_tests + [{'name': 'grafana_api_auth', 'category': 'grafana', 'success': (grafana_api_test is succeeded and grafana_api_test.status == 200) | bool, 'duration': 0.3}] }}"
   when: grafana_api_test is defined
 
 # Test data sources health
@@ -57,7 +60,7 @@
     url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources"
     method: GET
     user: admin
-    password: "{{ grafana_admin_password }}"
+    password: "{{ grafana.admin_password | default('admin') }}"
     force_basic_auth: yes
     timeout: 10
   register: grafana_datasources
@@ -69,7 +72,7 @@
     url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | first).id }}/api/v1/query?query=up"
     method: GET
     user: admin
-    password: "{{ grafana_admin_password }}"
+    password: "{{ grafana.admin_password | default('admin') }}"
     force_basic_auth: yes
     timeout: 15
   register: prometheus_datasource_test
@@ -89,7 +92,7 @@
     url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'loki') | first).id }}/loki/api/v1/labels"
     method: GET
     user: admin
-    password: "{{ grafana_admin_password }}"
+    password: "{{ grafana.admin_password | default('admin') }}"
     force_basic_auth: yes
     timeout: 15
   register: loki_datasource_test
@@ -110,7 +113,7 @@
     url: "http://{{ ansible_default_ipv4.address }}:3000/api/search?type=dash-db"
     method: GET
     user: admin
-    password: "{{ grafana_admin_password }}"
+    password: "{{ grafana.admin_password | default('admin') }}"
     force_basic_auth: yes
     timeout: 10
   register: grafana_dashboards_list
@@ -128,7 +131,7 @@
     url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | first).id }}/api/v1/query?query=node_load1"
     method: GET
     user: admin
-    password: "{{ grafana_admin_password }}"
+    password: "{{ grafana.admin_password | default('admin') }}"
     force_basic_auth: yes
     timeout: 10
   register: node_exporter_data_test
@@ -154,7 +157,7 @@
     url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | first).id }}/api/v1/query?query=slurm_nodes"
     method: GET
     user: admin
-    password: "{{ grafana_admin_password }}"
+    password: "{{ grafana.admin_password | default('admin') }}"
     force_basic_auth: yes
     timeout: 10
   register: slurm_data_test
@@ -180,7 +183,7 @@
     url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | first).id }}/api/v1/query?query=consul_up"
     method: GET
     user: admin
-    password: "{{ grafana_admin_password }}"
+    password: "{{ grafana.admin_password | default('admin') }}"
     force_basic_auth: yes
     timeout: 10
   register: hashicorp_data_test
@@ -207,7 +210,7 @@
     url: "http://{{ ansible_default_ipv4.address }}:3000/api/alerts"
     method: GET
     user: admin
-    password: "{{ grafana_admin_password }}"
+    password: "{{ grafana.admin_password | default('admin') }}"
     force_basic_auth: yes
     timeout: 10
   register: grafana_alerts_test
@@ -225,7 +228,7 @@
     url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | first).id }}/api/v1/query_range?query=rate(node_cpu_seconds_total[5m])&start={{ ansible_date_time.epoch | int - 3600 }}&end={{ ansible_date_time.epoch }}&step=60"
     method: GET
     user: admin
-    password: "{{ grafana_admin_password }}"
+    password: "{{ grafana.admin_password | default('admin') }}"
     force_basic_auth: yes
     timeout: 30
   register: grafana_query_performance
