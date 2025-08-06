@@ -18,11 +18,9 @@
 
 - name: Wait for Grafana to be ready
   uri:
-    url: "http://{{ ansible_default_ipv4.address }}:3000/api/admin/stats"
+    url: "https://grafana.{{ cluster.services_domain }}/api/health"
     method: GET
-    user: admin
-    password: "{{ grafana.admin_password | default('admin') }}"
-    force_basic_auth: yes
+    validate_certs: no
     timeout: 10
     status_code: 200
   register: grafana_health_check
@@ -39,11 +37,12 @@
 # Test Grafana API authentication and basic functionality
 - name: Test Grafana API with admin credentials
   uri:
-    url: "http://{{ ansible_default_ipv4.address }}:3000/api/orgs"
+    url: "https://grafana.{{ cluster.services_domain }}/api/orgs"
     method: GET
     user: admin
     password: "{{ grafana.admin_password | default('admin') }}"
     force_basic_auth: yes
+    validate_certs: no
     timeout: 10
   register: grafana_api_test
   ignore_errors: yes
@@ -57,24 +56,26 @@
 # Test data sources health
 - name: Check Grafana data sources
   uri:
-    url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources"
+    url: "https://grafana.{{ cluster.services_domain }}/api/datasources"
     method: GET
     user: admin
     password: "{{ grafana.admin_password | default('admin') }}"
     force_basic_auth: yes
     timeout: 10
+    validate_certs: no
   register: grafana_datasources
   ignore_errors: yes
   when: grafana_service.status.ActiveState == "active"
 
 - name: Test Prometheus data source health
   uri:
-    url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | first).id }}/api/v1/query?query=up"
+    url: "https://grafana.{{ cluster.services_domain }}/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | first).id }}/api/v1/query?query=up"
     method: GET
     user: admin
     password: "{{ grafana.admin_password | default('admin') }}"
     force_basic_auth: yes
     timeout: 15
+    validate_certs: no
   register: prometheus_datasource_test
   ignore_errors: yes
   when: 
@@ -83,18 +84,19 @@
 
 - name: Record Prometheus data source test
   set_fact:
-    grafana_tests: "{{ grafana_tests + [{'name': 'prometheus_datasource_working', 'category': 'grafana', 'success': (prometheus_datasource_test.status == 200) | bool, 'duration': 0.8}] }}"
+    grafana_tests: "{{ grafana_tests + [{'name': 'prometheus_datasource_working', 'category': 'grafana', 'success': (prometheus_datasource_test is succeeded and prometheus_datasource_test.status == 200) | bool, 'duration': 0.8}] }}"
     grafana_datasources_healthy: "{{ grafana_datasources_healthy + (1 if prometheus_datasource_test is succeeded else 0) }}"
   when: prometheus_datasource_test is defined
 
 - name: Test Loki data source health (if configured)
   uri:
-    url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'loki') | first).id }}/loki/api/v1/labels"
+    url: "https://grafana.{{ cluster.services_domain }}/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'loki') | first).id }}/loki/api/v1/labels"
     method: GET
     user: admin
     password: "{{ grafana.admin_password | default('admin') }}"
     force_basic_auth: yes
     timeout: 15
+    validate_certs: no
   register: loki_datasource_test
   ignore_errors: yes
   when: 
@@ -110,12 +112,13 @@
 # Test dashboard functionality and data presence
 - name: Get list of dashboards
   uri:
-    url: "http://{{ ansible_default_ipv4.address }}:3000/api/search?type=dash-db"
+    url: "https://grafana.{{ cluster.services_domain }}/api/search?type=dash-db"
     method: GET
     user: admin
     password: "{{ grafana.admin_password | default('admin') }}"
     force_basic_auth: yes
     timeout: 10
+    validate_certs: no
   register: grafana_dashboards_list
   ignore_errors: yes
   when: grafana_service.status.ActiveState == "active"
@@ -128,12 +131,13 @@
 # Test specific key dashboards for data presence
 - name: Test Node Exporter dashboard data
   uri:
-    url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | first).id }}/api/v1/query?query=node_load1"
+    url: "https://grafana.{{ cluster.services_domain }}/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | first).id }}/api/v1/query?query=node_load1"
     method: GET
     user: admin
     password: "{{ grafana.admin_password | default('admin') }}"
     force_basic_auth: yes
     timeout: 10
+    validate_certs: no
   register: node_exporter_data_test
   ignore_errors: yes
   when: 
@@ -154,18 +158,19 @@
 
 - name: Test Slurm dashboard data (if Slurm is configured)
   uri:
-    url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | first).id }}/api/v1/query?query=slurm_nodes"
+    url: "https://grafana.{{ cluster.services_domain }}/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | first).id }}/api/v1/query?query=slurm_nodes"
     method: GET
     user: admin
     password: "{{ grafana.admin_password | default('admin') }}"
     force_basic_auth: yes
     timeout: 10
+    validate_certs: no
   register: slurm_data_test
   ignore_errors: yes
   when: 
     - grafana_datasources is succeeded
     - (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | list | length > 0)
-    - inventory_hostname in groups['slurm_control']
+    - inventory_hostname in groups['slurm_controller']
 
 - name: Check if Slurm dashboard has data
   set_fact:
@@ -180,12 +185,13 @@
 
 - name: Test HashiCorp services dashboard data
   uri:
-    url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | first).id }}/api/v1/query?query=consul_up"
+    url: "https://grafana.{{ cluster.services_domain }}/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | first).id }}/api/v1/query?query=consul_up"
     method: GET
     user: admin
     password: "{{ grafana.admin_password | default('admin') }}"
     force_basic_auth: yes
     timeout: 10
+    validate_certs: no
   register: hashicorp_data_test
   ignore_errors: yes
   when: 
@@ -207,30 +213,32 @@
 # Test alerting functionality
 - name: Check Grafana alerting status
   uri:
-    url: "http://{{ ansible_default_ipv4.address }}:3000/api/alerts"
+    url: "https://grafana.{{ cluster.services_domain }}/api/alerts"
     method: GET
     user: admin
     password: "{{ grafana.admin_password | default('admin') }}"
     force_basic_auth: yes
     timeout: 10
+    validate_certs: no
   register: grafana_alerts_test
   ignore_errors: yes
   when: grafana_service.status.ActiveState == "active"
 
 - name: Record Grafana alerting test
   set_fact:
-    grafana_tests: "{{ grafana_tests + [{'name': 'grafana_alerting_accessible', 'category': 'grafana', 'success': (grafana_alerts_test.status == 200) | bool, 'duration': 0.3}] }}"
+    grafana_tests: "{{ grafana_tests + [{'name': 'grafana_alerting_accessible', 'category': 'grafana', 'success': (grafana_alerts_test is succeeded and grafana_alerts_test.status == 200) | bool, 'duration': 0.3}] }}"
   when: grafana_alerts_test is defined
 
 # Test performance metrics
 - name: Test Grafana query performance with complex query
   uri:
-    url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | first).id }}/api/v1/query_range?query=rate(node_cpu_seconds_total[5m])&start={{ ansible_date_time.epoch | int - 3600 }}&end={{ ansible_date_time.epoch }}&step=60"
+    url: "https://grafana.{{ cluster.services_domain }}/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | first).id }}/api/v1/query_range?query=rate(node_cpu_seconds_total[5m])&start={{ ansible_date_time.epoch | int - 3600 }}&end={{ ansible_date_time.epoch }}&step=60"
     method: GET
     user: admin
     password: "{{ grafana.admin_password | default('admin') }}"
     force_basic_auth: yes
     timeout: 30
+    validate_certs: no
   register: grafana_query_performance
   ignore_errors: yes
   when: 

@@ -49,7 +49,7 @@
     - name: Test Slurm metrics collection
       include_role:
         name: goldentooth.test_slurm_metrics
-      when: inventory_hostname in groups['slurm_control']
+      when: inventory_hostname in groups['slurm_controller']
 
     # Certificate monitoring
     - name: Test certificate monitoring and renewal

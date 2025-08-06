@@ -107,12 +107,17 @@
   set_fact:
     vault_up_count: "{{ (vault_scraping.json.data.result | selectattr('value.1', 'equalto', '1') | list | length) if vault_scraping is succeeded else 0 }}"
     expected_vault_instances: "{{ groups['vault'] | length }}"
-  when: vault_scraping is defined and vault_scraping.status is defined
+  when: 
+    - vault_scraping is defined
+    - prometheus_service.status.ActiveState == "active"
+    - inventory_hostname in groups['vault']
 
 - name: Record Vault scraping test
   set_fact:
     prometheus_scraping_tests: "{{ prometheus_scraping_tests + [{'name': 'vault_scraping_healthy', 'category': 'prometheus_scraping', 'success': ((vault_up_count | int) >= (expected_vault_instances | int * 0.8)) | bool, 'duration': 0.4}] }}"
-  when: vault_up_count is defined and expected_vault_instances is defined
+  when: 
+    - vault_up_count is defined
+    - expected_vault_instances is defined
 
 # Test Slurm scraping (if Slurm is configured)
 - name: Test Slurm scraping
@@ -124,12 +129,15 @@
   ignore_errors: yes
   when: 
     - prometheus_service.status.ActiveState == "active"
-    - inventory_hostname in groups['slurm_control']
+    - inventory_hostname in groups['slurm_controller']
 
 - name: Count healthy Slurm exporters
   set_fact:
     slurm_up_count: "{{ (slurm_scraping.json.data.result | selectattr('value.1', 'equalto', '1') | list | length) if slurm_scraping is succeeded else 0 }}"
-  when: slurm_scraping is defined and slurm_scraping is succeeded
+  when: 
+    - slurm_scraping is defined
+    - prometheus_service.status.ActiveState == "active"
+    - inventory_hostname in groups['slurm_controller']
 
 - name: Record Slurm scraping test
   set_fact:
@@ -214,7 +222,7 @@
 # Test for scraping errors
 - name: Check for scrape errors
   uri:
-    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/query?query=up{job!=\"\"} == 0"
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/query?query=up == 0"
     method: GET
     timeout: 10
   register: scrape_errors_test
