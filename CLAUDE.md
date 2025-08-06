@@ -34,8 +34,8 @@ goldentooth ping all
 # Get uptime for all hosts
 goldentooth uptime all
 
-# Run arbitrary commands on specific hosts
-goldentooth command node1,node2 "free -h"
+# Execute SSH commands on specific hosts
+goldentooth exec node1,node2 "free -h"
 
 # Debug variables on hosts
 goldentooth debug_var node1 "ansible_hostname"

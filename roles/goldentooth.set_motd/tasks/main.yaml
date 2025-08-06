@@ -1,5 +1,5 @@
 ---
-- name: 'Set the MOTD.'
+- name: 'Set the node-specific MOTD'
   ansible.builtin.template:
     src: "{{ role_path }}/files/{{ clean_hostname }}.txt"
     dest: '/etc/motd'
@@ -7,3 +7,25 @@
     group: 'root'
     mode: '0644'
   changed_when: false
+
+- name: 'Remove PAM MOTD lines that cause duplication (dynamic MOTD)'
+  lineinfile:
+    path: '/etc/pam.d/sshd'
+    regexp: '^session\s+optional\s+pam_motd\.so\s+motd=/run/motd\.dynamic'
+    state: absent
+  become: true
+
+- name: 'Remove PAM MOTD lines that cause duplication (static MOTD)'
+  lineinfile:
+    path: '/etc/pam.d/sshd'
+    regexp: '^session\s+optional\s+pam_motd\.so\s+noupdate'
+    state: absent
+  become: true
+
+- name: 'Ensure SSH prints MOTD for interactive sessions'
+  lineinfile:
+    path: '/etc/ssh/sshd_config'
+    regexp: '^PrintMotd'
+    line: 'PrintMotd yes'
+  notify: restart sshd
+  become: true

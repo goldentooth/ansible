@@ -1,0 +1,39 @@
+{
+  "service": {
+    "name": "dllama-api",
+    "id": "dllama-api-{{ inventory_hostname }}",
+    "tags": [
+      "distributed-llama",
+      "api",
+      "http",
+      "llm",
+      "{{ ansible_architecture }}",
+      "node-{{ inventory_hostname }}"
+    ],
+    "address": "{{ ipv4_address }}",
+    "port": {{ distributed_llama.api_port }},
+    "meta": {
+      "version": "{{ distributed_llama.version }}",
+      "node": "{{ inventory_hostname }}",
+      "architecture": "{{ ansible_architecture }}",
+      "role": "api",
+      "endpoint": "http://{{ ipv4_address }}:{{ distributed_llama.api_port }}"
+    },
+    "checks": [
+      {
+        "name": "Distributed LLaMA API Service",
+        "service_id": "dllama-api-{{ inventory_hostname }}",
+        "script": "systemctl is-active dllama-api",
+        "interval": "30s",
+        "timeout": "10s"
+      },
+      {
+        "name": "Distributed LLaMA API HTTP",
+        "service_id": "dllama-api-{{ inventory_hostname }}",
+        "http": "http://{{ ipv4_address }}:{{ distributed_llama.api_port }}/health",
+        "interval": "60s",
+        "timeout": "15s"
+      }
+    ]
+  }
+}

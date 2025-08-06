@@ -1,0 +1,82 @@
+---
+# Configure systemd services for distributed-llama
+
+- name: Create worker service configuration
+  template:
+    src: dllama-worker.service.j2
+    dest: /etc/systemd/system/dllama-worker.service
+    mode: '0644'
+  become: yes
+  when: distributed_llama.enable_worker
+  notify: restart dllama-worker
+
+- name: Create root node service configuration  
+  template:
+    src: dllama-root.service.j2
+    dest: /etc/systemd/system/dllama-root.service
+    mode: '0644'
+  become: yes
+  when: distributed_llama.enable_root
+  notify: restart dllama-root
+
+- name: Create API server service configuration
+  template:
+    src: dllama-api.service.j2
+    dest: /etc/systemd/system/dllama-api.service
+    mode: '0644'
+  become: yes
+  when: 
+    - distributed_llama.enable_api
+    - distributed_llama.enable_root
+  notify: restart dllama-api
+
+- name: Create startup script for worker nodes
+  template:
+    src: start-dllama-worker.sh.j2
+    dest: "{{ distributed_llama.install_dir }}/bin/start-dllama-worker.sh"
+    mode: '0755'
+    owner: "{{ distributed_llama.user }}"
+    group: "{{ distributed_llama.group }}"
+  become: yes
+  when: distributed_llama.enable_worker
+
+- name: Create startup script for root node
+  template:
+    src: start-dllama-root.sh.j2
+    dest: "{{ distributed_llama.install_dir }}/bin/start-dllama-root.sh"
+    mode: '0755'
+    owner: "{{ distributed_llama.user }}"
+    group: "{{ distributed_llama.group }}"
+  become: yes
+  when: distributed_llama.enable_root
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+  become: yes
+
+- name: Enable and start worker service
+  systemd:
+    name: dllama-worker
+    enabled: yes
+    state: started
+  become: yes
+  when: distributed_llama.enable_worker
+
+- name: Enable and start root service  
+  systemd:
+    name: dllama-root
+    enabled: no  # Don't auto-start until models are available
+    state: stopped
+  become: yes
+  when: distributed_llama.enable_root
+
+- name: Enable and start API service
+  systemd:
+    name: dllama-api
+    enabled: no  # Don't auto-start until models are available
+    state: stopped
+  become: yes
+  when: 
+    - distributed_llama.enable_api
+    - distributed_llama.enable_root

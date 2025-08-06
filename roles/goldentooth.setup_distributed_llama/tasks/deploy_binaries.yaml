@@ -1,0 +1,84 @@
+---
+# Deploy cross-compiled binaries to Pi nodes
+
+- name: Create distributed-llama installation directory
+  file:
+    path: "{{ distributed_llama.install_dir }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ distributed_llama.user }}"
+    group: "{{ distributed_llama.group }}"
+  become: yes
+
+- name: Create bin directory
+  file:
+    path: "{{ distributed_llama.install_dir }}/bin"
+    state: directory
+    mode: '0755'
+    owner: "{{ distributed_llama.user }}"
+    group: "{{ distributed_llama.group }}"
+  become: yes
+
+- name: Fetch cross-compiled binaries from build node
+  fetch:
+    src: "{{ distributed_llama.cross_compile.artifacts_dir }}/{{ item }}"
+    dest: "/tmp/dllama-artifacts/{{ item }}"
+    flat: yes
+  delegate_to: "{{ distributed_llama.cross_compile.build_node }}"
+  with_items:
+    - "{{ distributed_llama.binaries.dllama }}"
+    - "{{ distributed_llama.binaries.dllama_api }}"
+    - "build-info.txt"
+  run_once: true
+
+- name: Deploy distributed-llama main binary
+  copy:
+    src: "/tmp/dllama-artifacts/{{ distributed_llama.binaries.dllama }}"
+    dest: "{{ distributed_llama.install_dir }}/bin/dllama"
+    mode: '0755'
+    owner: "{{ distributed_llama.user }}"
+    group: "{{ distributed_llama.group }}"
+  become: yes
+  notify: restart distributed-llama services
+
+- name: Deploy distributed-llama API binary
+  copy:
+    src: "/tmp/dllama-artifacts/{{ distributed_llama.binaries.dllama_api }}"
+    dest: "{{ distributed_llama.install_dir }}/bin/dllama-api"
+    mode: '0755'
+    owner: "{{ distributed_llama.user }}"
+    group: "{{ distributed_llama.group }}"
+  become: yes
+  notify: restart distributed-llama services
+
+- name: Copy build information
+  copy:
+    src: "/tmp/dllama-artifacts/build-info.txt"
+    dest: "{{ distributed_llama.install_dir }}/build-info.txt"
+    mode: '0644'
+    owner: "{{ distributed_llama.user }}"
+    group: "{{ distributed_llama.group }}"
+  become: yes
+
+- name: Create symlinks in system PATH
+  file:
+    src: "{{ distributed_llama.install_dir }}/bin/{{ item.src }}"
+    dest: "/usr/local/bin/{{ item.dest }}"
+    state: link
+  become: yes
+  with_items:
+    - { src: "dllama", dest: "dllama" }
+    - { src: "dllama-api", dest: "dllama-api" }
+
+- name: Verify binary deployment
+  stat:
+    path: "{{ distributed_llama.install_dir }}/bin/dllama"
+  register: binary_check
+  failed_when: not binary_check.stat.exists or not binary_check.stat.executable
+
+- name: Display deployment success
+  debug:
+    msg: |
+      ✅ Distributed-llama binaries deployed successfully on {{ inventory_hostname }}
+      📍 Installation directory: {{ distributed_llama.install_dir }}
+      🔗 Symlinks created in /usr/local/bin/

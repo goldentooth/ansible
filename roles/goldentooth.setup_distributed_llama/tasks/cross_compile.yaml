@@ -1,0 +1,178 @@
+---
+# Cross-compilation tasks for distributed-llama (runs on Velaryon)
+
+- name: Debug cross-compilation variables
+  debug:
+    msg:
+      - "distributed_llama.cross_compile.enable: {{ distributed_llama.cross_compile.enable | default('UNDEFINED') }}"
+      - "distributed_llama.cross_compile.build_node: {{ distributed_llama.cross_compile.build_node | default('UNDEFINED') }}"
+      - "inventory_hostname: {{ inventory_hostname }}"
+  tags:
+    - distributed_llama
+    - cross_compile
+    - build
+    - debug
+
+- name: Ensure cross-compilation toolkit is set up
+  assert:
+    that:
+      - ansible_facts['architecture'] == 'x86_64'
+      - "'docker' is defined or ansible_facts['services']['docker.service'] is defined"
+    fail_msg: "Cross-compilation requires x86_64 architecture and Docker"
+  tags:
+    - distributed_llama
+    - cross_compile  
+    - build
+
+- name: Create artifacts directory
+  file:
+    path: "{{ distributed_llama.cross_compile.artifacts_dir }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ my.name.lower }}"
+    group: "{{ my.name.lower }}"
+  become: yes
+  tags:
+    - distributed_llama
+    - cross_compile
+    - build
+
+- name: Create cross-compile toolkit workspace
+  file:
+    path: "/opt/goldentooth/workspace/cross-compile-toolkit"
+    state: directory
+    mode: '0755'
+    owner: "{{ my.name.lower }}"
+    group: "{{ my.name.lower }}"
+  become: yes
+  tags:
+    - distributed_llama
+    - cross_compile
+    - build
+
+- name: Clone/update cross-compile-toolkit repository
+  git:
+    repo: "https://github.com/goldentooth/cross-compile-toolkit.git"
+    dest: "/opt/goldentooth/workspace/cross-compile-toolkit"
+    version: main
+    force: yes
+  become: yes
+  become_user: "{{ my.name.lower }}"
+  tags:
+    - distributed_llama
+    - cross_compile
+    - build
+
+- name: Create distributed-llama container directory
+  file:
+    path: "/opt/goldentooth/workspace/cross-compile-toolkit/containers/distributed-llama"
+    state: directory
+    mode: '0755'
+    owner: "{{ my.name.lower }}"
+    group: "{{ my.name.lower }}"
+  become: yes
+  tags:
+    - distributed_llama
+    - cross_compile
+    - build
+
+- name: Copy distributed-llama container files to workspace
+  copy:
+    src: "{{ item }}"
+    dest: "/opt/goldentooth/workspace/cross-compile-toolkit/containers/distributed-llama/{{ item }}"
+    mode: '0644'
+  with_items:
+    - "Dockerfile"
+    - "build-distributed-llama.sh"
+  become: yes
+  become_user: "{{ my.name.lower }}"
+  tags:
+    - distributed_llama
+    - cross_compile
+    - build
+
+- name: Make build script executable
+  file:
+    path: "/opt/goldentooth/workspace/cross-compile-toolkit/containers/distributed-llama/build-distributed-llama.sh"
+    mode: '0755'
+  tags:
+    - distributed_llama
+    - cross_compile
+    - build
+
+- name: Build distributed-llama cross-compilation container with podman
+  shell: |
+    cd /opt/goldentooth/workspace/cross-compile-toolkit/containers/distributed-llama
+    podman build --tag goldentooth/distributed-llama-builder:latest \
+      --build-arg DISTRIBUTED_LLAMA_VERSION="{{ distributed_llama.version }}" \
+      -f Dockerfile .
+  become: yes
+  become_user: "{{ my.name.lower }}"
+  tags:
+    - distributed_llama
+    - cross_compile
+    - build
+
+- name: Extract cross-compiled binaries from container
+  shell: |
+    # Create a temporary container and copy artifacts using podman cp
+    CONTAINER_ID=$(podman create localhost/goldentooth/distributed-llama-builder:latest)
+    podman cp "${CONTAINER_ID}:/workspace/artifacts/distributed-llama/" "{{ distributed_llama.cross_compile.artifacts_dir }}/"
+    podman rm "${CONTAINER_ID}"
+    # Move files from nested directory to artifacts root and clean up
+    if [ -d "{{ distributed_llama.cross_compile.artifacts_dir }}/distributed-llama" ]; then
+      mv "{{ distributed_llama.cross_compile.artifacts_dir }}/distributed-llama"/* "{{ distributed_llama.cross_compile.artifacts_dir }}/"
+      rmdir "{{ distributed_llama.cross_compile.artifacts_dir }}/distributed-llama"
+    fi
+    # Fix ownership of extracted files
+    chown -R "{{ my.name.lower }}:{{ my.name.lower }}" "{{ distributed_llama.cross_compile.artifacts_dir }}"
+  become: yes
+  register: build_result
+  tags:
+    - distributed_llama
+    - cross_compile
+    - build
+
+- name: Display build output
+  debug:
+    var: build_result.stdout
+  when: build_result is defined
+  tags:
+    - distributed_llama
+    - cross_compile
+    - build
+
+- name: Verify cross-compiled binaries exist
+  stat:
+    path: "{{ distributed_llama.cross_compile.artifacts_dir }}/{{ item }}"
+  register: binary_check
+  failed_when: not binary_check.stat.exists
+  with_items:
+    - "{{ distributed_llama.binaries.dllama }}"
+    - "{{ distributed_llama.binaries.dllama_api }}"
+  tags:
+    - distributed_llama
+    - cross_compile
+    - build
+
+- name: Display cross-compilation results
+  debug:
+    msg: |
+      ✅ Cross-compilation completed successfully!
+      📁 Artifacts location: {{ distributed_llama.cross_compile.artifacts_dir }}
+      🔨 Built binaries: {{ distributed_llama.binaries.values() | join(', ') }}
+  tags:
+    - distributed_llama
+    - cross_compile
+    - build
+
+- name: Create deployment manifest
+  template:
+    src: deployment-manifest.yaml.j2
+    dest: "{{ distributed_llama.cross_compile.artifacts_dir }}/deployment-manifest.yaml"
+    mode: '0644'
+  become: yes
+  tags:
+    - distributed_llama
+    - cross_compile
+    - build

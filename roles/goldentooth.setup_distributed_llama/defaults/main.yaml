@@ -1,0 +1,38 @@
+# Default variables for distributed-llama setup
+# Note: Configuration is now managed in inventory/group_vars/all/vars.yaml
+# This file provides only fallback defaults for undefined values
+
+distributed_llama:
+  # Basic fallback defaults - actual configuration is in group_vars
+  version: "main"
+  install_dir: "/opt/distributed-llama"
+  models_dir: "/mnt/shared/llm-models"
+  user: "dllama"
+  group: "dllama"
+  worker_port: 9999
+  api_port: 8080
+  buffer_float_type: "q80"
+  max_seq_len: 2048
+  threads: "{{ ansible_processor_vcpus | default(4) }}"
+  
+  # Cross-compilation defaults
+  cross_compile:
+    enable: false  # Will be overridden by group_vars
+    build_node: "localhost"
+    container: "goldentooth/distributed-llama-builder:latest"
+    artifacts_dir: "/opt/goldentooth/artifacts/distributed-llama"
+  
+  # Service defaults  
+  enable_worker: false
+  enable_root: false
+  enable_api: false
+  
+  # Binary names
+  binaries:
+    dllama: "dllama-arm64"
+    dllama_api: "dllama-api-arm64"
+    
+  # Runtime packages
+  runtime_packages:
+    - python3
+    - libgomp1

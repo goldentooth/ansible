@@ -1,0 +1,40 @@
+---
+# Handlers for distributed-llama services
+
+- name: restart distributed-llama services
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+  become: yes
+  with_items:
+    - dllama-worker
+    - dllama-root
+    - dllama-api
+  when: 
+    - item == "dllama-worker" and distributed_llama.enable_worker
+    - item == "dllama-root" and distributed_llama.enable_root  
+    - item == "dllama-api" and distributed_llama.enable_api and distributed_llama.enable_root
+  ignore_errors: yes
+
+- name: restart dllama-worker
+  systemd:
+    name: dllama-worker
+    state: restarted
+  become: yes
+  when: distributed_llama.enable_worker
+
+- name: restart dllama-root
+  systemd:
+    name: dllama-root
+    state: restarted
+  become: yes
+  when: distributed_llama.enable_root
+
+- name: restart dllama-api
+  systemd:
+    name: dllama-api
+    state: restarted
+  become: yes
+  when: 
+    - distributed_llama.enable_api
+    - distributed_llama.enable_root

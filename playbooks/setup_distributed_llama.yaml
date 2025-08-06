@@ -1,0 +1,83 @@
+# Description: Set up distributed-llama for Pi-only distributed LLM inference
+# Playbook to set up distributed-llama across Raspberry Pi nodes only
+# Cross-compilation on x86_64, deployment to Pi cluster only
+
+- name: Set up distributed-llama with cross-compilation
+  hosts: distributed_llama:velaryon
+  become: no
+  serial: "100%"  # Run all nodes in parallel after cross-compilation
+
+  pre_tasks:
+    - name: Display distributed-llama deployment plan
+      debug:
+        msg: |
+          🚀 Distributed LLaMA Deployment Plan:
+          📦 Cross-compilation node: {{ distributed_llama.cross_compile.build_node }}
+          🎯 Root node: {{ distributed_llama.root_node }}
+          👥 Worker nodes: {{ distributed_llama.worker_nodes | join(', ') }}
+          🔧 Version: {{ distributed_llama.version }}
+          🔢 Total Pi nodes: {{ groups['distributed_llama'] | length }}
+      run_once: true
+
+    - name: Ensure prerequisites are met
+      assert:
+        that:
+          - distributed_llama is defined
+          - distributed_llama.cross_compile.enable | default(false)
+          - distributed_llama.cross_compile.build_node is defined
+        fail_msg: "Distributed-llama configuration is incomplete or invalid"
+      run_once: true
+
+  tasks:
+    - name: Set up distributed-llama
+      include_role:
+        name: goldentooth.setup_distributed_llama
+      tags:
+        - distributed_llama
+        - cross_compile
+        - build
+        - deploy
+        - user
+        - setup
+
+  post_tasks:
+    - name: Display worker nodes status
+      debug:
+        msg: |
+          ✅ Worker node {{ inventory_hostname }} configured
+          🔧 Service: dllama-worker.service
+          📍 Port: {{ distributed_llama.worker_port }}
+          🧵 Threads: {{ distributed_llama.threads }}
+      when: distributed_llama.enable_worker
+
+    - name: Display root node status
+      debug:
+        msg: |
+          ✅ Root node {{ inventory_hostname }} configured
+          🔧 Service: dllama-root.service (manual start)
+          📁 Models directory: {{ distributed_llama.models_dir }}
+          🌐 Will coordinate {{ distributed_llama.worker_nodes | length }} worker nodes
+      when: distributed_llama.enable_root
+
+    - name: Display final instructions
+      debug:
+        msg: |
+          🎉 Distributed LLaMA setup complete!
+
+          📋 Next steps:
+          1. Place model files in {{ distributed_llama.models_dir }}:
+             - *.m files (model weights, e.g., dllama_model_meta-llama-3-8b_q40.m)
+             - *.t files (tokenizer, e.g., dllama_tokenizer_llama3.t)
+
+          2. Start distributed inference:
+             goldentooth exec {{ distributed_llama.root_node }} "sudo systemctl start dllama-root"
+
+          3. Monitor services:
+             goldentooth exec all "systemctl status dllama-worker"
+
+          4. Check logs:
+             goldentooth exec {{ distributed_llama.root_node }} "tail -f {{ distributed_llama.install_dir }}/logs/root.log"
+
+          ⚡ Worker nodes are already running and ready to accept work!
+      run_once: true
+

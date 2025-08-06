@@ -295,3 +295,29 @@ all:
         oakheart:
         payne:
         velaryon:
+
+    # -----------------------------------
+    # Distributed LLaMA - Pi-only distributed inference
+    # -----------------------------------
+    distributed_llama:
+      children:
+        distributed_llama_root:
+          hosts:
+            manderly:  # Pi 5 with more RAM for root node
+        distributed_llama_worker:
+          hosts:
+            allyrion:
+            bettley:
+            cargyll:
+            dalt:
+            erenford:
+            fenn:
+            gardener:
+            harlton:
+            inchfield:
+            jast:
+            karstark:
+            lipps:
+            norcross:
+            oakheart:
+            payne:
