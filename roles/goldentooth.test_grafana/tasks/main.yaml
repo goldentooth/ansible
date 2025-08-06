@@ -1,0 +1,286 @@
+---
+- name: Initialize Grafana test results
+  set_fact:
+    grafana_tests: []
+    grafana_health: false
+    grafana_dashboards_validated: 0
+    grafana_datasources_healthy: 0
+
+- name: Check Grafana service status
+  systemd:
+    name: grafana-server
+  register: grafana_service
+  ignore_errors: yes
+
+- name: Record Grafana service test
+  set_fact:
+    grafana_tests: "{{ grafana_tests + [{'name': 'grafana_service_running', 'category': 'grafana', 'success': (grafana_service.status.ActiveState == 'active') | bool, 'duration': 0.1}] }}"
+
+- name: Wait for Grafana to be ready
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:3000/api/health"
+    method: GET
+    timeout: 10
+    status_code: 200
+  register: grafana_health_check
+  ignore_errors: yes
+  retries: 3
+  delay: 5
+  when: grafana_service.status.ActiveState == "active"
+
+- name: Record Grafana health check test
+  set_fact:
+    grafana_tests: "{{ grafana_tests + [{'name': 'grafana_api_health', 'category': 'grafana', 'success': (grafana_health_check.status == 200) | bool, 'duration': 0.5}] }}"
+  when: grafana_health_check is defined
+
+# Test Grafana API authentication and basic functionality
+- name: Test Grafana API with admin credentials
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:3000/api/orgs"
+    method: GET
+    user: admin
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: yes
+    timeout: 10
+  register: grafana_api_test
+  ignore_errors: yes
+  when: grafana_service.status.ActiveState == "active"
+
+- name: Record Grafana API authentication test
+  set_fact:
+    grafana_tests: "{{ grafana_tests + [{'name': 'grafana_api_auth', 'category': 'grafana', 'success': (grafana_api_test.status == 200) | bool, 'duration': 0.3}] }}"
+  when: grafana_api_test is defined
+
+# Test data sources health
+- name: Check Grafana data sources
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources"
+    method: GET
+    user: admin
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: yes
+    timeout: 10
+  register: grafana_datasources
+  ignore_errors: yes
+  when: grafana_service.status.ActiveState == "active"
+
+- name: Test Prometheus data source health
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | first).id }}/api/v1/query?query=up"
+    method: GET
+    user: admin
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: yes
+    timeout: 15
+  register: prometheus_datasource_test
+  ignore_errors: yes
+  when: 
+    - grafana_datasources is succeeded
+    - (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | list | length > 0)
+
+- name: Record Prometheus data source test
+  set_fact:
+    grafana_tests: "{{ grafana_tests + [{'name': 'prometheus_datasource_working', 'category': 'grafana', 'success': (prometheus_datasource_test.status == 200) | bool, 'duration': 0.8}] }}"
+    grafana_datasources_healthy: "{{ grafana_datasources_healthy + (1 if prometheus_datasource_test is succeeded else 0) }}"
+  when: prometheus_datasource_test is defined
+
+- name: Test Loki data source health (if configured)
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'loki') | first).id }}/loki/api/v1/labels"
+    method: GET
+    user: admin
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: yes
+    timeout: 15
+  register: loki_datasource_test
+  ignore_errors: yes
+  when: 
+    - grafana_datasources is succeeded
+    - (grafana_datasources.json | selectattr('type', 'equalto', 'loki') | list | length > 0)
+
+- name: Record Loki data source test
+  set_fact:
+    grafana_tests: "{{ grafana_tests + [{'name': 'loki_datasource_working', 'category': 'grafana', 'success': (loki_datasource_test.status == 200) | bool, 'duration': 0.6}] }}"
+    grafana_datasources_healthy: "{{ grafana_datasources_healthy + (1 if loki_datasource_test is succeeded else 0) }}"
+  when: loki_datasource_test is defined
+
+# Test dashboard functionality and data presence
+- name: Get list of dashboards
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:3000/api/search?type=dash-db"
+    method: GET
+    user: admin
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: yes
+    timeout: 10
+  register: grafana_dashboards_list
+  ignore_errors: yes
+  when: grafana_service.status.ActiveState == "active"
+
+- name: Record dashboard listing test
+  set_fact:
+    grafana_tests: "{{ grafana_tests + [{'name': 'grafana_dashboards_accessible', 'category': 'grafana', 'success': (grafana_dashboards_list.status == 200 and (grafana_dashboards_list.json | length > 0)) | bool, 'duration': 0.4}] }}"
+  when: grafana_dashboards_list is defined
+
+# Test specific key dashboards for data presence
+- name: Test Node Exporter dashboard data
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | first).id }}/api/v1/query?query=node_load1"
+    method: GET
+    user: admin
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: yes
+    timeout: 10
+  register: node_exporter_data_test
+  ignore_errors: yes
+  when: 
+    - grafana_datasources is succeeded
+    - (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | list | length > 0)
+    - grafana_dashboards_list is succeeded
+
+- name: Check if Node Exporter dashboard has data
+  set_fact:
+    node_exporter_has_data: "{{ (node_exporter_data_test.json.data.result | length > 0) if node_exporter_data_test is succeeded else false }}"
+    grafana_dashboards_validated: "{{ grafana_dashboards_validated + (1 if (node_exporter_data_test is succeeded and node_exporter_data_test.json.data.result | length > 0) else 0) }}"
+  when: node_exporter_data_test is defined
+
+- name: Record Node Exporter dashboard data test
+  set_fact:
+    grafana_tests: "{{ grafana_tests + [{'name': 'node_exporter_dashboard_has_data', 'category': 'grafana', 'success': node_exporter_has_data | bool, 'duration': 0.5}] }}"
+  when: node_exporter_has_data is defined
+
+- name: Test Slurm dashboard data (if Slurm is configured)
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | first).id }}/api/v1/query?query=slurm_nodes"
+    method: GET
+    user: admin
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: yes
+    timeout: 10
+  register: slurm_data_test
+  ignore_errors: yes
+  when: 
+    - grafana_datasources is succeeded
+    - (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | list | length > 0)
+    - inventory_hostname in groups['slurm_control']
+
+- name: Check if Slurm dashboard has data
+  set_fact:
+    slurm_has_data: "{{ (slurm_data_test.json.data.result | length > 0) if slurm_data_test is succeeded else false }}"
+    grafana_dashboards_validated: "{{ grafana_dashboards_validated + (1 if (slurm_data_test is succeeded and slurm_data_test.json.data.result | length > 0) else 0) }}"
+  when: slurm_data_test is defined
+
+- name: Record Slurm dashboard data test
+  set_fact:
+    grafana_tests: "{{ grafana_tests + [{'name': 'slurm_dashboard_has_data', 'category': 'grafana', 'success': slurm_has_data | bool, 'duration': 0.5}] }}"
+  when: slurm_has_data is defined
+
+- name: Test HashiCorp services dashboard data
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | first).id }}/api/v1/query?query=consul_up"
+    method: GET
+    user: admin
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: yes
+    timeout: 10
+  register: hashicorp_data_test
+  ignore_errors: yes
+  when: 
+    - grafana_datasources is succeeded
+    - (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | list | length > 0)
+    - inventory_hostname in groups['consul']
+
+- name: Check if HashiCorp services dashboard has data
+  set_fact:
+    hashicorp_has_data: "{{ (hashicorp_data_test.json.data.result | length > 0) if hashicorp_data_test is succeeded else false }}"
+    grafana_dashboards_validated: "{{ grafana_dashboards_validated + (1 if (hashicorp_data_test is succeeded and hashicorp_data_test.json.data.result | length > 0) else 0) }}"
+  when: hashicorp_data_test is defined
+
+- name: Record HashiCorp services dashboard data test
+  set_fact:
+    grafana_tests: "{{ grafana_tests + [{'name': 'hashicorp_dashboard_has_data', 'category': 'grafana', 'success': hashicorp_has_data | bool, 'duration': 0.5}] }}"
+  when: hashicorp_has_data is defined
+
+# Test alerting functionality
+- name: Check Grafana alerting status
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:3000/api/alerts"
+    method: GET
+    user: admin
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: yes
+    timeout: 10
+  register: grafana_alerts_test
+  ignore_errors: yes
+  when: grafana_service.status.ActiveState == "active"
+
+- name: Record Grafana alerting test
+  set_fact:
+    grafana_tests: "{{ grafana_tests + [{'name': 'grafana_alerting_accessible', 'category': 'grafana', 'success': (grafana_alerts_test.status == 200) | bool, 'duration': 0.3}] }}"
+  when: grafana_alerts_test is defined
+
+# Test performance metrics
+- name: Test Grafana query performance with complex query
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:3000/api/datasources/proxy/{{ (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | first).id }}/api/v1/query_range?query=rate(node_cpu_seconds_total[5m])&start={{ ansible_date_time.epoch | int - 3600 }}&end={{ ansible_date_time.epoch }}&step=60"
+    method: GET
+    user: admin
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: yes
+    timeout: 30
+  register: grafana_query_performance
+  ignore_errors: yes
+  when: 
+    - grafana_datasources is succeeded
+    - (grafana_datasources.json | selectattr('type', 'equalto', 'prometheus') | list | length > 0)
+
+- name: Record Grafana query performance test
+  set_fact:
+    grafana_tests: "{{ grafana_tests + [{'name': 'grafana_query_performance', 'category': 'grafana', 'success': (grafana_query_performance.status == 200 and grafana_query_performance.elapsed < 15.0) | bool, 'duration': grafana_query_performance.elapsed | default(30.0)}] }}"
+  when: grafana_query_performance is defined
+
+# Check certificate health (if TLS enabled)
+- name: Check Grafana certificate
+  stat:
+    path: /etc/grafana/certs/tls.crt
+  register: grafana_cert
+
+- name: Check Grafana certificate expiration
+  command: step certificate needs-renewal /etc/grafana/certs/tls.crt
+  register: grafana_cert_renewal
+  when: grafana_cert.stat.exists
+  changed_when: false
+  failed_when: false
+  become: true
+
+- name: Record Grafana certificate test
+  set_fact:
+    grafana_tests: "{{ grafana_tests + [{'name': 'grafana_certificate_valid', 'category': 'grafana', 'success': (grafana_cert_renewal.rc != 0) | bool, 'duration': 0.1}] }}"
+  when: grafana_cert.stat.exists
+
+# Final health determination
+- name: Determine overall Grafana health
+  set_fact:
+    grafana_health: "{{ 
+      (grafana_tests | selectattr('success', 'equalto', false) | list | length == 0) and
+      (grafana_datasources_healthy | int > 0) and
+      (grafana_dashboards_validated | int > 0)
+    }}"
+
+# Export comprehensive results
+- name: Export Grafana test results
+  set_fact:
+    test_results: "{{ (test_results | default([])) + grafana_tests }}"
+    service_health: "{{ (service_health | default({})) | combine({'grafana': grafana_health}) }}"
+    certificate_status: "{{ (certificate_status | default([])) + [{'service': 'grafana', 'days_remaining': (30 if grafana_cert.stat.exists and grafana_cert_renewal.rc != 0 else 0)}] }}"
+
+- name: Display Grafana test summary
+  debug:
+    msg: |
+      Grafana Test Summary:
+      - Service status: {{ 'HEALTHY' if grafana_health else 'UNHEALTHY' }}
+      - Data sources healthy: {{ grafana_datasources_healthy }}
+      - Dashboards validated: {{ grafana_dashboards_validated }}
+      - Total tests: {{ grafana_tests | length }}
+      - Tests passed: {{ grafana_tests | selectattr('success', 'equalto', true) | list | length }}
+      - Tests failed: {{ grafana_tests | selectattr('success', 'equalto', false) | list | length }}

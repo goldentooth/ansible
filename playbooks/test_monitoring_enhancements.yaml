@@ -1,8 +1,10 @@
 ---
-- name: Test Monitoring Enhancements
+- name: Test Monitoring & Observability Integration
   hosts: all
   gather_facts: yes
   become: yes
+  vars:
+    test_start_time: "{{ ansible_date_time.epoch }}"
   
   tasks:
     - name: Initialize global test variables
@@ -11,37 +13,109 @@
         service_health: {}
         certificate_status: []
 
+    # Core Prometheus testing
+    - name: Test Prometheus core functionality
+      include_role:
+        name: goldentooth.test_prometheus
+      when: inventory_hostname in groups['prometheus']
+
+    - name: Test comprehensive Prometheus scraping
+      include_role:
+        name: goldentooth.test_prometheus_scraping
+      when: inventory_hostname in groups['prometheus']
+
+    - name: Test Prometheus alerting rules
+      include_role:
+        name: goldentooth.test_prometheus_alerts
+      when: inventory_hostname in groups['prometheus']
+
+    # Grafana dashboard validation
+    - name: Test Grafana dashboard functionality and data
+      include_role:
+        name: goldentooth.test_grafana
+      when: inventory_hostname in groups['grafana']
+
+    # Service-specific monitoring tests
     - name: Test enhanced Consul monitoring
       include_role:
         name: goldentooth.test_consul
       when: inventory_hostname in groups['consul']
 
-    - name: Test Prometheus alerting rules (Prometheus server only)
+    - name: Test Vault monitoring
       include_role:
-        name: goldentooth.test_prometheus_alerts
-      when: inventory_hostname in groups['prometheus']
+        name: goldentooth.test_vault
+      when: inventory_hostname in groups['vault']
 
     - name: Test Slurm metrics collection
       include_role:
         name: goldentooth.test_slurm_metrics
+      when: inventory_hostname in groups['slurm_control']
 
+    # Certificate monitoring
+    - name: Test certificate monitoring and renewal
+      include_role:
+        name: goldentooth.test_certificate_renewal
+
+    # System resource monitoring
+    - name: Test system resource monitoring
+      include_role:
+        name: goldentooth.test_system_resources
+
+    # Generate comprehensive test report
     - name: Generate and export test metrics
       include_role:
         name: goldentooth.test_reporter
 
-- name: Display monitoring enhancement test summary
+- name: Display comprehensive monitoring test summary
   hosts: prometheus
   gather_facts: no
   
   tasks:
-    - name: Show test summary
+    - name: Calculate test execution time
+      set_fact:
+        test_execution_time: "{{ ansible_date_time.epoch | int - hostvars[inventory_hostname].test_start_time | int }}"
+
+    - name: Show comprehensive test summary
       debug:
         msg: |
-          Monitoring Enhancement Test Summary:
-          - Consul metrics: {{ service_health.consul | default('not tested') }}
-          - Prometheus alerts: {{ service_health.prometheus_alerts | default('not tested') }}
-          - Slurm metrics: {{ service_health.slurm_metrics | default('not tested') }}
+          🔍 Monitoring & Observability Integration Test Summary:
           
-          Total tests run: {{ test_results | length }}
-          Tests passed: {{ test_results | selectattr('success', 'equalto', true) | list | length }}
-          Tests failed: {{ test_results | selectattr('success', 'equalto', false) | list | length }}
+          📊 Core Services:
+          - Prometheus: {{ service_health.prometheus | default('not tested') | ternary('✅ HEALTHY', '❌ UNHEALTHY') }}
+          - Prometheus Scraping: {{ service_health.prometheus_scraping | default('not tested') | ternary('✅ HEALTHY', '❌ UNHEALTHY') }}  
+          - Prometheus Alerts: {{ service_health.prometheus_alerts | default('not tested') | ternary('✅ HEALTHY', '❌ UNHEALTHY') }}
+          - Grafana: {{ service_health.grafana | default('not tested') | ternary('✅ HEALTHY', '❌ UNHEALTHY') }}
+          
+          🏗️  Infrastructure Services:
+          - Consul: {{ service_health.consul | default('not tested') | ternary('✅ HEALTHY', '❌ UNHEALTHY') }}
+          - Vault: {{ service_health.vault | default('not tested') | ternary('✅ HEALTHY', '❌ UNHEALTHY') }}
+          - Slurm: {{ service_health.slurm_metrics | default('not tested') | ternary('✅ HEALTHY', '❌ UNHEALTHY') }}
+          
+          🔐 Security & Operations:
+          - Certificate Health: {{ service_health.certificate_renewal | default('not tested') | ternary('✅ HEALTHY', '❌ UNHEALTHY') }}
+          - System Resources: {{ service_health.system_resources | default('not tested') | ternary('✅ HEALTHY', '❌ UNHEALTHY') }}
+          
+          📈 Test Statistics:
+          - Total tests run: {{ test_results | length }}
+          - Tests passed: {{ test_results | selectattr('success', 'equalto', true) | list | length }}
+          - Tests failed: {{ test_results | selectattr('success', 'equalto', false) | list | length }}
+          - Success rate: {{ ((test_results | selectattr('success', 'equalto', true) | list | length) / (test_results | length) * 100) | round(1) }}%
+          - Execution time: {{ test_execution_time }}s
+
+    - name: Display failed tests (if any)
+      debug:
+        msg: |
+          ❌ Failed Tests:
+          {% for test in test_results | selectattr('success', 'equalto', false) %}
+          - {{ test.name }} ({{ test.category }}) - Duration: {{ test.duration }}s
+          {% endfor %}
+      when: (test_results | selectattr('success', 'equalto', false) | list | length) > 0
+
+    - name: Display certificate expiration warnings
+      debug:
+        msg: |
+          ⚠️  Certificate Expiration Status:
+          {% for cert in certificate_status | selectattr('days_remaining', 'lt', 30) %}
+          - {{ cert.service }}: {{ cert.days_remaining }} days remaining
+          {% endfor %}
+      when: certificate_status | selectattr('days_remaining', 'lt', 30) | list | length > 0

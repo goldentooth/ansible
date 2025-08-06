@@ -1,0 +1,279 @@
+---
+- name: Initialize Prometheus scraping test results
+  set_fact:
+    prometheus_scraping_tests: []
+    prometheus_targets_healthy: 0
+    prometheus_scraping_health: false
+
+- name: Check Prometheus service availability for testing
+  systemd:
+    name: prometheus
+  register: prometheus_service
+  ignore_errors: yes
+
+- name: Skip tests if Prometheus is not running
+  debug:
+    msg: "Skipping Prometheus scraping tests - service not active"
+  when: prometheus_service.status.ActiveState != "active"
+
+# Test target discovery and health
+- name: Query all Prometheus targets
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/targets"
+    method: GET
+    timeout: 10
+  register: prometheus_targets
+  ignore_errors: yes
+  when: prometheus_service.status.ActiveState == "active"
+
+- name: Analyze target health
+  set_fact:
+    total_targets: "{{ prometheus_targets.json.data.activeTargets | length if prometheus_targets is succeeded else 0 }}"
+    healthy_targets: "{{ prometheus_targets.json.data.activeTargets | selectattr('health', 'equalto', 'up') | list | length if prometheus_targets is succeeded else 0 }}"
+    unhealthy_targets: "{{ prometheus_targets.json.data.activeTargets | selectattr('health', 'equalto', 'down') | list | length if prometheus_targets is succeeded else 0 }}"
+  when: prometheus_targets is defined
+
+- name: Record target discovery test
+  set_fact:
+    prometheus_scraping_tests: "{{ prometheus_scraping_tests + [{'name': 'target_discovery_working', 'category': 'prometheus_scraping', 'success': (total_targets | int > 0) | bool, 'duration': 0.3}] }}"
+  when: total_targets is defined
+
+- name: Record target health ratio test
+  set_fact:
+    prometheus_scraping_tests: "{{ prometheus_scraping_tests + [{'name': 'target_health_ratio_good', 'category': 'prometheus_scraping', 'success': ((healthy_targets | int) >= (total_targets | int * 0.9)) | bool, 'duration': 0.1}] }}"
+    prometheus_targets_healthy: "{{ healthy_targets | int }}"
+  when: healthy_targets is defined
+
+# Test specific service scraping
+- name: Test Node Exporter scraping
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/query?query=up{job=\"node_exporter\"}"
+    method: GET
+    timeout: 10
+  register: node_exporter_scraping
+  ignore_errors: yes
+  when: prometheus_service.status.ActiveState == "active"
+
+- name: Count healthy Node Exporter instances
+  set_fact:
+    node_exporter_up_count: "{{ (node_exporter_scraping.json.data.result | selectattr('value.1', 'equalto', '1') | list | length) if node_exporter_scraping is succeeded else 0 }}"
+    expected_node_exporters: "{{ groups['all'] | length }}"
+  when: node_exporter_scraping is defined
+
+- name: Record Node Exporter scraping test
+  set_fact:
+    prometheus_scraping_tests: "{{ prometheus_scraping_tests + [{'name': 'node_exporter_scraping_healthy', 'category': 'prometheus_scraping', 'success': ((node_exporter_up_count | int) >= (expected_node_exporters | int * 0.8)) | bool, 'duration': 0.4}] }}"
+  when: node_exporter_up_count is defined
+
+# Test Consul scraping (if Consul is configured)
+- name: Test Consul scraping
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/query?query=up{job=\"consul\"}"
+    method: GET
+    timeout: 10
+  register: consul_scraping
+  ignore_errors: yes
+  when: 
+    - prometheus_service.status.ActiveState == "active"
+    - inventory_hostname in groups['consul']
+
+- name: Count healthy Consul instances
+  set_fact:
+    consul_up_count: "{{ (consul_scraping.json.data.result | selectattr('value.1', 'equalto', '1') | list | length) if consul_scraping is succeeded else 0 }}"
+    expected_consul_instances: "{{ groups['consul'] | length }}"
+  when: consul_scraping is defined
+
+- name: Record Consul scraping test
+  set_fact:
+    prometheus_scraping_tests: "{{ prometheus_scraping_tests + [{'name': 'consul_scraping_healthy', 'category': 'prometheus_scraping', 'success': ((consul_up_count | int) >= (expected_consul_instances | int * 0.8)) | bool, 'duration': 0.4}] }}"
+  when: consul_up_count is defined
+
+# Test Vault scraping (if Vault is configured)
+- name: Test Vault scraping
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/query?query=up{job=\"vault\"}"
+    method: GET
+    timeout: 10
+  register: vault_scraping
+  ignore_errors: yes
+  when: 
+    - prometheus_service.status.ActiveState == "active"
+    - inventory_hostname in groups['vault']
+
+- name: Count healthy Vault instances
+  set_fact:
+    vault_up_count: "{{ (vault_scraping.json.data.result | selectattr('value.1', 'equalto', '1') | list | length) if vault_scraping is succeeded else 0 }}"
+    expected_vault_instances: "{{ groups['vault'] | length }}"
+  when: vault_scraping is defined
+
+- name: Record Vault scraping test
+  set_fact:
+    prometheus_scraping_tests: "{{ prometheus_scraping_tests + [{'name': 'vault_scraping_healthy', 'category': 'prometheus_scraping', 'success': ((vault_up_count | int) >= (expected_vault_instances | int * 0.8)) | bool, 'duration': 0.4}] }}"
+  when: vault_up_count is defined
+
+# Test Slurm scraping (if Slurm is configured)
+- name: Test Slurm scraping
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/query?query=up{job=\"slurm\"}"
+    method: GET
+    timeout: 10
+  register: slurm_scraping
+  ignore_errors: yes
+  when: 
+    - prometheus_service.status.ActiveState == "active"
+    - inventory_hostname in groups['slurm_control']
+
+- name: Count healthy Slurm exporters
+  set_fact:
+    slurm_up_count: "{{ (slurm_scraping.json.data.result | selectattr('value.1', 'equalto', '1') | list | length) if slurm_scraping is succeeded else 0 }}"
+  when: slurm_scraping is defined
+
+- name: Record Slurm scraping test
+  set_fact:
+    prometheus_scraping_tests: "{{ prometheus_scraping_tests + [{'name': 'slurm_scraping_healthy', 'category': 'prometheus_scraping', 'success': (slurm_up_count | int > 0) | bool, 'duration': 0.4}] }}"
+  when: slurm_up_count is defined
+
+# Test blackbox exporter scraping (if configured)
+- name: Test Blackbox Exporter scraping
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/query?query=up{job=\"blackbox\"}"
+    method: GET
+    timeout: 10
+  register: blackbox_scraping
+  ignore_errors: yes
+  when: prometheus_service.status.ActiveState == "active"
+
+- name: Record Blackbox Exporter scraping test
+  set_fact:
+    prometheus_scraping_tests: "{{ prometheus_scraping_tests + [{'name': 'blackbox_scraping_working', 'category': 'prometheus_scraping', 'success': (blackbox_scraping is succeeded and blackbox_scraping.json.data.result | length > 0) | bool, 'duration': 0.3}] }}"
+  when: blackbox_scraping is defined
+
+# Test metric freshness
+- name: Test metric freshness for Node Exporter
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/query?query=time()-node_time_seconds"
+    method: GET
+    timeout: 10
+  register: node_exporter_freshness
+  ignore_errors: yes
+  when: prometheus_service.status.ActiveState == "active"
+
+- name: Check metric freshness
+  set_fact:
+    metrics_are_fresh: "{{ node_exporter_freshness.json.data.result | selectattr('value.1', 'lt', '300') | list | length > 0 if node_exporter_freshness is succeeded else false }}"
+  when: node_exporter_freshness is defined
+
+- name: Record metric freshness test
+  set_fact:
+    prometheus_scraping_tests: "{{ prometheus_scraping_tests + [{'name': 'metrics_freshness_good', 'category': 'prometheus_scraping', 'success': metrics_are_fresh | bool, 'duration': 0.3}] }}"
+  when: metrics_are_fresh is defined
+
+# Test scrape duration performance
+- name: Test scrape duration performance
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/query?query=prometheus_target_scrape_duration_seconds{quantile=\"0.95\"}"
+    method: GET
+    timeout: 10
+  register: scrape_duration_test
+  ignore_errors: yes
+  when: prometheus_service.status.ActiveState == "active"
+
+- name: Check scrape duration performance
+  set_fact:
+    scrape_performance_good: "{{ scrape_duration_test.json.data.result | selectattr('value.1', 'lt', '5.0') | list | length == scrape_duration_test.json.data.result | length if scrape_duration_test is succeeded else false }}"
+  when: scrape_duration_test is defined
+
+- name: Record scrape duration test
+  set_fact:
+    prometheus_scraping_tests: "{{ prometheus_scraping_tests + [{'name': 'scrape_duration_performance_good', 'category': 'prometheus_scraping', 'success': scrape_performance_good | bool, 'duration': 0.3}] }}"
+  when: scrape_performance_good is defined
+
+# Test scrape sample limits and health
+- name: Test scrape samples ingested
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/query?query=prometheus_target_scrape_samples_scraped"
+    method: GET
+    timeout: 10
+  register: scrape_samples_test
+  ignore_errors: yes
+  when: prometheus_service.status.ActiveState == "active"
+
+- name: Check scrape samples health
+  set_fact:
+    scrape_samples_healthy: "{{ scrape_samples_test.json.data.result | length > 0 if scrape_samples_test is succeeded else false }}"
+  when: scrape_samples_test is defined
+
+- name: Record scrape samples test
+  set_fact:
+    prometheus_scraping_tests: "{{ prometheus_scraping_tests + [{'name': 'scrape_samples_ingested', 'category': 'prometheus_scraping', 'success': scrape_samples_healthy | bool, 'duration': 0.3}] }}"
+  when: scrape_samples_healthy is defined
+
+# Test for scraping errors
+- name: Check for scrape errors
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/query?query=up{job!=\"\"} == 0"
+    method: GET
+    timeout: 10
+  register: scrape_errors_test
+  ignore_errors: yes
+  when: prometheus_service.status.ActiveState == "active"
+
+- name: Determine scrape error status
+  set_fact:
+    has_scrape_errors: "{{ scrape_errors_test.json.data.result | length > 0 if scrape_errors_test is succeeded else true }}"
+  when: scrape_errors_test is defined
+
+- name: Record scrape errors test
+  set_fact:
+    prometheus_scraping_tests: "{{ prometheus_scraping_tests + [{'name': 'no_critical_scrape_errors', 'category': 'prometheus_scraping', 'success': (not has_scrape_errors) | bool, 'duration': 0.3}] }}"
+  when: has_scrape_errors is defined
+
+# Test service discovery mechanisms
+- name: Test Consul service discovery (if configured)
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9090/api/v1/targets?state=active"
+    method: GET
+    timeout: 10
+  register: service_discovery_test
+  ignore_errors: yes
+  when: 
+    - prometheus_service.status.ActiveState == "active"
+    - inventory_hostname in groups['consul']
+
+- name: Check service discovery health
+  set_fact:
+    service_discovery_working: "{{ service_discovery_test.json.data.activeTargets | selectattr('discoveredLabels.__meta_consul_service', 'defined') | list | length > 0 if service_discovery_test is succeeded else false }}"
+  when: service_discovery_test is defined
+
+- name: Record service discovery test
+  set_fact:
+    prometheus_scraping_tests: "{{ prometheus_scraping_tests + [{'name': 'consul_service_discovery_working', 'category': 'prometheus_scraping', 'success': service_discovery_working | bool, 'duration': 0.4}] }}"
+  when: service_discovery_working is defined
+
+# Final health determination
+- name: Determine overall Prometheus scraping health
+  set_fact:
+    prometheus_scraping_health: "{{ 
+      (prometheus_scraping_tests | selectattr('success', 'equalto', false) | list | length == 0) and
+      (prometheus_targets_healthy | int > 0)
+    }}"
+
+# Export results
+- name: Export Prometheus scraping test results
+  set_fact:
+    test_results: "{{ (test_results | default([])) + prometheus_scraping_tests }}"
+    service_health: "{{ (service_health | default({})) | combine({'prometheus_scraping': prometheus_scraping_health}) }}"
+
+- name: Display Prometheus scraping test summary
+  debug:
+    msg: |
+      Prometheus Scraping Test Summary:
+      - Scraping status: {{ 'HEALTHY' if prometheus_scraping_health else 'UNHEALTHY' }}
+      - Total targets: {{ total_targets | default(0) }}
+      - Healthy targets: {{ prometheus_targets_healthy }}
+      - Node exporters up: {{ node_exporter_up_count | default(0) }}/{{ expected_node_exporters | default(0) }}
+      - Consul instances up: {{ consul_up_count | default(0) }}/{{ expected_consul_instances | default(0) }}
+      - Vault instances up: {{ vault_up_count | default(0) }}/{{ expected_vault_instances | default(0) }}
+      - Tests passed: {{ prometheus_scraping_tests | selectattr('success', 'equalto', true) | list | length }}
+      - Tests failed: {{ prometheus_scraping_tests | selectattr('success', 'equalto', false) | list | length }}
+  when: prometheus_service.status.ActiveState == "active"
