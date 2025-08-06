@@ -40,7 +40,7 @@
       {% if certificate_status is defined and certificate_status | length > 0 %}
       CERTIFICATE STATUS:
       {% for cert in certificate_status %}
-      📜 {{ cert.service }}: {{ cert.time_remaining }} remaining ({{ cert.status }})
+      📜 {{ cert.service }}: {{ cert.days_remaining }} days remaining
       {% endfor %}
       {% endif %}
       ═══════════════════════════════════════════════════════════════════════
