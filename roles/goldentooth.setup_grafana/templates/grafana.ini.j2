@@ -48,15 +48,15 @@ http_addr = {{ ipv4_address }}
 http_port = 3000
 
 # The public facing domain name used to access grafana from a browser
-;domain = localhost
+domain = grafana.{{ cluster.services_domain | default('services.goldentooth.net') }}
 
 # Redirect to correct domain if host header does not match domain
 # Prevents DNS rebinding attacks
-;enforce_domain = false
+enforce_domain = false
 
 # The full public facing url you use in browser, used for redirects and emails
 # If you use reverse proxy and sub path specify full url (with sub path)
-;root_url = %(protocol)s://%(domain)s:%(http_port)s/
+root_url = https://grafana.{{ cluster.services_domain | default('services.goldentooth.net') }}/
 
 # Serve Grafana from subpath specified in `root_url` setting. By default it is set to `false` for compatibility reasons.
 ;serve_from_sub_path = false
@@ -832,44 +832,30 @@ enabled = false
 
 #################################### Generic OAuth ##########################
 [auth.generic_oauth]
-;name = OAuth
-;icon = signin
-;enabled = false
-;allow_sign_up = true
-;auto_login = false
-;client_id = some_id
-;client_secret = some_secret
-;scopes = user:email,read:org
-;empty_scopes = false
-;email_attribute_name = email:primary
-;email_attribute_path =
-;login_attribute_path =
-;name_attribute_path =
-;role_attribute_path =
-;role_attribute_strict = false
-;groups_attribute_path =
-;id_token_attribute_name =
-;team_ids_attribute_path
-;auth_url = https://foo.bar/login/oauth/authorize
-;token_url = https://foo.bar/login/oauth/access_token
-;api_url = https://foo.bar/user
-;signout_redirect_url =
-;teams_url =
-;allowed_domains =
-;team_ids =
-;allowed_organizations =
-;org_attribute_path =
-;org_mapping =
-;team_ids_attribute_path =
-;tls_skip_verify_insecure = false
-;tls_client_cert =
-;tls_client_key =
-;tls_client_ca =
-;use_pkce = false
-;auth_style =
-;allow_assign_grafana_admin = false
-;skip_org_role_sync = false
-;use_refresh_token = false
+name = Authelia
+icon = signin
+enabled = true
+allow_sign_up = true
+auto_login = false
+client_id = grafana
+client_secret = {{ secret_vault.authelia.oidc.grafana_secret }}
+scopes = openid profile email groups
+empty_scopes = false
+email_attribute_name = email
+login_attribute_path = email
+name_attribute_path = name
+role_attribute_path = contains(groups[*], 'admins') && 'Admin' || 'Viewer'
+role_attribute_strict = false
+groups_attribute_path = groups
+auth_url = https://auth.{{ cluster.services_domain | default('services.goldentooth.net') }}/api/oidc/authorization
+token_url = https://auth.{{ cluster.services_domain | default('services.goldentooth.net') }}/api/oidc/token
+api_url = https://auth.{{ cluster.services_domain | default('services.goldentooth.net') }}/api/oidc/userinfo
+signout_redirect_url = https://auth.{{ cluster.services_domain | default('services.goldentooth.net') }}/logout
+tls_skip_verify_insecure = false
+use_pkce = true
+allow_assign_grafana_admin = false
+skip_org_role_sync = false
+use_refresh_token = true
 
 #################################### Basic Auth ##########################
 [auth.basic]

@@ -215,6 +215,70 @@ identity_providers:
         response_modes:
           - query
         token_endpoint_auth_method: client_secret_post
+
+      - client_id: grafana
+        client_name: Grafana Dashboard
+        client_secret: "$argon2id$v=19$m=65536,t=3,p=4$DlBq5V+vKJwYE3/wLyP57Q$o7NjLlDST84OlUWFVS37aFVUiPPrg5gIf4XlBAkd8wI"
+        authorization_policy: one_factor
+        redirect_uris:
+          - https://grafana.{{ cluster.services_domain | default('services.goldentooth.net') }}/login/generic_oauth
+          - https://localhost:3000/login/generic_oauth
+        scopes:
+          - openid
+          - profile
+          - email
+          - groups
+          - offline_access
+        grant_types:
+          - authorization_code
+          - refresh_token
+        response_types:
+          - code
+        response_modes:
+          - query
+        token_endpoint_auth_method: client_secret_post
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_signing_alg: RS256
+
+      - client_id: argocd
+        client_name: Argo CD Web
+        client_secret: "$argon2id$v=19$m=65536,t=3,p=4$XySdwhLNDD9c2foBd2m4+g$ML7G+2UFX2OvV+bj2XMJ9DIb9tUDQW2BFlJ7u3aehP0"
+        authorization_policy: one_factor
+        redirect_uris:
+          - https://argocd.{{ cluster.k8s_services_domain | default('services.k8s.goldentooth.net') }}/auth/callback
+        scopes:
+          - openid
+          - groups
+          - email
+          - offline_access
+        grant_types:
+          - authorization_code
+          - refresh_token
+        response_types:
+          - code
+        response_modes:
+          - query
+        token_endpoint_auth_method: client_secret_post
+
+      - client_id: argocd-cli
+        client_name: Argo CD CLI
+        public: true
+        authorization_policy: one_factor
+        redirect_uris:
+          - http://localhost:8085/auth/callback
+        scopes:
+          - openid
+          - offline_access
+          - groups
+          - email
+        grant_types:
+          - authorization_code
+          - refresh_token
+        response_types:
+          - code
+        response_modes:
+          - query
+        token_endpoint_auth_method: none
 {% endif %}
 
 identity_validation:

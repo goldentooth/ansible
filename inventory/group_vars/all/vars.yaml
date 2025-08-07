@@ -154,6 +154,35 @@ argo_cd:
       secret:
         createSecret: true
         argocdServerAdminPassword: "{{ argocd_password }}"
+      cm:
+        oidc.config: |
+          name: Authelia
+          issuer: https://auth.{{ cluster.services_domain }}
+          clientId: argocd
+          clientSecret: {{ secret_vault.authelia.oidc.argocd_secret }}
+          cliClientId: argocd-cli  
+          requestedScopes:
+            - openid
+            - email
+            - groups
+          enableUserInfoGroups: true
+          userInfoPath: /api/oidc/userinfo
+        tls.config: |
+          certificates:
+            - certData: |
+                -----BEGIN CERTIFICATE-----
+                MIIBrTCCAVKgAwIBAgIRAO97zZ5qyeALzaThuCwUZr8wCgYIKoZIzj0EAwIwNDEU
+                MBIGA1UEChMLZ29sZGVudG9vdGgxHDAaBgNVBAMTE2dvbGRlbnRvb3RoIFJvb3Qg
+                Q0EwHhcNMjUwNTE2MjI0NzA4WhcNMzUwNTE0MjI0NzA4WjA0MRQwEgYDVQQKEwtn
+                b2xkZW50b290aDEcMBoGA1UEAxMTZ29sZGVudG9vdGggUm9vdCBDQTBZMBMGByqG
+                SM49AgEGCCqGSM49AwEHA0IABGnLdUQVMjanMkuHvl8tAVaIEBbJZOqxA/NEyJNC
+                X1hQm148NMwCamYIQL/i2tyKqwV6MVe7N1JfKCasKWQ0jVijRTBDMA4GA1UdDwEB
+                /wQEAwIBBjASBgNVHRMBAf8ECDAGAQH/AgEBMB0GA1UdDgQWBBRqxhWmLGm4Til+
+                OSaYl5UCWG+c0zAKBggqhkjOPQQDAgNJADBGAiEA53HhxpcUdY/wWooLiDC/a3Zd
+                om0/XlIKlrUSzehNxM4CIQC1ECAl8ksyXrmBIsvGSP1iEft41xj+Ys4aZOjK+ryL
+                HQ==
+                -----END CERTIFICATE-----
+              certSubjectDN: CN=goldentooth Root CA,O=goldentooth
 
     redis-ha:
       # Enable Redis high availability.
@@ -168,6 +197,17 @@ argo_cd:
         minReplicas: 2
       extraArgs:
         - '--insecure'
+      env:
+        - name: SSL_CERT_DIR
+          value: "/etc/ssl/certs:/tmp/argocd-tls-certs"
+      volumeMounts:
+        - name: tls-certs
+          mountPath: /tmp/argocd-tls-certs
+          readOnly: true
+      volumes:
+        - name: tls-certs
+          configMap:
+            name: argocd-tls-certs-cm
       service:
         annotations:
           external-dns.alpha.kubernetes.io/hostname: "argocd.metallb.k8s.{{ cluster_name }}.net"

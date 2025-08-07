@@ -1,7 +1,7 @@
 ---
 - name: 'Set facts.'
   ansible.builtin.set_fact:
-    argocd_password: "{{ secret_vault.easy_password | password_hash('bcrypt') }}"
+    argocd_password: '$2a$10$JE9JSC22MXbj4qXmKhfXjOcWGDKvoVaRvdUa3PV3lj6cY8zD8mjku'
 
 - name: 'Add Argo Helm chart repository.'
   kubernetes.core.helm_repository:
