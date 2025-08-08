@@ -1,0 +1,46 @@
+# Description: Install and configure Claude Code CLI on all cluster nodes.
+
+- name: 'Setup Claude Code CLI'
+  hosts: all
+  remote_user: root
+  gather_facts: true
+  
+  pre_tasks:
+    - name: 'Verify Node.js is available'
+      ansible.builtin.command: node --version
+      register: nodejs_check
+      changed_when: false
+      failed_when: false
+      
+    - name: 'Install Node.js if not available'
+      ansible.builtin.apt:
+        name: nodejs
+        state: present
+        update_cache: true
+      when: nodejs_check.rc != 0
+      
+    - name: 'Verify npm is available'  
+      ansible.builtin.command: npm --version
+      register: npm_check
+      changed_when: false
+      failed_when: npm_check.rc != 0
+
+  roles:
+    - role: goldentooth.setup_claude_code
+
+  post_tasks:
+    - name: 'Display cluster-wide Claude Code summary'
+      ansible.builtin.debug:
+        msg: |
+          Claude Code CLI deployment completed across Goldentooth cluster
+          
+          Installed on nodes: {{ groups['all'] | join(', ') }}
+          
+          Usage:
+            claude-code --help    # Show Claude Code help
+            cc chat              # Start interactive chat (short alias)
+            claude_help          # Show cluster-specific help
+          
+          Note: Users may need to set ANTHROPIC_API_KEY environment variable
+      run_once: true
+      delegate_to: localhost

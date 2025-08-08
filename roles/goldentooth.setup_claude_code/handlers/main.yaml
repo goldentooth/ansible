@@ -1,0 +1,6 @@
+---
+# Handlers for goldentooth.setup_claude_code role
+
+- name: 'reload shell environment'
+  ansible.builtin.debug:
+    msg: "Shell environment configuration updated - changes will take effect on next login"
