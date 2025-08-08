@@ -1,0 +1,7 @@
+---
+- name: 'Setup Python virtual environments for users'
+  hosts: all
+  tasks:
+    - name: 'Setup virtual environment for current user'
+      ansible.builtin.include_role:
+        name: 'goldentooth.setup_venv'

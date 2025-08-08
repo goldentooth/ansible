@@ -1,0 +1,68 @@
+---
+- name: 'Ensure ~/.bash_local exists'
+  ansible.builtin.file:
+    path: '~/.bash_local'
+    state: 'touch'
+    mode: '0644'
+
+- name: 'Ensure ~/.bashrc sources ~/.bash_local'
+  ansible.builtin.lineinfile:
+    path: '~/.bashrc'
+    regexp: '^\s*\.\s+~/\.bash_local'
+    line: '. ~/.bash_local'
+    create: true
+    state: 'present'
+    mode: '0644'
+
+- name: 'Create virtual environment initialization script'
+  ansible.builtin.template:
+    src: 'venv_init.sh.j2'
+    dest: '~/.venv_init.sh'
+    mode: '0755'
+
+- name: 'Source venv initialization from ~/.bash_local'
+  ansible.builtin.lineinfile:
+    path: '~/.bash_local'
+    regexp: '^\s*\.\s+~/\.venv_init\.sh'
+    line: '. ~/.venv_init.sh'
+    create: true
+    state: 'present'
+    mode: '0644'
+
+- name: 'Ensure python3-venv is installed'
+  ansible.builtin.apt:
+    name: python3-venv
+    state: present
+  become: true
+
+- name: 'Create virtual environment directory'
+  ansible.builtin.file:
+    path: '~/.venv'
+    state: 'directory'
+    mode: '0755'
+
+- name: 'Initialize Python virtual environment'
+  ansible.builtin.command:
+    cmd: 'python3 -m venv ~/.venv'
+    creates: '~/.venv/bin/activate'
+
+- name: 'Upgrade pip in virtual environment'
+  ansible.builtin.pip:
+    name: 
+      - pip
+      - setuptools 
+      - wheel
+    state: latest
+    virtualenv: '~/.venv'
+    virtualenv_command: 'python3 -m venv'
+
+- name: 'Install common packages in virtual environment'
+  ansible.builtin.pip:
+    name:
+      - ipython
+      - requests
+      - rich
+      - typer
+    state: present
+    virtualenv: '~/.venv'
+    virtualenv_command: 'python3 -m venv'

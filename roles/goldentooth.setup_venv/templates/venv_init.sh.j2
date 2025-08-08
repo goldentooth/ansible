@@ -1,0 +1,26 @@
+#!/bin/bash
+# Virtual environment initialization for {{ ansible_user_id }}
+# Sourced from ~/.bash_local
+
+# Check if virtual environment exists, create if not
+if [ ! -d "$HOME/.venv" ]; then
+    echo "Creating Python virtual environment at $HOME/.venv..."
+    python3 -m venv "$HOME/.venv"
+    
+    # Activate and install common packages
+    source "$HOME/.venv/bin/activate"
+    pip install --upgrade pip setuptools wheel
+    pip install ipython requests rich typer
+    deactivate
+fi
+
+# Activate virtual environment if in interactive shell
+if [[ $- == *i* ]] && [ -f "$HOME/.venv/bin/activate" ]; then
+    source "$HOME/.venv/bin/activate"
+    export VIRTUAL_ENV_DISABLE_PROMPT=1  # We'll handle the prompt ourselves
+    
+    # Add virtual environment indicator to PS1 if not already present
+    if [[ ! "$PS1" == *"(venv)"* ]]; then
+        export PS1="(venv) $PS1"
+    fi
+fi

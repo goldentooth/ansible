@@ -30,3 +30,22 @@
     mode: '0644'
 
 # Note: User environment now configured system-wide in /etc/profile.d/
+
+- name: 'Ensure ~/.bash_local exists'
+  ansible.builtin.file:
+    path: '~/.bash_local'
+    state: 'touch'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: 'Ensure ~/.bashrc sources ~/.bash_local'
+  ansible.builtin.lineinfile:
+    path: '~/.bashrc'
+    regexp: '^\s*\.\s+~/\.bash_local'
+    line: '. ~/.bash_local'
+    create: true
+    state: 'present'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
