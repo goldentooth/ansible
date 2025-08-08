@@ -15,3 +15,5 @@ host_index: 23
 
 nfs_exports:
 - "/mnt/gpu-storage 10.4.0.0/20(rw,sync,no_root_squash,no_subtree_check)"
+
+# MCP server configuration - use global divine port 32456 (approaching God's light!)

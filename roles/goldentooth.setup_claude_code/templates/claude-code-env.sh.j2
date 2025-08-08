@@ -7,25 +7,27 @@ if [[ ":$PATH:" != *":/usr/local/bin:"* ]]; then
     export PATH="/usr/local/bin:$PATH"
 fi
 
-# Claude Code CLI aliases
-alias claude-code='npx --yes @anthropic-ai/claude-code-cli'
-alias cc='npx --yes @anthropic-ai/claude-code-cli'
+# Claude CLI aliases (removed cc alias to avoid conflict with C compiler)
+alias claude='npx --yes @anthropic-ai/claude-code'
+alias claude-code='npx --yes @anthropic-ai/claude-code'
 
 # Optional: Set Claude Code environment variables if needed
 # export ANTHROPIC_API_KEY="your_api_key_here"  # Users should set this individually
 
 # Helper function for Claude Code usage
 claude_help() {
-    echo "Claude Code CLI available commands:"
-    echo "  claude-code [options] [command]  - Run Claude Code CLI"
-    echo "  cc [options] [command]           - Short alias for Claude Code CLI"
+    echo "Claude CLI available on {{ inventory_hostname }} (Goldentooth cluster)"
+    echo ""
+    echo "Commands:"
+    echo "  claude [options] [command]       - Run Claude CLI (short)"
+    echo "  claude-code [options] [command]  - Run Claude CLI (full name)"
     echo ""
     echo "Examples:"
-    echo "  claude-code --help               - Show Claude Code help"
-    echo "  cc chat                         - Start interactive chat"
-    echo "  cc --version                    - Show Claude Code version"
+    echo "  claude --help                    - Show Claude help"
+    echo "  claude chat                      - Start interactive chat"
+    echo "  claude --version                 - Show Claude version"
     echo ""
-    echo "Node: {{ inventory_hostname }} (Goldentooth cluster)"
+    echo "Note: 'cc' alias removed to avoid conflict with C compiler"
 }
 
 # Export the helper function

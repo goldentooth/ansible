@@ -1,0 +1,141 @@
+---
+# Description: Install and configure GitHub CLI on cluster nodes
+
+- name: 'Detect system architecture'
+  ansible.builtin.set_fact:
+    system_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+
+- name: 'Display detected architecture'
+  ansible.builtin.debug:
+    msg: "Installing GitHub CLI for {{ system_arch }} architecture on {{ inventory_hostname }}"
+
+- name: 'Check if GitHub CLI is already installed'
+  ansible.builtin.command: gh --version
+  register: gh_check
+  changed_when: false
+  failed_when: false
+
+- name: 'Display current GitHub CLI version if installed'
+  ansible.builtin.debug:
+    msg: "GitHub CLI already installed: {{ gh_check.stdout_lines[0] if gh_check.rc == 0 else 'Not installed' }}"
+
+- name: 'Get latest GitHub CLI release info'
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/cli/cli/releases/latest
+    method: GET
+    return_content: yes
+    timeout: 30
+  register: gh_release_info
+  when: gh_check.rc != 0
+
+- name: 'Extract download URL for current architecture'
+  ansible.builtin.set_fact:
+    gh_download_url: "{{ item.browser_download_url }}"
+    gh_version: "{{ gh_release_info.json.tag_name }}"
+  with_items: "{{ gh_release_info.json.assets }}"
+  when: 
+    - gh_check.rc != 0
+    - item.name is search('linux_' + system_arch + '.tar.gz')
+    - not item.name is search('\.deb')
+    - not item.name is search('\.rpm')
+
+- name: 'Display GitHub CLI download info'
+  ansible.builtin.debug:
+    msg: "Downloading GitHub CLI {{ gh_version }} for {{ system_arch }}: {{ gh_download_url }}"
+  when: gh_check.rc != 0
+
+- name: 'Create temporary directory for GitHub CLI installation'
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: gh_cli_install
+  register: temp_dir
+  when: gh_check.rc != 0
+
+- name: 'Download GitHub CLI archive'
+  ansible.builtin.get_url:
+    url: "{{ gh_download_url }}"
+    dest: "{{ temp_dir.path }}/gh.tar.gz"
+    mode: '0644'
+    timeout: 300
+  when: gh_check.rc != 0
+
+- name: 'Extract GitHub CLI archive'
+  ansible.builtin.unarchive:
+    src: "{{ temp_dir.path }}/gh.tar.gz"
+    dest: "{{ temp_dir.path }}"
+    remote_src: yes
+    creates: "{{ temp_dir.path }}/gh_{{ gh_version | regex_replace('^v', '') }}_linux_{{ system_arch }}"
+  when: gh_check.rc != 0
+
+- name: 'Find extracted GitHub CLI directory'
+  ansible.builtin.find:
+    paths: "{{ temp_dir.path }}"
+    file_type: directory
+    patterns: "gh_*_linux_{{ system_arch }}"
+  register: gh_extracted_dir
+  when: gh_check.rc != 0
+
+- name: 'Install GitHub CLI binary'
+  ansible.builtin.copy:
+    src: "{{ gh_extracted_dir.files[0].path }}/bin/gh"
+    dest: /usr/local/bin/gh
+    mode: '0755'
+    owner: root
+    group: root
+    remote_src: yes
+  when: gh_check.rc != 0
+  notify: 'reload shell environment'
+
+- name: 'Install GitHub CLI man pages'
+  ansible.builtin.copy:
+    src: "{{ gh_extracted_dir.files[0].path }}/share/man/man1/"
+    dest: /usr/local/share/man/man1/
+    mode: '0644'
+    owner: root
+    group: root
+    remote_src: yes
+  when: gh_check.rc != 0
+  failed_when: false
+
+- name: 'Create GitHub CLI environment configuration'
+  ansible.builtin.template:
+    src: gh-cli-env.sh.j2
+    dest: /etc/profile.d/gh-cli-env.sh
+    mode: '0644'
+    owner: root
+    group: root
+  notify: 'reload shell environment'
+
+- name: 'Cleanup temporary installation files'
+  ansible.builtin.file:
+    path: "{{ temp_dir.path }}"
+    state: absent
+  when: 
+    - gh_check.rc != 0
+    - temp_dir is defined
+
+- name: 'Verify GitHub CLI installation'
+  ansible.builtin.command: gh --version
+  register: gh_version_check
+  changed_when: false
+
+- name: 'Display installation result'
+  ansible.builtin.debug:
+    msg: |
+      GitHub CLI setup complete on {{ inventory_hostname }}
+      Version: {{ gh_version_check.stdout_lines[0] }}
+      
+      Next steps:
+        1. Users should run: gh auth login
+        2. Configure Git integration: gh auth setup-git
+        3. Test with: gh repo list
+
+- name: 'Test GitHub CLI basic functionality'
+  ansible.builtin.command: gh --help
+  register: gh_help_test
+  changed_when: false
+  failed_when: gh_help_test.rc != 0
+
+- name: 'Confirm GitHub CLI is working'
+  ansible.builtin.debug:
+    msg: "GitHub CLI installation verified - help command works correctly"

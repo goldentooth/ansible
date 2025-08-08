@@ -37,10 +37,12 @@
           Installed on nodes: {{ groups['all'] | join(', ') }}
           
           Usage:
-            claude-code --help    # Show Claude Code help
-            cc chat              # Start interactive chat (short alias)
-            claude_help          # Show cluster-specific help
+            claude --help         # Show Claude help (short command)
+            claude chat           # Start interactive chat
+            claude-code --help    # Full command name also works
+            claude_help           # Show cluster-specific help
           
           Note: Users may need to set ANTHROPIC_API_KEY environment variable
+          Note: 'cc' alias removed to avoid conflict with C compiler
       run_once: true
       delegate_to: localhost

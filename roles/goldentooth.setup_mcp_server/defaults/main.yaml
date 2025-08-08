@@ -23,4 +23,4 @@ mcp_server_cpu_quota: 50%
 mcp_server_working_dir: /var/lib/goldentooth-mcp
 
 # Network configuration
-mcp_server_port: 8081
+mcp_server_port: 32456

@@ -1,0 +1,30 @@
+# Description: Install and configure GitHub CLI on all cluster nodes.
+
+- name: 'Setup GitHub CLI'
+  hosts: all
+  remote_user: root
+  gather_facts: true
+  
+  roles:
+    - role: goldentooth.setup_gh_cli
+
+  post_tasks:
+    - name: 'Display cluster-wide GitHub CLI summary'
+      ansible.builtin.debug:
+        msg: |
+          GitHub CLI deployment completed across Goldentooth cluster
+          
+          Installed on nodes: {{ groups['all'] | join(', ') }}
+          
+          Usage:
+            gh --help              # Show GitHub CLI help
+            gh auth login          # Authenticate with GitHub
+            gh repo list           # List your repositories
+            gh_help               # Show cluster-specific help
+          
+          Shortcuts available:
+            ghpr, ghissue, ghrepo, ghstatus, ghauth
+          
+          Note: Users need to authenticate individually with 'gh auth login'
+      run_once: true
+      delegate_to: localhost

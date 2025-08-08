@@ -16,5 +16,4 @@ host_index: 0
 nfs_exports:
 - "/mnt/usb1 *(rw,sync,no_root_squash,no_subtree_check)"
 
-# MCP server configuration - use different port due to nginx conflicts
-mcp_server_port: 8085
+# MCP server configuration - use global divine port 32456 (no more conflicts!)

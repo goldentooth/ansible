@@ -1,0 +1,6 @@
+---
+# Handlers for goldentooth.setup_gh_cli role
+
+- name: 'reload shell environment'
+  ansible.builtin.debug:
+    msg: "Shell environment configuration updated - GitHub CLI changes will take effect on next login"

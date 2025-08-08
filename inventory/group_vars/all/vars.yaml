@@ -183,6 +183,18 @@ argo_cd:
                 HQ==
                 -----END CERTIFICATE-----
               certSubjectDN: CN=goldentooth Root CA,O=goldentooth
+      rbac:
+        policy.csv: |
+          p, role:admin, applications, *, */*, allow
+          p, role:admin, certificates, *, *, allow
+          p, role:admin, clusters, *, *, allow
+          p, role:admin, repositories, *, *, allow
+          p, role:admin, accounts, *, *, allow
+          p, role:admin, logs, get, *, allow
+          p, role:admin, exec, create, */*, allow
+          g, argocd-admins, role:admin
+        policy.default: role:readonly
+        scopes: '[groups]'
 
     redis-ha:
       # Enable Redis high availability.

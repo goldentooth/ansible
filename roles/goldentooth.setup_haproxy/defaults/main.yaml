@@ -1,0 +1,9 @@
+---
+# Default variables for goldentooth.setup_haproxy role
+
+# HAProxy configuration
+haproxy_user: haproxy
+haproxy_group: haproxy
+
+# Network configuration - matches MCP server default
+mcp_server_port: 32456
