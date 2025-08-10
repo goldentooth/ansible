@@ -1,14 +1,14 @@
 ---
 # Tasks for goldentooth.setup_mcp_server role
 
-- name: Create MCP server group
-  group:
+- name: 'Create MCP server group.'
+  ansible.builtin.group:
     name: "{{ mcp_server_group }}"
     system: true
   become: true
 
-- name: Create MCP server user
-  user:
+- name: 'Create MCP server user.'
+  ansible.builtin.user:
     name: "{{ mcp_server_user }}"
     group: "{{ mcp_server_group }}"
     system: true
@@ -17,8 +17,8 @@
     create_home: true
   become: true
 
-- name: Create MCP server working directory
-  file:
+- name: 'Create MCP server working directory.'
+  ansible.builtin.file:
     path: "{{ mcp_server_working_dir }}"
     state: directory
     owner: "{{ mcp_server_user }}"
@@ -26,8 +26,8 @@
     mode: '0755'
   become: true
 
-- name: Get latest release information from GitHub
-  uri:
+- name: 'Get latest release information from GitHub.'
+  ansible.builtin.uri:
     url: "{{ mcp_server_github_api_url }}/releases/latest"
     method: GET
     return_content: true
@@ -36,13 +36,13 @@
   run_once: true
   become: false
 
-- name: Set release facts
-  set_fact:
+- name: 'Set release facts.'
+  ansible.builtin.set_fact:
     mcp_release_version: "{{ github_release.json.tag_name }}"
     mcp_release_assets: "{{ github_release.json.assets }}"
 
-- name: Determine architecture-specific binary name
-  set_fact:
+- name: 'Determine architecture-specific binary name.'
+  ansible.builtin.set_fact:
     mcp_binary_name: >-
       {%- if ansible_architecture == 'x86_64' -%}
       goldentooth-mcp-x86_64-linux
@@ -52,31 +52,31 @@
       goldentooth-mcp-x86_64-linux
       {%- endif -%}
 
-- name: Find binary asset URL
-  set_fact:
+- name: 'Find binary asset URL.'
+  ansible.builtin.set_fact:
     mcp_binary_url: "{{ item.browser_download_url }}"
   loop: "{{ mcp_release_assets }}"
   when: item.name == mcp_binary_name
 
-- name: Fail if binary not found
-  fail:
+- name: 'Fail if binary not found.'
+  ansible.builtin.fail:
     msg: "Could not find binary {{ mcp_binary_name }} in release {{ mcp_release_version }}"
   when: mcp_binary_url is not defined
 
-- name: Check if binary is already installed
-  stat:
+- name: 'Check if binary is already installed.'
+  ansible.builtin.stat:
     path: "{{ mcp_server_install_dir }}/{{ mcp_server_binary_name }}"
   register: existing_binary
 
-- name: Check current binary version
-  command: "{{ mcp_server_install_dir }}/{{ mcp_server_binary_name }} --version"
+- name: 'Check current binary version.'
+  ansible.builtin.command: "{{ mcp_server_install_dir }}/{{ mcp_server_binary_name }} --version"
   register: current_version
   when: existing_binary.stat.exists
   changed_when: false
   failed_when: false
 
-- name: Download latest MCP server binary
-  get_url:
+- name: 'Download latest MCP server binary.'
+  ansible.builtin.get_url:
     url: "{{ mcp_binary_url }}"
     dest: "{{ mcp_server_install_dir }}/{{ mcp_server_binary_name }}"
     mode: '0755'
@@ -84,13 +84,13 @@
     group: root
     backup: true
   become: true
-  notify: restart goldentooth-mcp
+  notify: 'Restart goldentooth-mcp.'
   when: >
     not existing_binary.stat.exists or
     (current_version.stdout is defined and mcp_release_version not in current_version.stdout)
 
-- name: Install systemd service file
-  template:
+- name: 'Install systemd service file.'
+  ansible.builtin.template:
     src: goldentooth-mcp.service.j2
     dest: "/etc/systemd/system/{{ mcp_server_service_name }}.service"
     mode: '0644'
@@ -98,25 +98,25 @@
     group: root
   become: true
   notify:
-    - reload systemd
-    - restart goldentooth-mcp
+    - 'Reload systemd.'
+    - 'Restart goldentooth-mcp.'
 
-- name: Enable and start MCP server service
-  systemd:
+- name: 'Enable and start MCP server service.'
+  ansible.builtin.systemd_service:
     name: "{{ mcp_server_service_name }}"
     enabled: true
     state: started
     daemon_reload: true
   become: true
 
-- name: Verify service is running
-  systemd:
+- name: 'Verify service is running.'
+  ansible.builtin.systemd_service:
     name: "{{ mcp_server_service_name }}"
   register: service_status
   become: true
 
-- name: Display service status
-  debug:
+- name: 'Display service status.'
+  ansible.builtin.debug:
     msg: "MCP server service is {{ service_status.status.ActiveState }} ({{ service_status.status.SubState }})"
 
 # Consul Service Discovery Registration
