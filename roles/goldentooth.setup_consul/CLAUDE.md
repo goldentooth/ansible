@@ -4,19 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ## Overview
 
-This role sets up HashiCorp Consul service mesh across the cluster, configuring both server and client nodes with TLS encryption, ACL policies, and certificate renewal.
+This is a unified role that handles complete Consul setup including ACL bootstrap, role-aware certificate management, and service configuration. It consolidates the functionality previously split across bootstrap_consul, setup_consul, and rotate_consul_certs roles.
 
 ## Purpose
 
+- Bootstrap ACL system and generate management tokens (one-time operation)
+- Generate role-appropriate certificates (server vs client)
 - Configure Consul servers and clients
 - Set up TLS encryption for Consul communication
 - Configure ACL policies for security
 - Set up automatic certificate renewal
-- Configure Consul integration with other services
+- Handle role changes automatically
 
 ## Files
 
-- `tasks/main.yaml`: Main task file
+- `tasks/main.yaml`: Main orchestration file
+- `tasks/bootstrap_acl.yaml`: ACL bootstrap logic (one-time operations)
+- `tasks/manage_certificates.yaml`: Role-aware certificate management
 - `tasks/update_config.yaml`: Configuration update tasks
 - `templates/consul.hcl.j2`: Main Consul configuration template
 - `templates/consul.env.j2`: Environment variable template
@@ -26,6 +30,24 @@ This role sets up HashiCorp Consul service mesh across the cluster, configuring 
 
 ## Key Features
 
+### Unified Operations
+- Single role handles complete Consul lifecycle
+- Automatic role change detection and certificate regeneration
+- Idempotent - safe to run multiple times
+- Atomic operations - either succeeds completely or fails cleanly
+
+### ACL Bootstrap Management
+- Detects if ACL system needs bootstrapping
+- Generates gossip keys and management tokens
+- Handles bootstrap failures and retries
+- One-time operations run only when needed
+
+### Intelligent Certificate Management
+- Detects certificate role mismatches (server vs client)
+- Automatically regenerates certificates when roles change
+- Verifies certificate subject matches required role
+- Integrates with Step-CA for secure certificate generation
+
 ### Dual Role Support
 - Configures both Consul servers and clients based on host groups
 - Uses `consul.role` variable to determine configuration type
@@ -33,18 +55,8 @@ This role sets up HashiCorp Consul service mesh across the cluster, configuring 
 
 ### TLS Security
 - Implements mutual TLS for all Consul communication
-- Uses Step-CA for certificate management
+- Role-appropriate certificate generation
 - Automatic certificate renewal via systemd timers
-
-### ACL System
-- Configures ACL policies for secure access
-- Creates node-specific policies
-- Integrates with management token from vault
-
-### Service Integration
-- Registers services with Consul
-- Provides service discovery for other cluster services
-- Integrates with Nomad for workload orchestration
 
 ## Dependencies
 

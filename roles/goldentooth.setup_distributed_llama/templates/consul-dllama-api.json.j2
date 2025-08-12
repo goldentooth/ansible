@@ -23,7 +23,7 @@
       {
         "name": "Distributed LLaMA API Service",
         "service_id": "dllama-api-{{ inventory_hostname }}",
-        "script": "systemctl is-active dllama-api",
+        "args": ["systemctl", "is-active", "dllama-api"],
         "interval": "30s",
         "timeout": "10s"
       },

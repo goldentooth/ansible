@@ -1,10 +1,24 @@
 ---
+# Unified Consul setup role - handles ACL bootstrap, certificates, and configuration
+
+- name: 'Bootstrap ACL system if needed (one-time operation).'
+  ansible.builtin.include_tasks: 'bootstrap_acl.yaml'
+  when: "clean_hostname in groups['consul_server']"
+  run_once: true
+
+- name: 'Ensure Consul certificates are role-appropriate.'
+  ansible.builtin.include_tasks: 'manage_certificates.yaml'
+
 - name: 'Setup Consul on server nodes.'
   block:
 
     - name: 'Set fact for the Consul agent token on server nodes.'
       ansible.builtin.set_fact:
         consul_agent_token: "{{ secret_vault.consul.mgmt_token }}"
+
+    - name: 'Set fact for the Consul CLI token on server nodes (use mgmt token).'
+      ansible.builtin.set_fact:
+        consul_cli_token: "{{ secret_vault.consul.mgmt_token }}"
 
     - name: 'Update configuration for server nodes.'
       ansible.builtin.include_tasks: 'update_config.yaml'
@@ -40,6 +54,21 @@
     - name: 'Set fact for the Consul agent token on client nodes.'
       ansible.builtin.set_fact:
         consul_agent_token: "{{ consul_agent_token_object.token.SecretID}}"
+
+    - name: 'Create CLI token for client nodes.'
+      community.general.consul_token:
+        host: "{{ consul.maybe_leader }}"
+        token: "{{ secret_vault.consul.mgmt_token }}"
+        description: "CLI token for {{ clean_hostname }}"
+        policies:
+          - name: "{{ consul.agent_policy_name }}"
+      register: 'consul_cli_token_object'
+      delegate_to: "{{ consul.maybe_leader }}"
+      until: 'consul_cli_token_object is not failed'
+
+    - name: 'Set fact for the Consul CLI token on client nodes.'
+      ansible.builtin.set_fact:
+        consul_cli_token: "{{ consul_cli_token_object.token.SecretID}}"
 
   when: "clean_hostname in groups['consul_client']"
 

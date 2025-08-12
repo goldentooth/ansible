@@ -22,7 +22,7 @@
       {
         "name": "Distributed LLaMA Worker Service",
         "service_id": "dllama-worker-{{ inventory_hostname }}",
-        "script": "systemctl is-active dllama-worker",
+        "args": ["systemctl", "is-active", "dllama-worker"],
         "interval": "30s",
         "timeout": "10s"
       },

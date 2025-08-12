@@ -27,14 +27,14 @@
       {
         "name": "Distributed LLaMA Root Directory",
         "service_id": "dllama-root-{{ inventory_hostname }}",
-        "script": "test -d {{ distributed_llama.install_dir }}",
+        "args": ["test", "-d", "{{ distributed_llama.install_dir }}"],
         "interval": "60s",
         "timeout": "5s"
       },
       {
         "name": "Distributed LLaMA Models Directory",
         "service_id": "dllama-root-{{ inventory_hostname }}",
-        "script": "test -d {{ distributed_llama.models_dir }}",
+        "args": ["test", "-d", "{{ distributed_llama.models_dir }}"],
         "interval": "120s", 
         "timeout": "5s"
       }

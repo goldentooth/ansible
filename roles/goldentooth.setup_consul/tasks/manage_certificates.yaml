@@ -1,0 +1,91 @@
+---
+# Certificate management tasks - handles role-aware certificate generation
+
+- name: 'Check if certificate exists and get subject.'
+  block:
+    - name: 'Get current certificate subject.'
+      ansible.builtin.shell:
+        cmd: "openssl x509 -in {{ consul.cert_path }} -text -noout | grep 'Subject:' | head -1"
+      register: 'current_cert_subject'
+      failed_when: false
+      changed_when: false
+
+    - name: 'Set fact for current certificate role.'
+      ansible.builtin.set_fact:
+        current_cert_role: "{{ 'server' if 'server.dc1.consul' in current_cert_subject.stdout else 'client' }}"
+      when: "current_cert_subject.rc == 0"
+
+    - name: 'Set fact for missing certificate.'
+      ansible.builtin.set_fact:
+        current_cert_role: "none"
+      when: "current_cert_subject.rc != 0"
+
+- name: 'Set fact for required certificate role.'
+  ansible.builtin.set_fact:
+    required_cert_role: "{{ consul.role }}"
+
+- name: 'Debug certificate role status.'
+  ansible.builtin.debug:
+    msg: |
+      Current certificate role: {{ current_cert_role }}
+      Required certificate role: {{ required_cert_role }}
+      Certificate regeneration needed: {{ current_cert_role != required_cert_role }}
+
+- name: 'Generate new certificates if role changed or missing.'
+  block:
+
+    - name: 'Ensure directory for Consul certs exists.'
+      ansible.builtin.file:
+        path: "{{ consul.certs_path }}"
+        state: 'directory'
+        owner: 'consul'
+        group: 'consul'
+        mode: '0755'
+
+    - name: 'Generate Consul certificate using step-ca.'
+      ansible.builtin.shell:
+        cmd: |
+          {{ step_ca.executable }} \
+            ca certificate \
+            "{{ clean_hostname }}.{{ consul.role }}.{{ consul.datacenter }}.{{ consul.domain }}" \
+            "{{ consul.cert_path }}" \
+            "{{ consul.key_path }}" \
+            --provisioner="{{ step_ca.default_provisioner.name }}" \
+            --password-file="{{ step_ca.default_provisioner.password_path }}" \
+            --san="{{ clean_hostname }}" \
+            --san="{{ clean_hostname }}.{{ consul.role }}.{{ consul.datacenter }}.{{ consul.domain }}" \
+            --san="{{ consul.role }}.{{ consul.datacenter }}.{{ consul.domain }}" \
+            --san="{{ ipv4_address }}" \
+            --not-after="24h" \
+            --console \
+            --force
+      notify:
+        - 'Restart Consul service.'
+
+    - name: 'Repair permissions on Consul certs directory.'
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: 'file'
+        owner: 'consul'
+        group: 'consul'
+        mode: '0600'
+      loop:
+        - "{{ consul.key_path }}"
+        - "{{ consul.cert_path }}"
+      loop_control:
+        loop_var: 'item'
+
+    - name: 'Verify new certificate has correct role.'
+      ansible.builtin.shell:
+        cmd: "openssl x509 -in {{ consul.cert_path }} -text -noout | grep 'Subject:' | head -1"
+      register: 'new_cert_subject'
+      changed_when: false
+
+    - name: 'Display certificate regeneration result.'
+      ansible.builtin.debug:
+        msg: |
+          Certificate regenerated successfully.
+          New certificate subject: {{ new_cert_subject.stdout }}
+          Role-appropriate: {{ required_cert_role + '.dc1.consul' in new_cert_subject.stdout }}
+
+  when: "current_cert_role != required_cert_role"

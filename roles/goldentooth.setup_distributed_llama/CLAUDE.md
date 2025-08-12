@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with the goldentooth.setup_distributed_llama role.
 
+## IMPORTANT - Consul Compatibility Issue (FIXED)
+
+**Previously Fixed Issue**: This role was generating Consul service registration files with deprecated `script` health checks, which are no longer supported in modern Consul versions. These caused validation errors that would break Consul cluster operations.
+
+**Fix Applied (Aug 2025)**: All templates now use `args` array format instead of `script` string format for health checks, compatible with current Consul versions.
+
+**Do not re-run older versions** of this role that might regenerate the broken config files.
+
 ## Overview
 
 This role sets up distributed-llama, a distributed computing framework for Large Language Model (LLM) inference across the Goldentooth cluster. It enables running LLM inference workloads distributed across multiple Raspberry Pi nodes.

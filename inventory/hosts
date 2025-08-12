@@ -131,15 +131,15 @@ all:
       children:
         consul_server:
           hosts:
-            bettley:
-            cargyll:
-            dalt:
-        consul_client:
-          hosts:
-            allyrion:
             erenford:
             fenn:
             gardener:
+        consul_client:
+          hosts:
+            allyrion:
+            bettley:
+            cargyll:
+            dalt:
             harlton:
             inchfield:
             jast:
