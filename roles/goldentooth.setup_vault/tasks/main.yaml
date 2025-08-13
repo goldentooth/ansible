@@ -1,83 +1,93 @@
 ---
-- name: 'Install Vault.'
+# Unified Vault setup role - handles servers and client access
+
+- name: 'Install Vault CLI on all nodes.'
   ansible.builtin.apt:
     pkg:
       - 'vault'
     state: 'present'
 
-- name: 'Create/update the Vault Consul Policy.'
-  community.general.consul_policy:
-    host: "{{ ipv4_address }}"
-    token: "{{ consul.mgmt_token }}"
-    name: "{{ vault.consul.policy_name }}"
-    description: 'Vault policy'
-    rules: "{{ lookup('ansible.builtin.file', role_path ~ '/files/vault.policy.hcl') }}"
-  run_once: true
+- name: 'Setup Vault servers.'
+  block:
 
-- name: 'Create Consul client tokens.'
-  community.general.consul_token:
-    host: "{{ ipv4_address }}"
-    token: "{{ consul.mgmt_token }}"
-    description: "Vault token"
-    policies:
-      - name: "{{ vault.consul.policy_name }}"
-  register: 'vault_consul_token'
+    - name: 'Ensure Vault certificates are generated.'
+      ansible.builtin.include_tasks: 'manage_certificates.yaml'
 
-- name: 'Copy Vault service configuration into place on all nodes.'
-  ansible.builtin.template:
-    src: 'vault.service.j2'
-    dest: '/etc/systemd/system/vault.service'
-    owner: 'vault'
-    group: 'vault'
-    mode: '0644'
-  notify:
-    - 'Trigger systemd daemon-reload.'
-    - 'Restart Vault service.'
+    - name: 'Create/update the Vault Consul Policy.'
+      community.general.consul_policy:
+        host: "{{ ipv4_address }}"
+        token: "{{ consul.mgmt_token }}"
+        name: "{{ vault.consul.policy_name }}"
+        description: 'Vault policy'
+        rules: "{{ lookup('ansible.builtin.file', role_path ~ '/files/vault.policy.hcl') }}"
+      run_once: true
 
-- name: 'Copy Vault configuration into place on all nodes.'
-  ansible.builtin.template:
-    src: "{{ file.src }}"
-    dest: "{{ file.dest }}"
-    owner: 'vault'
-    group: 'vault'
-    mode: '0600'
-  loop:
-    - src: 'vault.hcl.j2'
-      dest: "{{ vault.hcl_config_path }}"
-    - src: 'vault.env.j2'
-      dest: "{{ vault.env_config_path }}"
-  loop_control:
-    loop_var: 'file'
-  notify:
-    - 'Restart Vault service.'
+    - name: 'Create Consul client tokens.'
+      community.general.consul_token:
+        host: "{{ ipv4_address }}"
+        token: "{{ consul.mgmt_token }}"
+        description: "Vault token"
+        policies:
+          - name: "{{ vault.consul.policy_name }}"
+      register: 'vault_consul_token'
 
-- name: 'Set Vault environment variables system-wide.'
+    - name: 'Copy Vault service configuration into place on server nodes.'
+      ansible.builtin.template:
+        src: 'vault.service.j2'
+        dest: '/etc/systemd/system/vault.service'
+        owner: 'vault'
+        group: 'vault'
+        mode: '0644'
+      notify:
+        - 'Trigger systemd daemon-reload.'
+        - 'Restart Vault service.'
+
+    - name: 'Copy Vault configuration into place on server nodes.'
+      ansible.builtin.template:
+        src: "{{ file.src }}"
+        dest: "{{ file.dest }}"
+        owner: 'vault'
+        group: 'vault'
+        mode: '0600'
+      loop:
+        - src: 'vault.hcl.j2'
+          dest: "{{ vault.hcl_config_path }}"
+        - src: 'vault.env.j2'
+          dest: "{{ vault.env_config_path }}"
+      loop_control:
+        loop_var: 'file'
+      notify:
+        - 'Restart Vault service.'
+
+    - name: 'Ensure Vault service directory exists.'
+      ansible.builtin.file:
+        path: '/etc/systemd/system/cert-renewer@vault.service.d'
+        state: directory
+        owner: 'root'
+        group: 'root'
+        mode: '0755'
+
+    - name: 'Enable cert-renewer service for Vault.'
+      ansible.builtin.systemd_service:
+        name: 'cert-renewer@vault.timer'
+        enabled: true
+        state: 'started'
+      notify:
+        - 'Trigger systemd daemon-reload.'
+
+    - name: 'Copy Vault certificate renewer configuration into place on server nodes.'
+      ansible.builtin.template:
+        src: 'cert-renewer@vault.conf.j2'
+        dest: '/etc/systemd/system/cert-renewer@vault.service.d/override.conf'
+      notify:
+        - 'Trigger systemd daemon-reload.'
+
+  when: "clean_hostname in groups['vault']"
+
+- name: 'Set Vault environment variables system-wide for all nodes.'
   ansible.builtin.template:
     src: 'vault-env.sh.j2'
     dest: '/etc/profile.d/vault-env.sh'
     owner: 'root'
     group: 'root'
     mode: '0644'
-
-- name: 'Ensure Vault service directory exists.'
-  ansible.builtin.file:
-    path: '/etc/systemd/system/cert-renewer@vault.service.d'
-    state: directory
-    owner: 'root'
-    group: 'root'
-    mode: '0755'
-
-- name: 'Enable cert-renewer service for Vault.'
-  ansible.builtin.systemd_service:
-    name: 'cert-renewer@vault.timer'
-    enabled: true
-    state: 'started'
-  notify:
-    - 'Trigger systemd daemon-reload.'
-
-- name: 'Copy Vault certificate renewer configuration into place on all nodes.'
-  ansible.builtin.template:
-    src: 'cert-renewer@vault.conf.j2'
-    dest: '/etc/systemd/system/cert-renewer@vault.service.d/override.conf'
-  notify:
-    - 'Trigger systemd daemon-reload.'

@@ -4,19 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ## Overview
 
-This role sets up HashiCorp Vault secrets management across the cluster, configuring Vault servers with TLS encryption, AWS KMS auto-unseal, and Consul backend integration.
+This is a unified role that handles complete Vault setup including server configuration, client CLI access, certificate management, and Consul integration. It consolidates the functionality previously split across setup_vault and rotate_vault_certs roles while providing cluster-wide CLI access like the setup_consul role.
 
 ## Purpose
 
+- Install Vault CLI on all cluster nodes
+- Generate TLS certificates for Vault servers
 - Configure Vault servers in HA mode
-- Set up TLS encryption for Vault communication
+- Set up client access from non-server nodes
 - Configure AWS KMS auto-unseal
 - Set up Consul backend for storage
 - Configure automatic certificate renewal
 
 ## Files
 
-- `tasks/main.yaml`: Main task file
+- `tasks/main.yaml`: Main orchestration file
+- `tasks/manage_certificates.yaml`: Certificate generation and management
 - `templates/vault.hcl.j2`: Main Vault configuration template
 - `templates/vault.env.j2`: Environment variable template
 - `templates/vault.service.j2`: Systemd service template
@@ -25,8 +28,21 @@ This role sets up HashiCorp Vault secrets management across the cluster, configu
 
 ## Key Features
 
+### Unified Operations
+- Single role handles complete Vault lifecycle
+- Installs CLI on all nodes for cluster-wide access
+- Server and client configuration based on host groups
+- Automatic certificate generation and renewal
+- Idempotent - safe to run multiple times
+- Atomic operations - either succeeds completely or fails cleanly
+
+### Certificate Management
+- Generates TLS certificates using Step-CA
+- Handles certificate renewal automatically
+- Integrates with systemd timer-based renewal
+
 ### High Availability
-- Configures Vault in HA mode with Raft storage
+- Configures Vault in HA mode with Consul storage
 - Uses Consul for service discovery
 - Supports multiple Vault servers for redundancy
 

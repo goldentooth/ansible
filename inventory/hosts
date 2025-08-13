@@ -222,9 +222,9 @@ all:
     # -----------------------------------
     vault:
       hosts:
-        bettley:
-        cargyll:
-        dalt:
+        erenford:
+        fenn:
+        gardener:
 
     # -----------------------------------
     # Envoy

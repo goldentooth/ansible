@@ -1,6 +1,12 @@
 #!/bin/bash
 # Vault environment variables for all users
+{% if clean_hostname in groups['vault'] %}
+# Server node - use local Vault instance and server certificates
 export VAULT_ADDR="https://{{ ipv4_address }}:8200"
 export VAULT_CLIENT_CERT="{{ vault.cert_path }}"
 export VAULT_CLIENT_KEY="{{ vault.key_path }}"
+{% else %}
+# Client node - connect to Vault cluster
+export VAULT_ADDR="https://{{ hostvars[groups['vault'][0]]['ipv4_address'] }}:8200"
+{% endif %}
 export VAULT_CACERT="{{ step_ca.root_cert_path }}"

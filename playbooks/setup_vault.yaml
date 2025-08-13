@@ -1,7 +1,7 @@
 # Description: Setup HashiCorp Vault.
 
 - name: 'Setup HashiCorp Vault.'
-  hosts: 'vault'
+  hosts: 'all'
   remote_user: 'root'
   roles:
     - { role: 'goldentooth.setup_vault' }

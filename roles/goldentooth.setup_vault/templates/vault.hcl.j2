@@ -18,7 +18,7 @@ listener "tcp" {
   address                             = "{{ ipv4_address }}:8200"
   tls_cert_file                       = "{{ vault.cert_path }}"
   tls_key_file                        = "{{ vault.key_path }}"
-  tls_require_and_verify_client_cert  = true
+  tls_require_and_verify_client_cert  = false
   telemetry {
     unauthenticated_metrics_access = true
   }
