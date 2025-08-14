@@ -1,7 +1,7 @@
 # Description: Setup Nomad.
 
 - name: 'Setup Nomad.'
-  hosts: 'nomad'
+  hosts: 'all'
   remote_user: 'root'
   roles:
     - { role: 'goldentooth.setup_nomad' }

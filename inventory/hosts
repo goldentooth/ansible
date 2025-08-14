@@ -158,9 +158,9 @@ all:
       children:
         nomad_server:
           hosts:
-            bettley:
-            cargyll:
-            dalt:
+            erenford:
+            fenn:
+            gardener:
         nomad_client:
           children:
             nomad_client_gpu:

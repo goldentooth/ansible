@@ -6,14 +6,14 @@ bind_addr   = "{{ ipv4_address }}"
 server {
   enabled           = true
   bootstrap_expect  = {{ groups['nomad_server'] | length }}
-  encrypt           = "{{ nomad_gossip_key.stdout }}"
+  encrypt           = "{{ secret_vault.consul.gossip_key }}"
   heartbeat_grace   = "1h"
 }
 {% endif %}
 
 consul {
   address             = "{{ ipv4_address }}:8501"
-  token               = "{{ nomad_consul_token['token']['SecretID'] }}"
+  token               = "{{ nomad_consul_token.token.SecretID }}"
   grpc_address        = "{{ ipv4_address }}:8503"
 
   ssl                 = true

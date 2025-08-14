@@ -1,6 +1,13 @@
 #!/bin/bash
 # Nomad environment variables and shell completion for all users
+{% if clean_hostname in groups['nomad'] %}
+# Server or client node - use local Nomad instance with CLI certificates
 export NOMAD_ADDR="https://{{ ipv4_address }}:4646"
-export NOMAD_CACERT="{{ step_ca.root_cert_path }}"
 export NOMAD_CLIENT_CERT="{{ nomad.cli_cert_path }}"
 export NOMAD_CLIENT_KEY="{{ nomad.cli_key_path }}"
+{% else %}
+# Non-Nomad node - connect to Nomad cluster (first server)
+export NOMAD_ADDR="https://{{ hostvars[groups['nomad_server'][0]]['ipv4_address'] }}:4646"
+# Note: Client connections from non-nomad nodes require manual certificate setup
+{% endif %}
+export NOMAD_CACERT="{{ step_ca.root_cert_path }}"

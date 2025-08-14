@@ -1,125 +1,128 @@
 ---
-- name: 'Install Nomad.'
+# Unified Nomad setup role - handles servers, clients, and CLI access
+
+- name: 'Install Nomad CLI on all nodes.'
   ansible.builtin.apt:
     pkg:
       - 'nomad'
     state: 'present'
 
-- name: 'Update the Consul policies.'
-  community.general.consul_policy:
-    host: "{{ ipv4_address }}"
-    token: "{{ secret_vault.consul.mgmt_token }}"
-    name: "{{ policy.name }}"
-    description: "{{ policy.description }}"
-    rules: "{{ policy.rules }}"
-  loop:
-    - name: 'nomad-client'
-      description: 'Nomad client policy'
-      rules: "{{ lookup('ansible.builtin.file', role_path ~ '/files/nomad.client.policy.hcl') }}"
-    - name: 'nomad-server'
-      description: 'Nomad server policy'
-      rules: "{{ lookup('ansible.builtin.file', role_path ~ '/files/nomad.server.policy.hcl') }}"
-  loop_control:
-    loop_var: 'policy'
-  run_once: true
+- name: 'Setup Nomad servers and clients.'
+  block:
 
-- name: 'Create Consul tokens.'
-  community.general.consul_token:
-    host: "{{ ipv4_address }}"
-    token: "{{ secret_vault.consul.mgmt_token }}"
-    description: "Nomad {{ nomad.role }} token"
-    policies:
-      - name: 'nomad-{{ nomad.role }}'
-  register: 'nomad_consul_token'
+    - name: 'Ensure Nomad certificates are generated.'
+      ansible.builtin.include_tasks: 'manage_certificates.yaml'
 
-- name: 'Copy Nomad service configuration into place on all nodes.'
-  ansible.builtin.template:
-    src: 'nomad.service.j2'
-    dest: '/etc/systemd/system/nomad.service'
-    owner: 'nomad'
-    group: 'nomad'
-    mode: '0644'
-  notify:
-    - 'Trigger systemd daemon-reload.'
-    - 'Restart Nomad service.'
+    - name: 'Update the Consul policies.'
+      community.general.consul_policy:
+        host: "{{ ipv4_address }}"
+        token: "{{ consul.mgmt_token }}"
+        name: "{{ policy.name }}"
+        description: "{{ policy.description }}"
+        rules: "{{ policy.rules }}"
+      loop:
+        - name: 'nomad-client'
+          description: 'Nomad client policy'
+          rules: "{{ lookup('ansible.builtin.file', role_path ~ '/files/nomad.client.policy.hcl') }}"
+        - name: 'nomad-server'
+          description: 'Nomad server policy'
+          rules: "{{ lookup('ansible.builtin.file', role_path ~ '/files/nomad.server.policy.hcl') }}"
+      loop_control:
+        loop_var: 'policy'
+      run_once: true
 
-- name: 'Generate the gossip encryption key.'
-  ansible.builtin.command:
-    cmd: 'nomad operator gossip keyring generate'
-  no_log: true
-  run_once: true
-  register: 'nomad_gossip_key'
+    - name: 'Create Consul tokens.'
+      community.general.consul_token:
+        host: "{{ ipv4_address }}"
+        token: "{{ consul.mgmt_token }}"
+        description: "Nomad {{ nomad.role }} token"
+        policies:
+          - name: 'nomad-{{ nomad.role }}'
+      register: 'nomad_consul_token'
 
-- name: 'Copy Nomad configuration into place on all nodes.'
-  ansible.builtin.template:
-    src: "{{ file.src }}"
-    dest: "{{ file.dest }}"
-    owner: 'nomad'
-    group: 'nomad'
-    mode: '0600'
-  loop:
-    - src: 'nomad.hcl.j2'
-      dest: "{{ nomad.hcl_config_path }}"
-    - src: 'nomad.env.j2'
-      dest: "{{ nomad.env_config_path }}"
-  loop_control:
-    loop_var: 'file'
-  notify:
-    - 'Restart Nomad service.'
+    - name: 'Copy Nomad service configuration into place on server and client nodes.'
+      ansible.builtin.template:
+        src: 'nomad.service.j2'
+        dest: '/etc/systemd/system/nomad.service'
+        owner: 'nomad'
+        group: 'nomad'
+        mode: '0644'
+      notify:
+        - 'Trigger systemd daemon-reload.'
+        - 'Restart Nomad service.'
 
-- name: 'Set Nomad environment variables system-wide.'
+    - name: 'Copy Nomad configuration into place on server and client nodes.'
+      ansible.builtin.template:
+        src: "{{ file.src }}"
+        dest: "{{ file.dest }}"
+        owner: 'nomad'
+        group: 'nomad'
+        mode: '0600'
+      loop:
+        - src: 'nomad.hcl.j2'
+          dest: "{{ nomad.hcl_config_path }}"
+        - src: 'nomad.env.j2'
+          dest: "{{ nomad.env_config_path }}"
+      loop_control:
+        loop_var: 'file'
+      notify:
+        - 'Restart Nomad service.'
+
+    - name: 'Ensure Nomad service directory exists.'
+      ansible.builtin.file:
+        path: '/etc/systemd/system/cert-renewer@nomad.service.d'
+        state: directory
+        owner: 'root'
+        group: 'root'
+        mode: '0755'
+
+    - name: 'Enable cert-renewer service for Nomad.'
+      ansible.builtin.systemd_service:
+        name: 'cert-renewer@nomad.timer'
+        enabled: true
+        state: 'started'
+      notify:
+        - 'Trigger systemd daemon-reload.'
+
+    - name: 'Copy Nomad certificate renewer configuration into place on server and client nodes.'
+      ansible.builtin.template:
+        src: 'cert-renewer@nomad.conf.j2'
+        dest: '/etc/systemd/system/cert-renewer@nomad.service.d/override.conf'
+      notify:
+        - 'Trigger systemd daemon-reload.'
+
+    - name: 'Ensure Nomad-cli service directory exists.'
+      ansible.builtin.file:
+        path: '/etc/systemd/system/cert-renewer@nomad-cli.service.d'
+        state: directory
+        owner: 'root'
+        group: 'root'
+        mode: '0755'
+
+    - name: 'Enable cert-renewer service for Nomad CLI.'
+      ansible.builtin.systemd_service:
+        name: 'cert-renewer@nomad-cli.timer'
+        enabled: true
+        state: 'started'
+      notify:
+        - 'Trigger systemd daemon-reload.'
+
+    - name: 'Copy Nomad CLI certificate renewer configuration into place on server and client nodes.'
+      ansible.builtin.template:
+        src: 'cert-renewer@nomad-cli.conf.j2'
+        dest: '/etc/systemd/system/cert-renewer@nomad-cli.service.d/override.conf'
+      notify:
+        - 'Trigger systemd daemon-reload.'
+
+  when: "clean_hostname in groups['nomad']"
+
+- name: 'Set Nomad environment variables system-wide for all nodes.'
   ansible.builtin.template:
     src: 'nomad-env.sh.j2'
     dest: '/etc/profile.d/nomad-env.sh'
     owner: 'root'
     group: 'root'
     mode: '0644'
-
-- name: 'Ensure Nomad service directory exists.'
-  ansible.builtin.file:
-    path: '/etc/systemd/system/cert-renewer@nomad.service.d'
-    state: directory
-    owner: 'root'
-    group: 'root'
-    mode: '0755'
-
-- name: 'Enable cert-renewer service for Nomad.'
-  ansible.builtin.systemd_service:
-    name: 'cert-renewer@nomad.timer'
-    enabled: true
-    state: 'started'
-  notify:
-    - 'Trigger systemd daemon-reload.'
-
-- name: 'Copy Nomad certificate renewer configuration into place on all nodes.'
-  ansible.builtin.template:
-    src: 'cert-renewer@nomad.conf.j2'
-    dest: '/etc/systemd/system/cert-renewer@nomad.service.d/override.conf'
-  notify:
-    - 'Trigger systemd daemon-reload.'
-
-- name: 'Ensure Nomad-cli service directory exists.'
-  ansible.builtin.file:
-    path: '/etc/systemd/system/cert-renewer@nomad-cli.service.d'
-    state: directory
-    owner: 'root'
-    group: 'root'
-    mode: '0755'
-
-- name: 'Enable cert-renewer service for Nomad.'
-  ansible.builtin.systemd_service:
-    name: 'cert-renewer@nomad-cli.timer'
-    enabled: true
-    state: 'started'
-  notify:
-    - 'Trigger systemd daemon-reload.'
-
-- name: 'Copy Nomad certificate renewer configuration into place on all nodes.'
-  ansible.builtin.template:
-    src: 'cert-renewer@nomad-cli.conf.j2'
-    dest: '/etc/systemd/system/cert-renewer@nomad-cli.service.d/override.conf'
-  notify:
-    - 'Trigger systemd daemon-reload.'
 
 - name: 'Add Nomad bash completion system-wide.'
   ansible.builtin.lineinfile:

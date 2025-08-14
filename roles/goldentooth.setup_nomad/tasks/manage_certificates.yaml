@@ -1,4 +1,6 @@
 ---
+# Intelligent certificate management for Nomad - generates certificates as needed
+
 - name: 'Ensure directory for Nomad certs exists.'
   ansible.builtin.file:
     path: "{{ nomad.certs_path }}"
