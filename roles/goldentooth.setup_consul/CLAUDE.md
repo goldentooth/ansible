@@ -83,8 +83,7 @@ This role is typically called via the setup_consul playbook:
 ## Integration
 
 Works with:
-- `goldentooth.bootstrap_consul_acl`: ACL system setup
-- `goldentooth.rotate_consul_certs`: Certificate rotation
+- `goldentooth.bootstrap_consul_acl`: ACL system setup  
 - `goldentooth.setup_nomad`: Nomad integration
 - `goldentooth.setup_vault`: Vault integration
 

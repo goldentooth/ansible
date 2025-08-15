@@ -32,9 +32,7 @@ All custom roles follow the `goldentooth.*` naming convention:
 - `goldentooth.init_cluster_ca`: Initialize root and intermediate CAs
 - `goldentooth.bootstrap_cluster_ca`: Bootstrap CA client configuration (one-time)
 - `goldentooth.setup_cluster_ca`: Setup CA components and certificate renewal
-- `goldentooth.rotate_consul_certs`: Rotate Consul certificates
-- `goldentooth.rotate_nomad_certs`: Rotate Nomad certificates
-- `goldentooth.rotate_vault_certs`: Rotate Vault certificates
+- Certificate rotation now integrated into unified setup roles (setup_consul, setup_nomad, setup_vault)
 - `goldentooth.rotate_grafana_certs`: Rotate Grafana certificates
 - `goldentooth.rotate_loki_certs`: Rotate Loki certificates
 - `goldentooth.rotate_vector_certs`: Rotate Vector certificates

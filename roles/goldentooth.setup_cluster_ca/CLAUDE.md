@@ -51,9 +51,10 @@ This role is typically called after bootstrapping the cluster CA:
 ## Integration
 
 Works with other certificate rotation roles:
-- `goldentooth.rotate_consul_certs`
-- `goldentooth.rotate_nomad_certs`
-- `goldentooth.rotate_vault_certs`
+- Certificate rotation for Consul, Nomad, and Vault is now integrated into their respective setup roles
+- `goldentooth.rotate_grafana_certs`
+- `goldentooth.rotate_loki_certs`
+- `goldentooth.rotate_vector_certs`
 - And other service-specific certificate rotation roles
 
 ## Security Considerations

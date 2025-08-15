@@ -87,7 +87,6 @@ This role is typically called via the setup_vault playbook:
 
 Works with:
 - `goldentooth.setup_consul`: Backend storage
-- `goldentooth.rotate_vault_certs`: Certificate rotation
 - `goldentooth.setup_nomad`: Secrets integration
 - AWS KMS for auto-unseal
 
