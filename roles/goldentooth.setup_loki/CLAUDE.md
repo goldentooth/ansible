@@ -4,24 +4,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ## Overview
 
-This role sets up Loki log aggregation system with TLS encryption, Consul integration, and certificate renewal.
+This is a unified role that handles complete Loki setup including installation, certificate management, TLS encryption, Consul integration, and certificate renewal. It consolidates the functionality previously split across setup_loki and rotate_loki_certs roles.
 
 ## Purpose
 
+- Generate TLS certificates for Loki service
 - Configure Loki log aggregation server
 - Set up TLS encryption for Loki communication
-- Configure Consul integration
+- Configure Consul integration with ACL policies
 - Set up automatic certificate renewal
 - Configure log retention and storage
 
 ## Files
 
-- `tasks/main.yaml`: Main task file
+- `tasks/main.yaml`: Main orchestration file
+- `tasks/manage_certificates.yaml`: Certificate generation and management
 - `templates/loki.yml.j2`: Main Loki configuration template
 - `templates/cert-renewer@loki.conf.j2`: Certificate renewal configuration
 - `files/loki.policy.hcl`: Consul ACL policy
 
 ## Key Features
+
+### Unified Operations
+- Single role handles complete Loki lifecycle
+- Automatic certificate generation and renewal
+- Integrated Consul ACL policy management
+- Idempotent - safe to run multiple times
+- Atomic operations - either succeeds completely or fails cleanly
+
+### Certificate Management
+- Generates TLS certificates using Step-CA
+- Handles certificate renewal automatically
+- Integrates with systemd timer-based renewal
 
 ### TLS Security
 - Implements TLS for all Loki communication
@@ -68,8 +82,7 @@ This role is typically called via the setup_loki playbook:
 ## Integration
 
 Works with:
-- `goldentooth.setup_consul`: Service discovery
-- `goldentooth.rotate_loki_certs`: Certificate rotation
+- `goldentooth.setup_consul`: Service discovery and ACL integration
 - `goldentooth.setup_grafana`: Visualization integration
 - `goldentooth.setup_vector`: Log shipping
 

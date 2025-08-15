@@ -1,4 +1,9 @@
 ---
+# Unified Loki setup role - handles installation, certificates, and configuration
+
+- name: 'Ensure Loki certificates are generated.'
+  ansible.builtin.include_tasks: 'manage_certificates.yaml'
+
 - name: 'Install Loki.'
   ansible.builtin.apt:
     pkg:

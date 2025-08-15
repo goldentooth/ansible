@@ -1,0 +1,72 @@
+---
+# Intelligent certificate management for Loki - generates certificates only when needed
+
+- name: 'Check if Loki certificate needs renewal.'
+  ansible.builtin.shell:
+    cmd: |
+      if [ ! -f "{{ loki.cert_path }}" ]; then
+        echo "MISSING"
+      else
+        {{ step_ca.executable }} certificate needs-renewal "{{ loki.cert_path }}" && echo "NEEDS_RENEWAL" || echo "VALID"
+      fi
+  register: 'loki_cert_status'
+  changed_when: false
+  failed_when: false
+
+- name: 'Debug certificate renewal status.'
+  ansible.builtin.debug:
+    msg: |
+      Certificate status: {{ loki_cert_status.stdout }}
+      Certificate renewal needed: {{ loki_cert_status.stdout in ['MISSING', 'NEEDS_RENEWAL'] }}
+
+- name: 'Generate new certificate if missing or needs renewal.'
+  block:
+
+    - name: 'Ensure directory for Loki certs exists.'
+      ansible.builtin.file:
+        path: "{{ loki.certs_path }}"
+        state: 'directory'
+        owner: 'loki'
+        group: 'root'
+        mode: '0755'
+
+    - name: 'Generate certificate for Loki from step-ca.'
+      ansible.builtin.shell:
+        cmd: |
+          {{ step_ca.executable }} \
+            ca certificate \
+            loki.{{ cluster.services_domain }} \
+            "{{ loki.cert_path }}" \
+            "{{ loki.key_path }}" \
+            --provisioner="{{ step_ca.default_provisioner.name }}" \
+            --password-file="{{ step_ca.default_provisioner.password_path }}" \
+            --san="loki.{{ cluster.services_domain }}" \
+            --san="loki" \
+            --san='localhost' \
+            --san="{{ clean_hostname }}" \
+            --san="{{ clean_hostname }}.{{ cluster.node_domain }}" \
+            --san="{{ ipv4_address }}" \
+            --not-after='24h' \
+            --console \
+            --force
+      notify:
+        - 'Restart Loki service.'
+
+    - name: 'Repair permissions on Loki certs.'
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: 'file'
+        owner: 'loki'
+        group: 'root'
+        mode: '0600'
+      loop:
+        - "{{ loki.cert_path }}"
+        - "{{ loki.key_path }}"
+      loop_control:
+        loop_var: 'item'
+
+    - name: 'Display certificate generation result.'
+      ansible.builtin.debug:
+        msg: "Certificate generated successfully for Loki"
+
+  when: "loki_cert_status.stdout in ['MISSING', 'NEEDS_RENEWAL']"
