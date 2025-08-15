@@ -68,6 +68,7 @@ goldentooth setup_vault
 goldentooth setup_grafana
 goldentooth setup_loki
 goldentooth setup_prometheus
+goldentooth setup_seaweedfs
 goldentooth setup_docker
 goldentooth setup_envoy
 goldentooth setup_mcp_server
@@ -91,6 +92,7 @@ goldentooth setup_vault           # Includes certificate generation and renewal
 goldentooth setup_grafana         # Includes certificate generation and renewal
 goldentooth setup_vector          # Includes certificate generation and renewal
 goldentooth setup_loki            # Includes certificate generation and renewal
+goldentooth setup_seaweedfs       # Includes certificate generation and renewal
 ```
 
 ### Administrative Tasks

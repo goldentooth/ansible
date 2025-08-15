@@ -32,7 +32,7 @@ All custom roles follow the `goldentooth.*` naming convention:
 - `goldentooth.init_cluster_ca`: Initialize root and intermediate CAs
 - `goldentooth.bootstrap_cluster_ca`: Bootstrap CA client configuration (one-time)
 - `goldentooth.setup_cluster_ca`: Setup CA components and certificate renewal
-- Certificate rotation now integrated into unified setup roles (setup_consul, setup_nomad, setup_vault, setup_grafana, setup_vector, setup_loki)
+- Certificate rotation now integrated into unified setup roles (setup_consul, setup_nomad, setup_vault, setup_grafana, setup_vector, setup_loki, setup_seaweedfs)
 
 #### HashiCorp Stack
 - `goldentooth.setup_consul`: Consul service mesh setup

@@ -1,4 +1,9 @@
 ---
+# Unified SeaweedFS setup role - handles installation, certificates, and configuration
+
+- name: 'Ensure SeaweedFS certificates are generated.'
+  ansible.builtin.include_tasks: 'manage_certificates.yaml'
+
 # Installation
 - name: Create SeaweedFS directories
   ansible.builtin.file:
@@ -139,10 +144,6 @@
   notify: reload consul
 
 # Step-CA certificate management integration
-- name: Generate initial SeaweedFS TLS certificates
-  include_role:
-    name: goldentooth.rotate_seaweedfs_certs
-
 - name: Deploy SeaweedFS certificate renewal configuration
   ansible.builtin.template:
     src: cert-renewer@seaweedfs.conf.j2
