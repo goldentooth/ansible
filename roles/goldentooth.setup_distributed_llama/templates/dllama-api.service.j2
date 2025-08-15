@@ -1,9 +1,8 @@
 [Unit]
 Description=Distributed LLaMA API Server
 Documentation=https://github.com/b4rtaz/distributed-llama
-After=network-online.target dllama-root.service
+After=network-online.target
 Wants=network-online.target
-Requires=dllama-root.service
 {% if 'consul' in groups %}
 After=consul.service
 Wants=consul.service
@@ -13,15 +12,22 @@ Wants=consul.service
 Type=exec
 User={{ distributed_llama.user }}
 Group={{ distributed_llama.group }}
-ExecStart={{ distributed_llama.install_dir }}/bin/dllama-api --port {{ distributed_llama.api_port }}
+ExecStart={{ distributed_llama.install_dir }}/bin/dllama-api \
+    --port {{ distributed_llama.api_port }} \
+    --model {{ distributed_llama.models_dir }}/dllama_model_llama3_2_1b_instruct_q40.m \
+    --tokenizer {{ distributed_llama.models_dir }}/dllama_tokenizer_llama3_2_1b_instruct_q40.t \
+    --buffer-float-type {{ distributed_llama.buffer_float_type }} \
+    --max-seq-len {{ distributed_llama.max_seq_len }} \
+    --nthreads {{ distributed_llama.threads }} \
+    --workers {{ hostvars[distributed_llama.worker_nodes[0]]['ipv4_address'] }}:{{ distributed_llama.worker_port }} {{ hostvars[distributed_llama.worker_nodes[1]]['ipv4_address'] }}:{{ distributed_llama.worker_port }} {{ hostvars[distributed_llama.worker_nodes[2]]['ipv4_address'] }}:{{ distributed_llama.worker_port }}
 Restart=always
 RestartSec=10
 StandardOutput=journal
 StandardError=journal
 
 # Resource limits
-MemoryMax=1G
-CPUQuota=50%
+MemoryMax=3G
+CPUQuota=90%
 
 # Security settings
 NoNewPrivileges=true
