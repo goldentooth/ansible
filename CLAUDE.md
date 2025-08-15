@@ -89,8 +89,8 @@ goldentooth setup_consul          # Includes certificate generation and renewal
 goldentooth setup_nomad           # Includes certificate generation and renewal
 goldentooth setup_vault           # Includes certificate generation and renewal
 goldentooth setup_grafana         # Includes certificate generation and renewal
+goldentooth setup_vector          # Includes certificate generation and renewal
 goldentooth rotate_loki_certs
-goldentooth rotate_vector_certs
 ```
 
 ### Administrative Tasks

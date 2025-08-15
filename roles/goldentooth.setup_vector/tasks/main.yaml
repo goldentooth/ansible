@@ -1,4 +1,9 @@
 ---
+# Unified Vector setup role - handles installation, certificates, and configuration
+
+- name: 'Ensure Vector certificates are generated.'
+  ansible.builtin.include_tasks: 'manage_certificates.yaml'
+
 - name: 'Setup Vector.'
   ansible.builtin.apt:
     pkg:
