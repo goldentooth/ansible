@@ -503,53 +503,6 @@ ray:
   role: "{{ 'head' if 'ray_head' in group_names else 'worker' }}"
   version: '2.46.0'
 
-# Distributed LLaMA data:
-distributed_llama:
-  # Version/branch to build from GitHub
-  version: "main"
-  
-  # Cross-compilation configuration
-  cross_compile:
-    enable: true
-    build_node: "velaryon"  # x86_64 node for cross-compilation
-    container: "goldentooth/distributed-llama-builder:latest"
-    artifacts_dir: "/opt/goldentooth/artifacts/distributed-llama"
-    
-  # Runtime configuration  
-  install_dir: "/opt/distributed-llama"
-  worker_port: 9999
-  api_port: 8080
-  threads: "{{ ansible_processor_vcpus | default(4) }}"
-  
-  # Storage configuration
-  models_dir: "/mnt/shared/llm-models"
-  
-  # Model configuration
-  buffer_float_type: "q80"
-  max_seq_len: 2048
-  
-  # Service configuration
-  user: "dllama"
-  group: "dllama"
-  
-  # Node designation - uses inventory groups
-  root_node: "{{ groups['distributed_llama_root'] | first }}"
-  worker_nodes: "{{ groups['distributed_llama_worker'] }}"
-  
-  # Service enablement (conditional based on node role)
-  enable_worker: "{{ 'distributed_llama_worker' in group_names }}"
-  enable_root: "{{ 'distributed_llama_root' in group_names }}"
-  enable_api: "{{ 'distributed_llama_root' in group_names }}"  # Enable API server on root node only
-  
-  # Binary configuration
-  binaries:
-    dllama: "dllama-arm64"
-    dllama_api: "dllama-api-arm64"
-    
-  # Runtime dependencies (only needed for Pi nodes, not build)
-  runtime_packages:
-    - python3
-    - libgomp1
 
 # Grafana data:
 grafana:
