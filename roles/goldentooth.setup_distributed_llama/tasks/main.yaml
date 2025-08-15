@@ -1,53 +1,53 @@
 ---
 # Main tasks for distributed-llama setup with cross-compilation
 
-- name: Set up distributed-llama user and directories
-  include_tasks: setup_user.yaml
+- name: 'Set up distributed-llama user and directories.'
+  ansible.builtin.include_tasks: 'setup_user.yaml'
   tags:
-    - distributed_llama
-    - user
-    - setup
+    - 'distributed_llama'
+    - 'user'
+    - 'setup'
 
-- name: Cross-compile distributed-llama on build node
-  include_tasks: cross_compile.yaml
+- name: 'Cross-compile distributed-llama on build node.'
+  ansible.builtin.include_tasks: 'cross_compile.yaml'
   when: 
-    - distributed_llama.cross_compile.enable
-    - inventory_hostname == distributed_llama.cross_compile.build_node
+    - 'distributed_llama.cross_compile.enable'
+    - 'inventory_hostname == distributed_llama.cross_compile.build_node'
   tags:
-    - distributed_llama
-    - cross_compile
-    - build
+    - 'distributed_llama'
+    - 'cross_compile'
+    - 'build'
 
-- name: Deploy distributed-llama binaries to cluster nodes
-  include_tasks: deploy_binaries.yaml
-  when: inventory_hostname != distributed_llama.cross_compile.build_node
+- name: 'Deploy distributed-llama binaries to cluster nodes.'
+  ansible.builtin.include_tasks: 'deploy_binaries.yaml'
+  when: 'inventory_hostname != distributed_llama.cross_compile.build_node'
   tags:
-    - distributed_llama
-    - deploy
-    - binaries
+    - 'distributed_llama'
+    - 'deploy'
+    - 'binaries'
 
-- name: Install runtime dependencies
-  package:
+- name: 'Install runtime dependencies.'
+  ansible.builtin.package:
     name: "{{ distributed_llama.runtime_packages }}"
-    state: present
-  become: yes
+    state: 'present'
+  become: true
   tags:
-    - distributed_llama
-    - dependencies
+    - 'distributed_llama'
+    - 'dependencies'
 
-- name: Configure distributed-llama services
-  include_tasks: configure_services.yaml
+- name: 'Configure distributed-llama services.'
+  ansible.builtin.include_tasks: 'configure_services.yaml'
   tags:
-    - distributed_llama
-    - services
-    - systemd
+    - 'distributed_llama'
+    - 'services'
+    - 'systemd'
 
-- name: Register with Consul service registry (if available)
-  include_tasks: consul_registration.yaml
+- name: 'Register with Consul service registry if available.'
+  ansible.builtin.include_tasks: 'consul_registration.yaml'
   when: 
     - "'consul' in groups"
-    - inventory_hostname in groups['consul_client'] or inventory_hostname in groups['consul_server']
+    - 'inventory_hostname in groups["consul_client"] or inventory_hostname in groups["consul_server"]'
   tags:
-    - distributed_llama
-    - consul
-    - service_registry
+    - 'distributed_llama'
+    - 'consul'
+    - 'service_registry'

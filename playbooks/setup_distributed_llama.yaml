@@ -2,14 +2,14 @@
 # Playbook to set up distributed-llama across Raspberry Pi nodes only
 # Cross-compilation on x86_64, deployment to Pi cluster only
 
-- name: Set up distributed-llama with cross-compilation
+- name: 'Set up distributed-llama with cross-compilation.'
   hosts: distributed_llama:velaryon
-  become: no
+  become: false
   serial: "100%"  # Run all nodes in parallel after cross-compilation
 
   pre_tasks:
-    - name: Display distributed-llama deployment plan
-      debug:
+    - name: 'Display distributed-llama deployment plan.'
+      ansible.builtin.debug:
         msg: |
           🚀 Distributed LLaMA Deployment Plan:
           📦 Cross-compilation node: {{ distributed_llama.cross_compile.build_node }}
@@ -19,8 +19,8 @@
           🔢 Total Pi nodes: {{ groups['distributed_llama'] | length }}
       run_once: true
 
-    - name: Ensure prerequisites are met
-      assert:
+    - name: 'Ensure prerequisites are met.'
+      ansible.builtin.assert:
         that:
           - distributed_llama is defined
           - distributed_llama.cross_compile.enable | default(false)
@@ -29,20 +29,20 @@
       run_once: true
 
   tasks:
-    - name: Set up distributed-llama
-      include_role:
-        name: goldentooth.setup_distributed_llama
+    - name: 'Set up distributed-llama.'
+      ansible.builtin.include_role:
+        name: 'goldentooth.setup_distributed_llama'
       tags:
-        - distributed_llama
-        - cross_compile
-        - build
-        - deploy
-        - user
-        - setup
+        - 'distributed_llama'
+        - 'cross_compile'
+        - 'build'
+        - 'deploy'
+        - 'user'
+        - 'setup'
 
   post_tasks:
-    - name: Display worker nodes status
-      debug:
+    - name: 'Display worker nodes status.'
+      ansible.builtin.debug:
         msg: |
           ✅ Worker node {{ inventory_hostname }} configured
           🔧 Service: dllama-worker.service
@@ -50,8 +50,8 @@
           🧵 Threads: {{ distributed_llama.threads }}
       when: distributed_llama.enable_worker
 
-    - name: Display root node status
-      debug:
+    - name: 'Display root node status.'
+      ansible.builtin.debug:
         msg: |
           ✅ Root node {{ inventory_hostname }} configured
           🔧 Service: dllama-root.service (manual start)
@@ -59,8 +59,8 @@
           🌐 Will coordinate {{ distributed_llama.worker_nodes | length }} worker nodes
       when: distributed_llama.enable_root
 
-    - name: Display final instructions
-      debug:
+    - name: 'Display final instructions.'
+      ansible.builtin.debug:
         msg: |
           🎉 Distributed LLaMA setup complete!
 

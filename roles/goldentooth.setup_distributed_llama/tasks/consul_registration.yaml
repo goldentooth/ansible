@@ -1,38 +1,41 @@
 ---
 # Register distributed-llama services with Consul service registry
 
-- name: Register distributed-llama worker with Consul
-  template:
-    src: consul-dllama-worker.json.j2
-    dest: /etc/consul.d/dllama-worker.json
-    mode: '0644'
-  become: yes
-  when: distributed_llama.enable_worker
-  notify: reload consul
+- name: 'Gather service facts for Consul check.'
+  ansible.builtin.service_facts:
 
-- name: Register distributed-llama root with Consul  
-  template:
-    src: consul-dllama-root.json.j2
-    dest: /etc/consul.d/dllama-root.json
+- name: 'Register distributed-llama worker with Consul.'
+  ansible.builtin.template:
+    src: 'consul-dllama-worker.json.j2'
+    dest: '/etc/consul.d/dllama-worker.json'
     mode: '0644'
-  become: yes
-  when: distributed_llama.enable_root
-  notify: reload consul
+  become: true
+  when: 'distributed_llama.enable_worker'
+  notify: 'reload consul'
 
-- name: Register distributed-llama API with Consul
-  template:
-    src: consul-dllama-api.json.j2
-    dest: /etc/consul.d/dllama-api.json
+- name: 'Register distributed-llama root with Consul.'
+  ansible.builtin.template:
+    src: 'consul-dllama-root.json.j2'
+    dest: '/etc/consul.d/dllama-root.json'
     mode: '0644'
-  become: yes
+  become: true
+  when: 'distributed_llama.enable_root'
+  notify: 'reload consul'
+
+- name: 'Register distributed-llama API with Consul.'
+  ansible.builtin.template:
+    src: 'consul-dllama-api.json.j2'
+    dest: '/etc/consul.d/dllama-api.json'
+    mode: '0644'
+  become: true
   when:
-    - distributed_llama.enable_api
-    - distributed_llama.enable_root
-  notify: reload consul
+    - 'distributed_llama.enable_api'
+    - 'distributed_llama.enable_root'
+  notify: 'reload consul'
 
-- name: Reload Consul configuration
-  systemd:
-    name: consul
-    state: reloaded
-  become: yes
-  when: "'consul' in ansible_facts.services"
+- name: 'Reload Consul configuration.'
+  ansible.builtin.systemd_service:
+    name: 'consul'
+    state: 'reloaded'
+  become: true
+  when: "'consul' in ansible_facts['services']"

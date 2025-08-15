@@ -1,83 +1,83 @@
 ---
 # Deploy cross-compiled binaries to Pi nodes
 
-- name: Create distributed-llama installation directory
-  file:
+- name: 'Create distributed-llama installation directory.'
+  ansible.builtin.file:
     path: "{{ distributed_llama.install_dir }}"
-    state: directory
+    state: 'directory'
     mode: '0755'
     owner: "{{ distributed_llama.user }}"
     group: "{{ distributed_llama.group }}"
-  become: yes
+  become: true
 
-- name: Create bin directory
-  file:
+- name: 'Create bin directory.'
+  ansible.builtin.file:
     path: "{{ distributed_llama.install_dir }}/bin"
-    state: directory
+    state: 'directory'
     mode: '0755'
     owner: "{{ distributed_llama.user }}"
     group: "{{ distributed_llama.group }}"
-  become: yes
+  become: true
 
-- name: Fetch cross-compiled binaries from build node
-  fetch:
+- name: 'Fetch cross-compiled binaries from build node.'
+  ansible.builtin.fetch:
     src: "{{ distributed_llama.cross_compile.artifacts_dir }}/{{ item }}"
     dest: "/tmp/dllama-artifacts/{{ item }}"
-    flat: yes
+    flat: true
   delegate_to: "{{ distributed_llama.cross_compile.build_node }}"
-  with_items:
+  loop:
     - "{{ distributed_llama.binaries.dllama }}"
     - "{{ distributed_llama.binaries.dllama_api }}"
     - "build-info.txt"
   run_once: true
 
-- name: Deploy distributed-llama main binary
-  copy:
+- name: 'Deploy distributed-llama main binary.'
+  ansible.builtin.copy:
     src: "/tmp/dllama-artifacts/{{ distributed_llama.binaries.dllama }}"
     dest: "{{ distributed_llama.install_dir }}/bin/dllama"
     mode: '0755'
     owner: "{{ distributed_llama.user }}"
     group: "{{ distributed_llama.group }}"
-  become: yes
+  become: true
   notify: restart distributed-llama services
 
-- name: Deploy distributed-llama API binary
-  copy:
+- name: 'Deploy distributed-llama API binary.'
+  ansible.builtin.copy:
     src: "/tmp/dllama-artifacts/{{ distributed_llama.binaries.dllama_api }}"
     dest: "{{ distributed_llama.install_dir }}/bin/dllama-api"
     mode: '0755'
     owner: "{{ distributed_llama.user }}"
     group: "{{ distributed_llama.group }}"
-  become: yes
+  become: true
   notify: restart distributed-llama services
 
-- name: Copy build information
-  copy:
+- name: 'Copy build information.'
+  ansible.builtin.copy:
     src: "/tmp/dllama-artifacts/build-info.txt"
     dest: "{{ distributed_llama.install_dir }}/build-info.txt"
     mode: '0644'
     owner: "{{ distributed_llama.user }}"
     group: "{{ distributed_llama.group }}"
-  become: yes
+  become: true
 
-- name: Create symlinks in system PATH
-  file:
+- name: 'Create symlinks in system PATH.'
+  ansible.builtin.file:
     src: "{{ distributed_llama.install_dir }}/bin/{{ item.src }}"
     dest: "/usr/local/bin/{{ item.dest }}"
-    state: link
-  become: yes
-  with_items:
+    state: 'link'
+  become: true
+  loop:
     - { src: "dllama", dest: "dllama" }
     - { src: "dllama-api", dest: "dllama-api" }
 
-- name: Verify binary deployment
-  stat:
+- name: 'Verify binary deployment.'
+  ansible.builtin.stat:
     path: "{{ distributed_llama.install_dir }}/bin/dllama"
   register: binary_check
   failed_when: not binary_check.stat.exists or not binary_check.stat.executable
 
-- name: Display deployment success
-  debug:
+- name: 'Display deployment success.'
+  ansible.builtin.debug:
     msg: |
       ✅ Distributed-llama binaries deployed successfully on {{ inventory_hostname }}
       📍 Installation directory: {{ distributed_llama.install_dir }}

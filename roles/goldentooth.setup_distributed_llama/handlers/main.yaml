@@ -1,40 +1,45 @@
 ---
 # Handlers for distributed-llama services
 
-- name: restart distributed-llama services
-  systemd:
+- name: 'restart distributed-llama services'
+  ansible.builtin.systemd_service:
     name: "{{ item }}"
-    state: restarted
-  become: yes
+    state: 'restarted'
+  become: true
   with_items:
     - dllama-worker
     - dllama-root
     - dllama-api
-  when: 
+  when:
     - item == "dllama-worker" and distributed_llama.enable_worker
-    - item == "dllama-root" and distributed_llama.enable_root  
+    - item == "dllama-root" and distributed_llama.enable_root
     - item == "dllama-api" and distributed_llama.enable_api and distributed_llama.enable_root
   ignore_errors: yes
 
-- name: restart dllama-worker
-  systemd:
-    name: dllama-worker
-    state: restarted
-  become: yes
+- name: 'restart dllama-worker'
+  ansible.builtin.systemd_service:
+    name: 'dllama-worker'
+    state: 'restarted'
+  become: true
   when: distributed_llama.enable_worker
 
-- name: restart dllama-root
-  systemd:
-    name: dllama-root
-    state: restarted
-  become: yes
+- name: 'restart dllama-root'
+  ansible.builtin.systemd_service:
+    name: 'dllama-root'
+    state: 'restarted'
+  become: true
   when: distributed_llama.enable_root
 
-- name: restart dllama-api
-  systemd:
-    name: dllama-api
-    state: restarted
-  become: yes
-  when: 
+- name: 'restart dllama-api'
+  ansible.builtin.systemd_service:
+    name: 'dllama-api'
+    state: 'restarted'
+  become: true
+  when:
     - distributed_llama.enable_api
     - distributed_llama.enable_root
+
+- name: 'reload consul'
+  ansible.builtin.systemd_service:
+    name: 'consul'
+    state: 'reloaded'
