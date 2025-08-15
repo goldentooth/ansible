@@ -39,7 +39,7 @@
     owner: "{{ distributed_llama.user }}"
     group: "{{ distributed_llama.group }}"
   become: true
-  notify: restart distributed-llama services
+  notify: 'Restart distributed-llama services.'
 
 - name: 'Deploy distributed-llama API binary.'
   ansible.builtin.copy:
@@ -49,7 +49,7 @@
     owner: "{{ distributed_llama.user }}"
     group: "{{ distributed_llama.group }}"
   become: true
-  notify: restart distributed-llama services
+  notify: 'Restart distributed-llama services.'
 
 - name: 'Copy build information.'
   ansible.builtin.copy:

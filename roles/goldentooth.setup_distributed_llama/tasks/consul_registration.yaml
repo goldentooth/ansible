@@ -11,7 +11,7 @@
     mode: '0644'
   become: true
   when: 'distributed_llama.enable_worker'
-  notify: 'reload consul'
+  notify: 'Reload Consul configuration.'
 
 - name: 'Register distributed-llama root with Consul.'
   ansible.builtin.template:
@@ -20,7 +20,7 @@
     mode: '0644'
   become: true
   when: 'distributed_llama.enable_root'
-  notify: 'reload consul'
+  notify: 'Reload Consul configuration.'
 
 - name: 'Register distributed-llama API with Consul.'
   ansible.builtin.template:
@@ -31,7 +31,7 @@
   when:
     - 'distributed_llama.enable_api'
     - 'distributed_llama.enable_root'
-  notify: 'reload consul'
+  notify: 'Reload Consul configuration.'
 
 - name: 'Reload Consul configuration.'
   ansible.builtin.systemd_service:

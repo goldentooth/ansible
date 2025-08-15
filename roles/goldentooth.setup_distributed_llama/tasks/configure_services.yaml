@@ -8,7 +8,7 @@
     mode: '0644'
   become: true
   when: distributed_llama.enable_worker
-  notify: restart dllama-worker
+  notify: 'Restart dllama-worker service.'
 
 - name: 'Create root node service configuration.'
   ansible.builtin.template:
@@ -17,7 +17,7 @@
     mode: '0644'
   become: true
   when: distributed_llama.enable_root
-  notify: restart dllama-root
+  notify: 'Restart dllama-root service.'
 
 - name: 'Create API server service configuration.'
   ansible.builtin.template:
@@ -28,7 +28,7 @@
   when: 
     - distributed_llama.enable_api
     - distributed_llama.enable_root
-  notify: restart dllama-api
+  notify: 'Restart dllama-api service.'
 
 - name: 'Create startup script for worker nodes.'
   ansible.builtin.template:
