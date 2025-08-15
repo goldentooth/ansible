@@ -1,0 +1,98 @@
+---
+# Main tasks for goldentooth.setup_ollama role
+
+- name: 'Create ollama system group.'
+  ansible.builtin.group:
+    name: "{{ ollama.group }}"
+    system: true
+    state: 'present'
+  become: true
+
+- name: 'Create ollama system user.'
+  ansible.builtin.user:
+    name: "{{ ollama.user }}"
+    group: "{{ ollama.group }}"
+    system: true
+    shell: '/bin/false'
+    home: "{{ ollama.models_dir }}"
+    createhome: false
+    state: 'present'
+  become: true
+
+- name: 'Create ollama directories.'
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: 'directory'
+    owner: "{{ ollama.user }}"
+    group: "{{ ollama.group }}"
+    mode: '0755'
+  become: true
+  loop:
+    - "{{ ollama.models_dir }}"
+    - "{{ ollama.config_dir }}"
+
+- name: 'Check if ollama is already installed.'
+  ansible.builtin.command:
+    cmd: "{{ ollama.install_dir }}/ollama --version"
+  register: ollama_current_version
+  failed_when: false
+  changed_when: false
+
+- name: 'Install ollama using official installer.'
+  ansible.builtin.shell:
+    cmd: 'curl -fsSL https://ollama.com/install.sh | sh'
+  become: true
+  when: ollama_current_version.rc != 0
+  notify: 'Restart ollama service.'
+
+- name: 'Create ollama systemd service.'
+  ansible.builtin.template:
+    src: 'ollama.service.j2'
+    dest: '/etc/systemd/system/ollama.service'
+    mode: '0644'
+  become: true
+  notify: 'Restart ollama service.'
+
+- name: 'Reload systemd daemon.'
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  become: true
+
+- name: 'Enable and start ollama service.'
+  ansible.builtin.systemd_service:
+    name: 'ollama'
+    enabled: true
+    state: 'started'
+  become: true
+
+- name: 'Wait for ollama service to be ready.'
+  ansible.builtin.uri:
+    url: "http://{{ ollama.api_host }}:{{ ollama.api_port }}/api/version"
+    method: 'GET'
+    timeout: 30
+  register: ollama_health_check
+  until: ollama_health_check.status == 200
+  retries: 12
+  delay: 5
+  when: ollama.api_host != '127.0.0.1'
+
+- name: 'Display ollama service information.'
+  ansible.builtin.debug:
+    msg: |
+      ✅ Ollama successfully installed and running
+      📍 API endpoint: http://{{ ansible_default_ipv4.address }}:{{ ollama.api_port }}
+      📁 Models directory: {{ ollama.models_dir }}
+      📋 Version: {{ ollama.version }}
+      
+      🚀 Usage examples:
+      # Download a model
+      curl -X POST http://{{ ansible_default_ipv4.address }}:{{ ollama.api_port }}/api/pull -d '{"name":"llama3.2"}'
+      
+      # Chat completion
+      curl -X POST http://{{ ansible_default_ipv4.address }}:{{ ollama.api_port }}/api/chat -d '{
+        "model": "llama3.2",
+        "messages": [{"role": "user", "content": "Hello!"}]
+      }'
+      
+      # List models
+      curl http://{{ ansible_default_ipv4.address }}:{{ ollama.api_port }}/api/tags

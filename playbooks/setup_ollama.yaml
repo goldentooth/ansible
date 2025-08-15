@@ -1,0 +1,48 @@
+# Description: Set up Ollama local LLM inference server
+# Playbook to install and configure Ollama on designated nodes
+
+- name: 'Set up Ollama local LLM inference server.'
+  hosts: ollama
+  become: false
+  gather_facts: true
+
+  pre_tasks:
+    - name: 'Display Ollama deployment plan.'
+      ansible.builtin.debug:
+        msg: |
+          🚀 Ollama Deployment Plan:
+          🎯 Target nodes: {{ ansible_play_hosts | join(', ') }}
+          🔢 Version: {{ ollama.version }}
+          📍 API endpoint: {{ ollama.api_host }}:{{ ollama.api_port }}
+          📁 Models directory: {{ ollama.models_dir }}
+      run_once: true
+
+    - name: 'Ensure prerequisites are met.'
+      ansible.builtin.assert:
+        that:
+          - ollama is defined
+          - ansible_architecture == 'x86_64'
+        fail_msg: "Ollama requires x86_64 architecture and proper configuration"
+
+  tasks:
+    - name: 'Set up Ollama.'
+      ansible.builtin.include_role:
+        name: 'goldentooth.setup_ollama'
+      tags:
+        - 'ollama'
+        - 'install'
+        - 'service'
+
+  post_tasks:
+    - name: 'Display installation results.'
+      ansible.builtin.debug:
+        msg: |
+          ✅ Ollama installation complete on {{ inventory_hostname }}
+          🌐 API available at: http://{{ ansible_default_ipv4.address }}:{{ ollama.api_port }}
+          📋 Service status: Active and enabled
+          📁 Models will be stored in: {{ ollama.models_dir }}
+          
+          💡 Next steps:
+          1. Download models: curl -X POST http://{{ ansible_default_ipv4.address }}:{{ ollama.api_port }}/api/pull -d '{"name":"llama3.2"}'
+          2. Test chat: curl -X POST http://{{ ansible_default_ipv4.address }}:{{ ollama.api_port }}/api/chat -d '{"model":"llama3.2","messages":[{"role":"user","content":"Hello!"}]}'
+          3. Monitor: goldentooth exec {{ inventory_hostname }} "journalctl -u ollama -f"

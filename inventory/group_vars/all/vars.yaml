@@ -503,6 +503,37 @@ ray:
   role: "{{ 'head' if 'ray_head' in group_names else 'worker' }}"
   version: '2.46.0'
 
+# Ollama data:
+ollama:
+  # Version to install
+  version: "0.11.4"
+  
+  # Service configuration
+  user: "ollama"
+  group: "ollama"
+  
+  # Installation paths
+  install_dir: "/usr/local/bin"
+  models_dir: "/var/lib/ollama"
+  config_dir: "/etc/ollama"
+  
+  # API configuration
+  api_host: "0.0.0.0"  # Bind to all interfaces for cluster access
+  api_port: 11434
+  
+  # Performance settings
+  max_loaded_models: 3
+  keep_alive: "5m"
+  
+  # GPU settings (auto-detected)
+  gpu_layers: -1  # Use all available GPU layers
+  
+  # Download settings
+  download_timeout: "10m"
+  
+  # System settings
+  ulimit_nofile: 65536
+  ulimit_memlock: -1
 
 # Grafana data:
 grafana:

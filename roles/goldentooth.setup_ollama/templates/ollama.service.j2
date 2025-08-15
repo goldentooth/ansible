@@ -1,0 +1,53 @@
+[Unit]
+Description=Ollama Local LLM Inference Server
+Documentation=https://ollama.com/
+After=network-online.target
+Wants=network-online.target
+{% if 'consul' in groups %}
+After=consul.service
+Wants=consul.service
+{% endif %}
+
+[Service]
+Type=exec
+User={{ ollama.user }}
+Group={{ ollama.group }}
+ExecStart={{ ollama.install_dir }}/ollama serve
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Environment variables
+Environment=OLLAMA_HOST={{ ollama.api_host }}:{{ ollama.api_port }}
+Environment=OLLAMA_MODELS={{ ollama.models_dir }}
+Environment=OLLAMA_MAX_LOADED_MODELS={{ ollama.max_loaded_models }}
+Environment=OLLAMA_KEEP_ALIVE={{ ollama.keep_alive }}
+Environment=OLLAMA_NUM_PARALLEL=4
+Environment=OLLAMA_MAX_QUEUE=512
+{% if ollama.gpu_layers is defined %}
+Environment=OLLAMA_GPU_LAYERS={{ ollama.gpu_layers }}
+{% endif %}
+
+# Resource limits
+MemoryMax=16G
+CPUQuota=800%
+LimitNOFILE={{ ollama.ulimit_nofile }}
+LimitMEMLOCK={{ ollama.ulimit_memlock }}
+
+# Security settings
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths={{ ollama.models_dir }} {{ ollama.config_dir }}
+PrivateTmp=true
+PrivateDevices=false  # Allow GPU access
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+# GPU access
+SupplementaryGroups=video render
+
+[Install]
+WantedBy=multi-user.target

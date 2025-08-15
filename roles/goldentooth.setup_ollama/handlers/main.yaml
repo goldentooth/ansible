@@ -1,0 +1,15 @@
+---
+# Handlers for goldentooth.setup_ollama role
+
+- name: 'Restart ollama service.'
+  ansible.builtin.systemd_service:
+    name: 'ollama'
+    state: 'restarted'
+    daemon_reload: true
+  become: true
+
+- name: 'Reload ollama service.'
+  ansible.builtin.systemd_service:
+    name: 'ollama'
+    state: 'reloaded'
+  become: true

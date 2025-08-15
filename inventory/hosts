@@ -296,3 +296,10 @@ all:
         payne:
         velaryon:
 
+    # -----------------------------------
+    # Ollama - Local LLM inference
+    # -----------------------------------
+    ollama:
+      hosts:
+        velaryon:
+
