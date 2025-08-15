@@ -4,10 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ## Overview
 
-This is a unified role that handles complete SeaweedFS setup including installation, certificate management, TLS encryption, Consul integration, and certificate renewal. It consolidates the functionality previously split across setup_seaweedfs and rotate_seaweedfs_certs roles.
+This is a unified role that handles complete SeaweedFS setup including storage bootstrap, installation, certificate management, TLS encryption, Consul integration, and certificate renewal. It consolidates the functionality previously split across bootstrap_seaweedfs, setup_seaweedfs, and rotate_seaweedfs_certs roles.
 
 ## Purpose
 
+- Bootstrap storage infrastructure (users, disk formatting, mounting)
 - Generate TLS certificates for SeaweedFS services
 - Install and configure SeaweedFS master and volume servers
 - Set up TLS encryption for SeaweedFS communication
@@ -18,6 +19,7 @@ This is a unified role that handles complete SeaweedFS setup including installat
 ## Files
 
 - `tasks/main.yaml`: Main orchestration file
+- `tasks/bootstrap_storage.yaml`: Storage infrastructure bootstrap
 - `tasks/manage_certificates.yaml`: Certificate generation and management
 - `templates/seaweedfs-master-simple.service.j2`: Master server systemd service
 - `templates/seaweedfs-volume-simple.service.j2`: Volume server systemd service
@@ -29,11 +31,19 @@ This is a unified role that handles complete SeaweedFS setup including installat
 ## Key Features
 
 ### Unified Operations
-- Single role handles complete SeaweedFS lifecycle
+- Single role handles complete SeaweedFS lifecycle from storage to services
+- Intelligent storage bootstrap (only runs when needed)
 - Automatic certificate generation and renewal
 - Integrated Consul service discovery
 - Idempotent - safe to run multiple times
 - Atomic operations - either succeeds completely or fails cleanly
+
+### Storage Bootstrap
+- Creates SeaweedFS user/group with fixed UIDs
+- Formats and mounts dedicated SSD storage
+- Creates required data directories with proper permissions
+- Integrates with Kubernetes node labeling
+- Skips bootstrap if already completed
 
 ### Certificate Management
 - Generates TLS certificates using Step-CA
@@ -86,7 +96,6 @@ This role is typically called via the setup_seaweedfs playbook:
 Works with:
 - `goldentooth.setup_consul`: Service discovery integration
 - `goldentooth.setup_prometheus`: Monitoring integration
-- `goldentooth.bootstrap_seaweedfs`: Initial cluster bootstrap
 
 ## Security Considerations
 

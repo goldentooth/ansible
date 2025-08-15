@@ -6,12 +6,7 @@
   gather_facts: true
   serial: 1
 
-  pre_tasks:
-    - name: Ensure bootstrap is complete
-      ansible.builtin.stat:
-        path: "{{ seaweedfs.mount_path }}/data"
-      register: bootstrap_check
-      failed_when: not bootstrap_check.stat.exists
+  # Bootstrap is now handled internally by the unified setup role
 
   roles:
     - goldentooth.setup_seaweedfs

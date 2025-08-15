@@ -1,0 +1,116 @@
+---
+# Bootstrap storage infrastructure for SeaweedFS - disk setup and user creation
+
+- name: Ensure SeaweedFS group exists with fixed GID
+  ansible.builtin.group:
+    name: "{{ seaweedfs.user }}"
+    gid: "{{ seaweedfs.gid }}"
+    state: 'present'
+
+- name: 'Ensure SeaweedFS user exists with fixed UID/GID.'
+  ansible.builtin.user:
+    name: "{{ seaweedfs.user }}"
+    uid: "{{ seaweedfs.uid }}"
+    group: "{{ seaweedfs.user }}"
+    shell: '/bin/false'
+    create_home: false
+    state: 'present'
+
+- name: 'Check if SSD device exists.'
+  ansible.builtin.stat:
+    path: "{{ seaweedfs.device }}"
+  register: 'ssd_device_check'
+
+- name: 'Fail if SSD device not found.'
+  ansible.builtin.fail:
+    msg: "SSD device {{ seaweedfs.device }} not found on {{ inventory_hostname }}"
+  when: 'not ssd_device_check.stat.exists'
+
+- name: 'Check if storage is already bootstrapped.'
+  ansible.builtin.stat:
+    path: "{{ seaweedfs.mount_path }}/data"
+  register: 'bootstrap_check'
+
+- name: 'Bootstrap storage infrastructure if not already done.'
+  block:
+    - name: 'Ensure SSD is not already mounted.'
+      ansible.posix.mount:
+        path: "{{ seaweedfs.mount_path }}"
+        src: "{{ seaweedfs.device }}"
+        state: 'absent'
+
+    - name: 'Create SeaweedFS SSD mount directory.'
+      ansible.builtin.file:
+        path: "{{ seaweedfs.mount_path }}"
+        state: 'directory'
+        owner: 'root'
+        group: 'root'
+        mode: '0755'
+
+    - name: 'Check if SSD has existing filesystem.'
+      ansible.builtin.command:
+        cmd: "blkid {{ seaweedfs.device }}"
+      register: 'blkid_check'
+      failed_when: false
+      changed_when: false
+
+    - name: 'Format SSD with ext4 filesystem.'
+      ansible.builtin.filesystem:
+        fstype: "{{ seaweedfs.filesystem_type }}"
+        dev: "{{ seaweedfs.device }}"
+        force: true
+
+    - name: 'Mount SSD to SeaweedFS directory.'
+      ansible.posix.mount:
+        path: "{{ seaweedfs.mount_path }}"
+        src: "{{ seaweedfs.device }}"
+        fstype: "{{ seaweedfs.filesystem_type }}"
+        opts: 'defaults'
+        state: 'mounted'
+
+    - name: Set proper ownership on SSD mount
+      ansible.builtin.file:
+        path: "{{ seaweedfs.mount_path }}"
+        owner: "{{ seaweedfs.uid }}"
+        group: "{{ seaweedfs.gid }}"
+        mode: '0755'
+        recurse: true
+
+    - name: 'Create SeaweedFS data directories.'
+      ansible.builtin.file:
+        path: "{{ seaweedfs.mount_path }}/{{ item }}"
+        state: 'directory'
+        owner: "{{ seaweedfs.uid }}"
+        group: "{{ seaweedfs.gid }}"
+        mode: '0755'
+      loop:
+        - 'data'
+        - 'index'
+        - 'filer'
+
+    - name: Display SSD setup completion for node
+      debug:
+        msg: |
+          SSD setup completed on {{ inventory_hostname }}:
+          - Device: {{ seaweedfs.device }}
+          - Mounted at: {{ seaweedfs.mount_path }}
+          - Filesystem: {{ seaweedfs.filesystem_type }}
+          - Owner: {{ seaweedfs.uid }}:{{ seaweedfs.gid }}
+
+    - name: Label SeaweedFS storage nodes in Kubernetes
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Node
+          metadata:
+            name: "{{ inventory_hostname }}"
+            labels:
+              seaweedfs: "true"
+
+  when: 'not bootstrap_check.stat.exists'
+
+- name: 'Display bootstrap skip message if already done.'
+  ansible.builtin.debug:
+    msg: "Storage bootstrap already complete on {{ inventory_hostname }} - skipping disk setup"
+  when: 'bootstrap_check.stat.exists'

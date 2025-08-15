@@ -1,5 +1,8 @@
 ---
-# Unified SeaweedFS setup role - handles installation, certificates, and configuration
+# Unified SeaweedFS setup role - handles bootstrap, installation, certificates, and configuration
+
+- name: 'Bootstrap SeaweedFS storage infrastructure.'
+  ansible.builtin.include_tasks: 'bootstrap_storage.yaml'
 
 - name: 'Ensure SeaweedFS certificates are generated.'
   ansible.builtin.include_tasks: 'manage_certificates.yaml'
