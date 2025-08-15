@@ -1,0 +1,72 @@
+---
+# Intelligent certificate management for Grafana - generates certificates only when needed
+
+- name: 'Check if Grafana certificate needs renewal.'
+  ansible.builtin.shell:
+    cmd: |
+      if [ ! -f "{{ grafana.cert_path }}" ]; then
+        echo "MISSING"
+      else
+        {{ step_ca.executable }} certificate needs-renewal "{{ grafana.cert_path }}" && echo "NEEDS_RENEWAL" || echo "VALID"
+      fi
+  register: 'grafana_cert_status'
+  changed_when: false
+  failed_when: false
+
+- name: 'Debug certificate renewal status.'
+  ansible.builtin.debug:
+    msg: |
+      Certificate status: {{ grafana_cert_status.stdout }}
+      Certificate renewal needed: {{ grafana_cert_status.stdout in ['MISSING', 'NEEDS_RENEWAL'] }}
+
+- name: 'Generate new certificate if missing or needs renewal.'
+  block:
+
+    - name: 'Ensure directory for Grafana certs exists.'
+      ansible.builtin.file:
+        path: "{{ grafana.certs_path }}"
+        state: 'directory'
+        owner: 'grafana'
+        group: 'grafana'
+        mode: '0755'
+
+    - name: 'Generate certificate for Grafana from step-ca.'
+      ansible.builtin.shell:
+        cmd: |
+          {{ step_ca.executable }} \
+            ca certificate \
+            grafana.{{ cluster.services_domain }} \
+            "{{ grafana.cert_path }}" \
+            "{{ grafana.key_path }}" \
+            --provisioner="{{ step_ca.default_provisioner.name }}" \
+            --password-file="{{ step_ca.default_provisioner.password_path }}" \
+            --san="grafana.{{ cluster.services_domain }}" \
+            --san="grafana" \
+            --san='localhost' \
+            --san="{{ clean_hostname }}" \
+            --san="{{ clean_hostname }}.{{ cluster.node_domain }}" \
+            --san="{{ ipv4_address }}" \
+            --not-after='24h' \
+            --console \
+            --force
+      notify:
+        - 'Restart Grafana service.'
+
+    - name: 'Repair permissions on Grafana certs.'
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: 'file'
+        owner: 'grafana'
+        group: 'grafana'
+        mode: '0600'
+      loop:
+        - "{{ grafana.cert_path }}"
+        - "{{ grafana.key_path }}"
+      loop_control:
+        loop_var: 'item'
+
+    - name: 'Display certificate generation result.'
+      ansible.builtin.debug:
+        msg: "Certificate generated successfully for Grafana"
+
+  when: "grafana_cert_status.stdout in ['MISSING', 'NEEDS_RENEWAL']"

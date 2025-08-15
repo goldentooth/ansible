@@ -84,11 +84,11 @@ goldentooth setup_cluster_ca
 # Initialize Root and Intermediate CAs
 goldentooth init_cluster_ca
 
-# Certificate rotation
-goldentooth rotate_nomad_certs
-goldentooth rotate_vault_certs
-goldentooth rotate_consul_certs
-goldentooth rotate_grafana_certs
+# Certificate management
+goldentooth setup_consul          # Includes certificate generation and renewal
+goldentooth setup_nomad           # Includes certificate generation and renewal
+goldentooth setup_vault           # Includes certificate generation and renewal
+goldentooth setup_grafana         # Includes certificate generation and renewal
 goldentooth rotate_loki_certs
 goldentooth rotate_vector_certs
 ```

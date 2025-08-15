@@ -17,3 +17,8 @@
         enabled: true
         force: true
         daemon_reload: true
+
+    - name: 'Reload Consul configuration.'
+      ansible.builtin.systemd_service:
+        name: 'consul'
+        state: 'reloaded'

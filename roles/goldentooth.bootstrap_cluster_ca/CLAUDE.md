@@ -42,9 +42,8 @@ This role is typically called as part of the cluster bootstrap process:
 
 ## Integration
 
-Works with other certificate rotation roles:
-- Certificate rotation for Consul, Nomad, and Vault is now integrated into their respective setup roles
-- `goldentooth.rotate_grafana_certs`
+Works with other certificate management roles:
+- Certificate rotation for Consul, Nomad, Vault, and Grafana is now integrated into their respective setup roles
 - `goldentooth.rotate_loki_certs`
 - `goldentooth.rotate_vector_certs`
 - And other service-specific certificate rotation roles
