@@ -677,8 +677,6 @@ blackbox_https_internal_targets:
   - "https://auth.{{ cluster.services_domain }}"
   # Storage Services
   - "https://seaweedfs.{{ cluster.services_domain }}:9333"
-  # MCP Server
-  - "https://mcp.{{ cluster.services_domain }}"
   # Step-CA Server (Certificate monitoring)
   - "https://jast.{{ cluster.node_domain }}:9443"
   # SeaweedFS endpoints for certificate monitoring
@@ -738,7 +736,6 @@ blackbox_tcp_targets:
   - "consul.{{ cluster.services_domain }}:443"
   - "vault.{{ cluster.services_domain }}:443"
   - "nomad.{{ cluster.services_domain }}:443"
-  - "mcp.{{ cluster.services_domain }}:443"
   - "auth.{{ cluster.services_domain }}:443"
 
 blackbox_dns_targets:
@@ -755,7 +752,6 @@ blackbox_dns_targets:
   - "prometheus.{{ cluster.services_domain }}"
   - "loki.{{ cluster.services_domain }}"
   - "auth.{{ cluster.services_domain }}"
-  - "mcp.{{ cluster.services_domain }}"
   # New Node DNS Resolution
   - "manderly.{{ cluster.node_domain }}"
   - "norcross.{{ cluster.node_domain }}"
@@ -797,7 +793,6 @@ blackbox_api_targets:
   - "https://nomad.{{ cluster.services_domain }}/v1/status/leader"
   - "https://loki.{{ cluster.services_domain }}/ready"
   - "https://prometheus.{{ cluster.services_domain }}/-/ready"
-  - "https://mcp.{{ cluster.services_domain }}/health"
 
 # Certificate expiry monitoring targets
 blackbox_cert_targets:
@@ -809,7 +804,6 @@ blackbox_cert_targets:
   - "https://grafana.{{ cluster.services_domain }}"
   - "https://loki.{{ cluster.services_domain }}"
   - "https://auth.{{ cluster.services_domain }}"
-  - "https://mcp.{{ cluster.services_domain }}"
   # External Certificates
   - "https://clearbrook.{{ cluster.domain }}"
   - "https://home-proxy.{{ cluster.domain }}"

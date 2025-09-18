@@ -16,15 +16,6 @@ users:
       - admins
       - users
 
-  # MCP service account for automated access
-  mcp-service:
-    disabled: false
-    displayname: "MCP Service Account"
-    password: "$argon2id$v=19$m=65536,t=3,p=4$Flm7xRevvcylW25CMnHEag$bCIXo3jBkJ1Q/S0ffMcYXGfz5eoEWTcq2erdN59lyQk"
-    email: mcp@{{ authelia_domain }}
-    groups:
-      - services
-      - api-access
 
 # Groups
 groups:

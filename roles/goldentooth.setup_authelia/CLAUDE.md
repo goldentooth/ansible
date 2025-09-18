@@ -34,8 +34,6 @@ The following secrets should be defined in the vault:
 - `vault_authelia_session_secret`: Session encryption secret
 - `vault_authelia_storage_encryption_key`: Database encryption key
 - `vault_authelia_oidc_hmac_secret`: OIDC HMAC secret
-- `vault_authelia_oidc_mcp_secret`: MCP client secret
-- `vault_authelia_mcp_service_password`: Service account password
 
 ## Installation
 
@@ -51,18 +49,12 @@ goldentooth setup_authelia --limit authelia_server
 
 ## OIDC Integration
 
-The role configures Authelia as an OIDC provider with a pre-configured client for the MCP server:
-
-- **Client ID**: `goldentooth-mcp`
-- **Grant Types**: `authorization_code`, `refresh_token`, `client_credentials`
-- **Scopes**: `openid`, `profile`, `email`, `groups`
-- **Authorization Policy**: `one_factor`
+The role configures Authelia as an OIDC provider for cluster services.
 
 ## Default Users
 
 The role creates:
 - **admin**: Administrator account (password: "authelia" - CHANGE IMMEDIATELY)
-- **mcp-service**: Service account for MCP server automation
 
 ## Service Management
 
@@ -103,12 +95,6 @@ goldentooth command_root authelia "systemctl restart authelia"
 
 ## Integration with Other Services
 
-### MCP Server OAuth2
-The MCP server can use Authelia for authentication via OAuth2 client credentials flow:
-
-1. MCP server authenticates with Authelia using client credentials
-2. Receives access token with appropriate scopes
-3. Validates tokens on subsequent requests
 
 ### Reverse Proxy Integration
 For production deployment, configure nginx or HAProxy to:
