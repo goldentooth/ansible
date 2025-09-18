@@ -75,9 +75,6 @@
       --san="{{ ansible_hostname }}" \
       --san="{{ ansible_hostname }}.{{ cluster.node_domain }}" \
       --san="{{ ipv4_address }}" \
-    {% for host in groups['all'] %}
-      --san="mcp.services.{{ host }}.nodes.goldentooth.net" \
-    {% endfor %}
       --not-after='24h' \
       --console \
       --force

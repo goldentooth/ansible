@@ -75,13 +75,6 @@ service_discovery:
           ssl: enabled
           ssl_verify: none
           
-        - name: mcp-server
-          backend_name: consul-mcp-server
-          mode: http
-          balance: roundrobin
-          check: enabled
-          check_path: /health
-          
         - name: authelia
           backend_name: consul-authelia
           mode: http

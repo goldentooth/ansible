@@ -1,0 +1,84 @@
+---
+# Description: Remove Goldentooth MCP server components from all nodes
+- name: Remove Goldentooth MCP Server
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    mcp_server_user: mcp
+    mcp_server_group: mcp
+    mcp_server_install_dir: /usr/local/bin
+    mcp_server_binary_name: goldentooth-mcp
+    mcp_server_service_name: goldentooth-mcp
+    mcp_server_working_dir: /var/lib/goldentooth-mcp
+
+  tasks:
+    - name: Stop and disable MCP server service
+      ansible.builtin.systemd_service:
+        name: "{{ mcp_server_service_name }}"
+        state: stopped
+        enabled: false
+        daemon_reload: true
+      failed_when: false
+
+    - name: Remove systemd service file
+      ansible.builtin.file:
+        path: "/etc/systemd/system/{{ mcp_server_service_name }}.service"
+        state: absent
+      notify: Reload systemd
+
+    - name: Remove MCP server binary
+      ansible.builtin.file:
+        path: "{{ mcp_server_install_dir }}/{{ mcp_server_binary_name }}"
+        state: absent
+
+    - name: Remove MCP server working directory
+      ansible.builtin.file:
+        path: "{{ mcp_server_working_dir }}"
+        state: absent
+
+    - name: Remove Consul service registration
+      ansible.builtin.file:
+        path: /etc/consul.d/mcp-server-service.json
+        state: absent
+      notify: Reload Consul configuration
+
+    - name: Remove MCP server user
+      ansible.builtin.user:
+        name: "{{ mcp_server_user }}"
+        state: absent
+        remove: true
+      failed_when: false
+
+    - name: Remove MCP server group
+      ansible.builtin.group:
+        name: "{{ mcp_server_group }}"
+        state: absent
+      failed_when: false
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+
+    - name: Reload Consul configuration
+      ansible.builtin.systemd_service:
+        name: consul
+        state: reloaded
+      failed_when: false
+
+  post_tasks:
+    - name: Verify MCP server removal
+      ansible.builtin.command: systemctl status {{ mcp_server_service_name }}
+      register: mcp_service_check
+      changed_when: false
+      failed_when: false
+
+    - name: Display removal results
+      ansible.builtin.debug:
+        msg: |
+          MCP Server removal completed on {{ inventory_hostname }}
+          Service status: {{ 'removed' if mcp_service_check.rc != 0 else 'still exists' }}
+      tags:
+        - always

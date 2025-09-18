@@ -273,28 +273,6 @@ all:
       hosts:
         jast:
 
-    # -----------------------------------
-    # MCP Server
-    # -----------------------------------
-    mcp_server:
-      hosts:
-        allyrion:
-        bettley:
-        cargyll:
-        dalt:
-        erenford:
-        fenn:
-        gardener:
-        harlton:
-        inchfield:
-        jast:
-        karstark:
-        lipps:
-        manderly:
-        norcross:
-        oakheart:
-        payne:
-        velaryon:
 
     # -----------------------------------
     # Ollama - Local LLM inference
