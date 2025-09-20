@@ -37,8 +37,8 @@
   changed_when: false
 
 - name: 'Copy cert-renewer service template.'
-  ansible.builtin.copy:
-    src: "{{ role_path }}/files/cert-renewer@.service"
+  ansible.builtin.template:
+    src: 'cert-renewer@.service.j2'
     dest: '/etc/systemd/system/cert-renewer@.service'
     mode: '0644'
 

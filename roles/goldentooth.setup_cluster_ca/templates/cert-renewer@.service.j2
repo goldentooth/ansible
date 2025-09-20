@@ -9,7 +9,7 @@ StartLimitIntervalSec=0
 Type=oneshot
 User=root
 
-Environment=STEPPATH=/etc/step-ca
+Environment=STEPPATH={{ step_ca.steppath }}
 Environment=CERT_LOCATION=/etc/step/certs/%i.crt
 Environment=KEY_LOCATION=/etc/step/certs/%i.key
 Environment=EXPIRES_IN_THRESHOLD=66%

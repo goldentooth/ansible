@@ -425,6 +425,8 @@ step_ca:
 
   # Step CLI configuration
   executable: 'step'
+  # Step CLI configuration directory (client nodes)
+  steppath: '/root/.step'
 
   # CA certificate paths on client nodes
   root_cert_path: "/etc/ssl/certs/{{ cluster.name }}.pem"
